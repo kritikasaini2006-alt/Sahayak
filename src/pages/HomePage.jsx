@@ -10,8 +10,10 @@ import { MOCK_SCHEMES } from '../data/mockSchemes';
 import SchemeCard from '../components/common/SchemeCard';
 import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 export default function HomePage() {
+  useDocumentTitle('Discover Indian Welfare Schemes');
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 

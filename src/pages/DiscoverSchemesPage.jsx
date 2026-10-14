@@ -23,8 +23,10 @@ import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
 import { loadCitizenProfile, evaluateEligibility } from '../utils/eligibilityEngine';
 import { getSavedSchemeIds, toggleSaveSchemeId } from '../utils/applicationStorage';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 export default function DiscoverSchemesPage() {
+  useDocumentTitle('Discover Welfare Schemes');
   const [searchParams, setSearchParams] = useSearchParams();
 
   // URL Query Parameters Initial States

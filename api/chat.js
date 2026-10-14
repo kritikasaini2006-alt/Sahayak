@@ -1,10 +1,14 @@
 /**
  * Vercel Serverless Function & Backend Handler for Sahayak AI Gemini Chatbot.
  *
- * Security & Reliability:
+ * Security, Reliability & Privacy:
  * - Reads GEMINI_API_KEY strictly from server-side environment variables.
- * - Never exposes API secrets to client-side code.
- * - Validates inputs, handles timeouts (15s abort controller), and manages rate limits.
+ * - Never exposes API secrets or provider credentials to client-side code.
+ * - Enforces input size validation (max 2,000 chars per prompt).
+ * - Enforces server-side rate limiting (30 requests/min per client IP).
+ * - Sanitizes citizen profile data and enforces bounded parameters.
+ * - Protects citizen privacy: NEVER logs citizen prompts, credentials, or full profiles.
+ * - Handles timeouts (15s abort controller) and rate limits (429) gracefully.
  * - If GEMINI_API_KEY is absent or API is unreachable, provides an authentic,
  *   clearly labeled Offline Demo Mode response (never pretending it came from Gemini).
  */
@@ -20,9 +24,38 @@ VERIFIED SCHEME KNOWLEDGE BASE:
 7. IGNOAPS (National Old Age Pension): Monthly pension for elderly citizens aged 60+ belonging to BPL households. Supplemented by state top-ups. Portal: nsap.nic.in.
 8. PMUY 2.0 (Ujjwala Yojana): Deposit-free LPG connection + free first refill and stove for adult women from poor/BPL households. Portal: pmuy.gov.in.
 9. PM SVANidhi: Collateral-free working capital micro-loans (₹10k, ₹20k, ₹50k) with 7% interest subsidy for urban street vendors and hawkers. Portal: pmsvanidhi.mohua.gov.in.
-10. PM-KMY (Kisan Maan-Dhan Yojana): Guaranteed ₹3,000/month pension for small/marginal farmers upon reaching 60 years. Entry age 18-40. 50:50 matching government contribution. Portal: maandhan.in.
+10. PM-KMY (Kisan Maan-Dhan Yojana): Guaranteed ₹3,00,00/month pension for small/marginal farmers upon reaching 60 years. Entry age 18-40. 50:50 matching government contribution. Portal: maandhan.in.
 `;
 
+// Rate Limiter: max 30 requests per minute per IP
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const MAX_REQUESTS_PER_WINDOW = 30;
+const ipRequestHistory = new Map();
+
+/**
+ * Checks in-memory sliding window rate limits.
+ */
+export function checkRateLimit(clientIp = 'default') {
+  const now = Date.now();
+  const record = ipRequestHistory.get(clientIp);
+
+  if (!record || now > record.resetTime) {
+    ipRequestHistory.set(clientIp, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return { allowed: true };
+  }
+
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    const retryAfter = Math.max(1, Math.ceil((record.resetTime - now) / 1000));
+    return { allowed: false, retryAfter };
+  }
+
+  record.count += 1;
+  return { allowed: true };
+}
+
+/**
+ * Generates the structured system instruction for the AI assistant.
+ */
 export function generateSystemPrompt(language = 'en', profile = null) {
   let profileContext = 'Citizen Profile: Anonymous user (no profile details provided).';
   if (profile && (profile.age || profile.occupation || profile.state)) {
@@ -31,10 +64,10 @@ export function generateSystemPrompt(language = 'en', profile = null) {
 - Gender: ${profile.gender || 'Not specified'}
 - State/UT: ${profile.state || 'Not specified'}
 - Residence: ${profile.areaType || 'Not specified'} area
-- Occupation: ${profile.occupation ? profile.occupation.replace('_', ' ') : 'Not specified'}
+- Occupation: ${profile.occupation ? String(profile.occupation).replace('_', ' ') : 'Not specified'}
 ${profile.farmerLandholding ? `- Farmer Landholding: ${profile.farmerLandholding}` : ''}
 ${profile.artisanTrade ? `- Traditional Trade: ${profile.artisanTrade}` : ''}
-- Annual Household Income: ₹${profile.annualIncome !== undefined ? Number(profile.annualIncome).toLocaleString('en-IN') : 'Not specified'}
+- Annual Household Income: ₹${profile.annualIncome !== undefined && profile.annualIncome !== '' ? Number(profile.annualIncome).toLocaleString('en-IN') : 'Not specified'}
 - Ration Card: ${profile.rationCard || 'Not specified'}
 - Housing Status: ${profile.housingType || 'Not specified'}
 - Girl Child <= 10: ${profile.hasGirlChildUnder10 || 'Not specified'}
@@ -43,7 +76,7 @@ ${profile.artisanTrade ? `- Traditional Trade: ${profile.artisanTrade}` : ''}
 
   const langInstruction =
     language === 'hi'
-      ? 'PRIMARY LANGUAGE: Respond in fluent, polite, accessible Hindi (हिन्दी). Use easy-to-understand Hindi without overly complex bureaucratic Sanskritized terms. When citing websites or numbers, you can include them in English or Devanagari.'
+      ? 'PRIMARY LANGUAGE: Respond in fluent, polite, accessible Hindi (हिन्दी). Use easy-to-understand Hindi without overly complex bureaucratic terms. When citing portals or numbers, you can include them in English or Devanagari.'
       : 'PRIMARY LANGUAGE: Respond in clear, accessible Indian English. Avoid bureaucratic legalese.';
 
   return `You are Sahayak AI (सहायक AI), a helpful, empathetic, and neutral civic-tech assistant helping Indian citizens understand government welfare schemes, criteria, and documentation.
@@ -68,7 +101,7 @@ OPERATIONAL PRINCIPLES:
  * Generates an authentic offline sample response when GEMINI_API_KEY is not configured or unavailable.
  */
 export function generateOfflineSampleReply(prompt, language = 'en', profile = null) {
-  const q = prompt.toLowerCase();
+  const q = String(prompt).toLowerCase();
 
   if (language === 'hi') {
     if (q.includes('किसान') || q.includes('farmer') || q.includes('kisan')) {
@@ -106,11 +139,63 @@ export function generateOfflineSampleReply(prompt, language = 'en', profile = nu
 /**
  * Handles incoming chat API requests.
  */
-export async function processChatRequest({ prompt, history = [], language = 'en', profile = null }) {
+export async function processChatRequest({
+  prompt,
+  history = [],
+  language = 'en',
+  profile = null,
+  clientIp = null,
+}) {
+  // 1. Rate limiting check
+  if (clientIp) {
+    const rateCheck = checkRateLimit(clientIp);
+    if (!rateCheck.allowed) {
+      return {
+        status: 429,
+        body: {
+          error: `Too many requests. Please wait ${rateCheck.retryAfter} seconds before trying again.`,
+          isRateLimited: true,
+          retryAfter: rateCheck.retryAfter,
+        },
+      };
+    }
+  }
+
+  // 2. Validate input presence and type
   if (!prompt || typeof prompt !== 'string' || !prompt.trim()) {
     return {
       status: 400,
       body: { error: 'Invalid request: "prompt" text string is required.' },
+    };
+  }
+
+  // 3. Constrain maximum prompt size (2,000 characters)
+  if (prompt.length > 2000) {
+    return {
+      status: 400,
+      body: { error: 'Request rejected: prompt exceeds maximum allowable limit of 2,000 characters.' },
+    };
+  }
+
+  // 4. Sanitize profile parameters to prevent prototype pollution or unbounded strings
+  let sanitizedProfile = null;
+  if (profile && typeof profile === 'object' && !Array.isArray(profile)) {
+    sanitizedProfile = {
+      age: profile.age && !isNaN(Number(profile.age)) ? Math.min(120, Math.max(1, Number(profile.age))) : '',
+      gender: typeof profile.gender === 'string' ? profile.gender.slice(0, 50) : '',
+      state: typeof profile.state === 'string' ? profile.state.slice(0, 50) : '',
+      areaType: typeof profile.areaType === 'string' ? profile.areaType.slice(0, 50) : '',
+      occupation: typeof profile.occupation === 'string' ? profile.occupation.slice(0, 50) : '',
+      farmerLandholding: typeof profile.farmerLandholding === 'string' ? profile.farmerLandholding.slice(0, 50) : '',
+      artisanTrade: typeof profile.artisanTrade === 'string' ? profile.artisanTrade.slice(0, 50) : '',
+      annualIncome:
+        profile.annualIncome !== undefined && profile.annualIncome !== '' && !isNaN(Number(profile.annualIncome))
+          ? Math.max(0, Number(profile.annualIncome))
+          : '',
+      rationCard: typeof profile.rationCard === 'string' ? profile.rationCard.slice(0, 50) : '',
+      housingType: typeof profile.housingType === 'string' ? profile.housingType.slice(0, 50) : '',
+      hasGirlChildUnder10: typeof profile.hasGirlChildUnder10 === 'string' ? profile.hasGirlChildUnder10.slice(0, 20) : '',
+      hasDisability: typeof profile.hasDisability === 'string' ? profile.hasDisability.slice(0, 20) : '',
     };
   }
 
@@ -119,7 +204,7 @@ export async function processChatRequest({ prompt, history = [], language = 'en'
 
   // If no Gemini API key is configured on the server, respond in clearly labeled Demo Mode
   if (!apiKey || apiKey.trim() === '') {
-    const reply = generateOfflineSampleReply(prompt, language, profile);
+    const reply = generateOfflineSampleReply(prompt, language, sanitizedProfile);
     return {
       status: 200,
       body: {
@@ -132,19 +217,18 @@ export async function processChatRequest({ prompt, history = [], language = 'en'
     };
   }
 
-  const systemInstruction = generateSystemPrompt(language, profile);
+  const systemInstruction = generateSystemPrompt(language, sanitizedProfile);
 
   // Construct Google Gemini generateContent payload
-  // Format message history
   const contents = [];
 
-  // Add conversation history (up to last 6 turns to manage context window)
+  // Add conversation history (up to last 6 turns, each message text capped at 1,000 chars)
   if (Array.isArray(history) && history.length > 0) {
     history.slice(-6).forEach((msg) => {
-      if (msg && msg.text) {
+      if (msg && typeof msg.text === 'string' && msg.text.trim()) {
         contents.push({
           role: msg.sender === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.text }],
+          parts: [{ text: msg.text.slice(0, 1000).trim() }],
         });
       }
     });
@@ -187,14 +271,6 @@ export async function processChatRequest({ prompt, history = [], language = 'en'
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      let errorJson = null;
-      try {
-        errorJson = JSON.parse(errorText);
-      } catch {
-        errorJson = null;
-      }
-
       // Handle Rate Limit (429)
       if (response.status === 429) {
         return {
@@ -206,10 +282,11 @@ export async function processChatRequest({ prompt, history = [], language = 'en'
         };
       }
 
-      console.error(`Gemini API Error (HTTP ${response.status}):`, errorText);
+      // Safe logging: Never log user prompt or citizen data to server logs
+      console.error(`Gemini API Error (HTTP ${response.status})`);
 
       // Fallback gracefully to offline sample response if Gemini service errors
-      const fallbackReply = generateOfflineSampleReply(prompt, language, profile);
+      const fallbackReply = generateOfflineSampleReply(prompt, language, sanitizedProfile);
       return {
         status: 200,
         body: {
@@ -251,10 +328,11 @@ export async function processChatRequest({ prompt, history = [], language = 'en'
       };
     }
 
-    console.error('Fetch error connecting to Gemini API:', err);
+    // Safe error logging: only log error name, never citizen prompt
+    console.error('Fetch error connecting to Gemini API:', err?.name || 'NetworkError');
 
     // Fallback to offline catalog demo
-    const fallbackReply = generateOfflineSampleReply(prompt, language, profile);
+    const fallbackReply = generateOfflineSampleReply(prompt, language, sanitizedProfile);
     return {
       status: 200,
       body: {
@@ -276,6 +354,8 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -286,12 +366,23 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Check request payload size limit (max 32KB)
+    if (req.body && typeof req.body === 'string' && req.body.length > 32768) {
+      return res.status(413).json({ error: 'Payload Too Large: Maximum request body size is 32 KB.' });
+    }
+
+    // Extract client IP for rate limiting
+    const clientIp =
+      req.headers['x-forwarded-for']?.split(',')[0].trim() ||
+      req.socket?.remoteAddress ||
+      '127.0.0.1';
+
     const payload = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
-    const result = await processChatRequest(payload);
+    const result = await processChatRequest({ ...payload, clientIp });
     return res.status(result.status).json(result.body);
   } catch (error) {
-    console.error('Server error processing chat request:', error);
+    // Safe error log
+    console.error('Server error processing chat request:', error?.name || 'InternalError');
     return res.status(500).json({ error: 'Internal server error processing request.' });
   }
 }
-

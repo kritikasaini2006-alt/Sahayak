@@ -43,8 +43,10 @@ import {
   GENERAL_DOCS_KEY,
   safeJsonParse,
 } from '../utils/applicationStorage';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 export default function MyApplicationsPage() {
+  useDocumentTitle('My Applications & Saved Schemes');
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Active tab: 'applications' | 'saved' | 'guide' | 'documents'

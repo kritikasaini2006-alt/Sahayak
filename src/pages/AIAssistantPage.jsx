@@ -24,8 +24,10 @@ import {
 import Badge from '../components/common/Badge';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../data/translations';
 import { loadCitizenProfile } from '../utils/eligibilityEngine';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 export default function AIAssistantPage() {
+  useDocumentTitle('AI Assistant');
   // Language state (defaults to English or saved preference)
   const [language, setLanguage] = useState(() => {
     try {

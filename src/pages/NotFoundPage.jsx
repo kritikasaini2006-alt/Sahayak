@@ -2,8 +2,10 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Home, Compass } from 'lucide-react';
 import Button from '../components/common/Button';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 export default function NotFoundPage() {
+  useDocumentTitle('Page Not Found');
   return (
     <div className="py-20 text-center space-y-6 max-w-md mx-auto px-4">
       <div className="w-16 h-16 rounded-2xl bg-navy-50 text-navy-800 font-extrabold text-2xl flex items-center justify-center mx-auto border border-navy-100">

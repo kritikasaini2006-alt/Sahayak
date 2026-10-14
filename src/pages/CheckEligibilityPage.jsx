@@ -25,6 +25,7 @@ import {
   clearCitizenProfile,
 } from '../utils/eligibilityEngine';
 import { SAMPLE_PROFILES } from '../data/sampleProfiles';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 const INITIAL_FORM_STATE = {
   age: '',
@@ -43,6 +44,7 @@ const INITIAL_FORM_STATE = {
 };
 
 export default function CheckEligibilityPage() {
+  useDocumentTitle('Check Eligibility');
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [errors, setErrors] = useState({});

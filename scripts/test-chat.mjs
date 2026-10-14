@@ -1,4 +1,4 @@
-import { processChatRequest, generateSystemPrompt, generateOfflineSampleReply } from '../api/chat.js';
+import { processChatRequest, generateSystemPrompt, generateOfflineSampleReply, checkRateLimit } from '../api/chat.js';
 
 async function runTests() {
   console.log('--- Sahayak AI Chatbot Unit & Integration Tests ---');
@@ -104,8 +104,54 @@ async function runTests() {
     failures++;
   }
 
+  // Test 6: Input Size Validation Constraint (> 2,000 chars rejected)
+  try {
+    const oversizedPrompt = 'a'.repeat(2001);
+    const res = await processChatRequest({ prompt: oversizedPrompt });
+    if (res.status === 400 && res.body.error && res.body.error.includes('2,000 characters')) {
+      console.log('✅ Test 6 Passed: Oversized prompt (> 2,000 chars) rejected with HTTP 400.');
+    } else {
+      console.error('❌ Test 6 Failed: Expected 400 on oversized prompt, got', res.status);
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 6 Exception:', err);
+    failures++;
+  }
+
+  // Test 7: In-memory Rate Limiting Protection (429)
+  try {
+    const testIp = '192.168.1.100';
+    let rateLimited = false;
+    // Consume 30 allowable requests
+    for (let i = 0; i < 30; i++) {
+      checkRateLimit(testIp);
+    }
+    // 31st request should be rejected
+    const check31 = checkRateLimit(testIp);
+    if (!check31.allowed && check31.retryAfter > 0) {
+      rateLimited = true;
+    }
+
+    // Now test through processChatRequest
+    const res = await processChatRequest({
+      prompt: 'Hello',
+      clientIp: testIp,
+    });
+
+    if (rateLimited && res.status === 429 && res.body.isRateLimited) {
+      console.log('✅ Test 7 Passed: In-memory rate limiting triggers HTTP 429 when threshold exceeded.');
+    } else {
+      console.error('❌ Test 7 Failed: Rate limiting not enforced as expected:', res);
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 7 Exception:', err);
+    failures++;
+  }
+
   if (failures === 0) {
-    console.log('\n🎉 ALL 5 TESTS PASSED SUCCESSFULLY!');
+    console.log('\n🎉 ALL 7 CHATBOT TESTS PASSED SUCCESSFULLY!');
   } else {
     console.error(`\n🚨 ${failures} TESTS FAILED.`);
     process.exit(1);
@@ -113,4 +159,3 @@ async function runTests() {
 }
 
 runTests();
-

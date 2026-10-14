@@ -21,10 +21,19 @@ export default defineConfig(({ mode }) => {
           server.middlewares.use(async (req, res, next) => {
             if (req.url === '/api/chat' && req.method === 'POST') {
               let bodyStr = '';
+              let tooLarge = false;
               req.on('data', (chunk) => {
                 bodyStr += chunk;
+                if (bodyStr.length > 32768) {
+                  tooLarge = true;
+                  res.statusCode = 413;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ error: 'Payload Too Large: Maximum request body size is 32 KB.' }));
+                  req.destroy();
+                }
               });
               req.on('end', async () => {
+                if (tooLarge) return;
                 try {
                   const { processChatRequest } = await import('./api/chat.js');
                   const payload = bodyStr ? JSON.parse(bodyStr) : {};
@@ -33,7 +42,7 @@ export default defineConfig(({ mode }) => {
                   res.setHeader('Content-Type', 'application/json');
                   res.end(JSON.stringify(result.body));
                 } catch (err) {
-                  console.error('Error handling /api/chat in Vite dev middleware:', err);
+                  console.error('Error handling /api/chat in Vite dev middleware:', err?.name || 'InternalError');
                   res.statusCode = 500;
                   res.setHeader('Content-Type', 'application/json');
                   res.end(JSON.stringify({ error: err.message || 'Internal server error' }));

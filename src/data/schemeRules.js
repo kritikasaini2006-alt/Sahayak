@@ -42,6 +42,8 @@ export const SCHEME_RULES = [
         } else if (!profile.farmerLandholding) {
           missing.push('Land records (Khatauni/Jamabandi) ownership status needs confirmation.');
         }
+      } else if (!profile.occupation) {
+        missing.push('Occupation details needed: Scheme is exclusively for landholding farmer families.');
       } else {
         unmet.push('Scheme is exclusively for landholding farmer families.');
       }

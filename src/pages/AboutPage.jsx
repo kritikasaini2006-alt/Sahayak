@@ -9,8 +9,10 @@ import {
   HeartHandshake,
 } from 'lucide-react';
 import Badge from '../components/common/Badge';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 
 export default function AboutPage() {
+  useDocumentTitle('About & Mission');
   const faqs = [
     {
       q: 'Is Sahayak AI an official portal of the Government of India?',
