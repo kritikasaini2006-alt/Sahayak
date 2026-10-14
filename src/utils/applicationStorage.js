@@ -16,6 +16,8 @@ export const APPLICATION_RECORDS_KEY = 'sahayak_application_records';
 export const GENERAL_DOCS_KEY = 'sahayak_general_documents';
 export const CHECKLIST_STORAGE_KEY = 'sahayak_scheme_checklists';
 
+import { getScopedKey } from './userStorage.js';
+
 export const APPLICATION_STATUSES = [
   'Interested',
   'Preparing Documents',
@@ -77,7 +79,7 @@ export function safeJsonParse(raw, fallback) {
 
 export function getSavedSchemeIds() {
   if (typeof localStorage === 'undefined') return ['pm-kisan', 'pm-jay'];
-  const raw = localStorage.getItem(SAVED_SCHEMES_KEY);
+  const raw = localStorage.getItem(getScopedKey(SAVED_SCHEMES_KEY));
   const parsed = safeJsonParse(raw, null);
   if (Array.isArray(parsed)) {
     return parsed;
@@ -90,7 +92,7 @@ export function saveSavedSchemeIds(ids) {
   if (typeof localStorage === 'undefined') return false;
   try {
     const cleanIds = Array.isArray(ids) ? [...new Set(ids.filter((id) => typeof id === 'string' && id.trim()))] : [];
-    localStorage.setItem(SAVED_SCHEMES_KEY, JSON.stringify(cleanIds));
+    localStorage.setItem(getScopedKey(SAVED_SCHEMES_KEY), JSON.stringify(cleanIds));
     return true;
   } catch (err) {
     console.error('Failed to save saved schemes:', err);
@@ -158,7 +160,7 @@ const DEFAULT_SAMPLE_APPLICATIONS = [
 
 export function getApplicationRecords() {
   if (typeof localStorage === 'undefined') return DEFAULT_SAMPLE_APPLICATIONS;
-  const raw = localStorage.getItem(APPLICATION_RECORDS_KEY);
+  const raw = localStorage.getItem(getScopedKey(APPLICATION_RECORDS_KEY));
   if (!raw) {
     // Initialize default sample applications for immediate visual demonstration
     saveApplicationRecords(DEFAULT_SAMPLE_APPLICATIONS);
@@ -175,7 +177,7 @@ export function saveApplicationRecords(records) {
   if (typeof localStorage === 'undefined') return false;
   try {
     if (!Array.isArray(records)) return false;
-    localStorage.setItem(APPLICATION_RECORDS_KEY, JSON.stringify(records));
+    localStorage.setItem(getScopedKey(APPLICATION_RECORDS_KEY), JSON.stringify(records));
     return true;
   } catch (err) {
     console.error('Failed to save application records:', err);
@@ -385,10 +387,10 @@ export function importUserData(jsonString) {
 export function clearAllUserData() {
   if (typeof localStorage === 'undefined') return true;
   try {
-    localStorage.removeItem(SAVED_SCHEMES_KEY);
-    localStorage.removeItem(APPLICATION_RECORDS_KEY);
-    localStorage.removeItem(GENERAL_DOCS_KEY);
-    localStorage.removeItem(CHECKLIST_STORAGE_KEY);
+    localStorage.removeItem(getScopedKey(SAVED_SCHEMES_KEY));
+    localStorage.removeItem(getScopedKey(APPLICATION_RECORDS_KEY));
+    localStorage.removeItem(getScopedKey(GENERAL_DOCS_KEY));
+    localStorage.removeItem(getScopedKey(CHECKLIST_STORAGE_KEY));
     return true;
   } catch (err) {
     console.error('Failed to clear all user data:', err);

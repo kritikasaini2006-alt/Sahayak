@@ -26,6 +26,7 @@ import {
 } from '../utils/eligibilityEngine';
 import { SAMPLE_PROFILES } from '../data/sampleProfiles';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { useAuth } from '../context/AuthContext';
 
 const INITIAL_FORM_STATE = {
   age: '',
@@ -45,6 +46,7 @@ const INITIAL_FORM_STATE = {
 
 export default function CheckEligibilityPage() {
   useDocumentTitle('Check Eligibility');
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [errors, setErrors] = useState({});
@@ -53,14 +55,16 @@ export default function CheckEligibilityPage() {
   const [storedProfile, setStoredProfile] = useState(null);
   const [notification, setNotification] = useState(null);
 
-  // Load existing profile from localStorage on component mount
+  // Load existing profile from localStorage on component mount or user change
   useEffect(() => {
     const existing = loadCitizenProfile();
     if (existing && existing.age && existing.state) {
       setStoredProfile(existing);
       setFormData(existing);
+    } else {
+      setStoredProfile(null);
     }
-  }, []);
+  }, [user]);
 
   const updateField = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));

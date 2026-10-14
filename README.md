@@ -75,19 +75,23 @@ sahayak/
 ├── api/
 │   └── chat.js                   # Vercel serverless function (Gemini API + Rate Limiter + Offline Fallback)
 ├── scripts/
-│   ├── run-all-tests.mjs         # Master automated test runner (runs all 4 suites)
+│   ├── run-all-tests.mjs         # Master automated test runner (runs all 5 suites)
 │   ├── test-eligibility.mjs      # Unit tests for eligibility engine & rule logic
 │   ├── test-guidance.mjs         # Unit tests for document checklists & privacy rules
 │   ├── test-applications.mjs     # Unit tests for applicationStorage data layer & JSON export
-│   └── test-chat.mjs             # Integration tests for /api/chat, rate limiting & demo mode
+│   ├── test-chat.mjs             # Integration tests for /api/chat, rate limiting & demo mode
+│   └── test-auth.mjs             # Integration tests for Supabase Auth & user data isolation
 ├── src/
 │   ├── components/
 │   │   ├── applications/         # Application Dashboard, Saved Schemes List, Record Modal
+│   │   ├── auth/                 # ProtectedRoute wrapper
 │   │   ├── common/               # Badge, Button, SchemeCard, Navbar, Footer, DisclaimerBanner
 │   │   ├── eligibility/          # Multi-step screener steps, stepper, results cards
 │   │   ├── guidance/             # SchemeGuidanceView (document checklist, step walkthrough)
 │   │   ├── layout/               # AppLayout container
 │   │   └── schemes/              # SchemeFilterSidebar, SchemeDetailModal
+│   ├── context/
+│   │   └── AuthContext.jsx       # Supabase Auth Provider, user state, and session manager
 │   ├── data/
 │   │   ├── mockSchemes.js        # 10 curated verified public welfare schemes
 │   │   ├── sampleProfiles.js     # Fictional citizen testing profiles
@@ -100,12 +104,16 @@ sahayak/
 │   │   ├── DiscoverSchemesPage.jsx   # Searchable catalog with multi-dimensional filters
 │   │   ├── CheckEligibilityPage.jsx  # Multi-step citizen eligibility screener
 │   │   ├── AIAssistantPage.jsx       # Gemini chat interface with STT/TTS & Offline Demo
-│   │   ├── MyApplicationsPage.jsx    # Applications dashboard, saved schemes & document wallet
+│   │   ├── MyApplicationsPage.jsx    # User applications dashboard & saved schemes
 │   │   ├── AboutPage.jsx             # Mission, FAQs, and transparency declarations
+│   │   ├── LoginPage.jsx             # Email/password authentication & password recovery
+│   │   ├── SignUpPage.jsx            # Account creation, validation & terms acceptance
 │   │   └── NotFoundPage.jsx          # Accessible 404 page
 │   └── utils/
 │       ├── applicationStorage.js     # Data layer for saved schemes, applications, and JSON export
 │       ├── eligibilityEngine.js      # Rules evaluation engine & profile sanitization
+│       ├── supabaseClient.js         # Unified Supabase Auth REST client & local provider
+│       ├── userStorage.js            # User data isolation and guest research migration
 │       └── cn.js                     # Tailwind class merge utility
 ├── .env.example                  # Environment variables template
 ├── package.json                  # Scripts and dependencies
@@ -117,13 +125,13 @@ sahayak/
 
 ## 🔑 Environment Variables
 
-To configure the server-side Gemini integration:
+Sahayak AI uses both server-side variables (for Gemini AI secrets) and client-side variables (for Supabase Auth):
 
 1. Copy `.env.example` to `.env.local`:
    ```bash
    cp .env.example .env.local
    ```
-2. Populate the required variables in `.env.local`:
+2. Populate the variables in `.env.local`:
    ```env
    # Google Gemini API Key (Server-side ONLY; never expose as VITE_*)
    # Obtain from Google AI Studio: https://aistudio.google.com/app/apikey
@@ -131,9 +139,16 @@ To configure the server-side Gemini integration:
 
    # Gemini Model Identifier (Default: gemini-1.5-flash)
    GEMINI_MODEL=gemini-1.5-flash
+
+   # Supabase Authentication (Client-side)
+   # Obtain from Supabase Project Settings -> API: https://supabase.com/dashboard
+   VITE_SUPABASE_URL=https://your-project-id.supabase.co
+   VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
    ```
 
-> **Note:** If `GEMINI_API_KEY` is omitted, Sahayak AI automatically operates in a clearly labeled **Offline Demo Mode**, answering queries using the verified catalog rules without breaking.
+> **Note on Seamless Fallback:**
+> - If `GEMINI_API_KEY` is omitted, Sahayak AI automatically runs in a clearly labeled **Offline Demo Mode**.
+> - If `VITE_SUPABASE_URL` is omitted, Sahayak AI automatically provides a **Local Authentication Mode** that securely persists registered users, handles sessions, and isolates user workspaces in the browser without any setup barriers.
 
 ---
 
@@ -158,11 +173,12 @@ The application will launch at `http://localhost:3000`.
 ```bash
 npm test
 ```
-Executes all 4 unit and integration test suites:
+Executes all 5 unit and integration test suites:
 - `scripts/test-eligibility.mjs` (7 tests)
 - `scripts/test-guidance.mjs` (5 tests)
 - `scripts/test-applications.mjs` (5 tests)
 - `scripts/test-chat.mjs` (7 tests)
+- `scripts/test-auth.mjs` (9 tests)
 
 ### 5. Production Build
 ```bash

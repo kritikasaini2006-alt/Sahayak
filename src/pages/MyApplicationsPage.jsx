@@ -31,6 +31,7 @@ import SchemeDetailModal from '../components/schemes/SchemeDetailModal';
 import { loadCitizenProfile } from '../utils/eligibilityEngine';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
+import { useAuth } from '../context/AuthContext';
 import {
   getSavedSchemeIds,
   saveSavedSchemeIds,
@@ -48,6 +49,7 @@ import useDocumentTitle from '../hooks/useDocumentTitle';
 export default function MyApplicationsPage() {
   useDocumentTitle('My Applications & Saved Schemes');
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
 
   // Active tab: 'applications' | 'saved' | 'guide' | 'documents'
   const initialTab = searchParams.get('tab') || 'applications';
@@ -59,6 +61,12 @@ export default function MyApplicationsPage() {
   // Storage states
   const [savedIds, setSavedIds] = useState(() => getSavedSchemeIds());
   const [applications, setApplications] = useState(() => getApplicationRecords());
+
+  // Re-sync storage data whenever active user changes
+  useEffect(() => {
+    setSavedIds(getSavedSchemeIds());
+    setApplications(getApplicationRecords());
+  }, [user]);
 
   // Modals state
   const [isRecordModalOpen, setIsRecordModalOpen] = useState(false);
@@ -233,8 +241,13 @@ export default function MyApplicationsPage() {
       {/* Header bar */}
       <div className="border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 print:hidden">
         <div className="space-y-2">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="teal">Citizen Workspace</Badge>
+            {user && (
+              <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-medium border border-slate-200">
+                Account: {user.email}
+              </span>
+            )}
             <span className="text-xs text-slate-500 font-medium">Personal Readiness & Guidance Center</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold text-navy-900 tracking-tight">

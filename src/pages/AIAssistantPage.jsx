@@ -25,9 +25,11 @@ import Badge from '../components/common/Badge';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../data/translations';
 import { loadCitizenProfile } from '../utils/eligibilityEngine';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { useAuth } from '../context/AuthContext';
 
 export default function AIAssistantPage() {
   useDocumentTitle('AI Assistant');
+  const { user } = useAuth();
   // Language state (defaults to English or saved preference)
   const [language, setLanguage] = useState(() => {
     try {
@@ -66,13 +68,15 @@ export default function AIAssistantPage() {
   const recognitionRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Load citizen profile on mount
+  // Load citizen profile on mount or user change
   useEffect(() => {
     const loadedProfile = loadCitizenProfile();
     if (loadedProfile && (loadedProfile.age || loadedProfile.state || loadedProfile.occupation)) {
       setProfile(loadedProfile);
+    } else {
+      setProfile(null);
     }
-  }, []);
+  }, [user]);
 
   // Save language preference and update welcome if only welcome message exists
   const handleLanguageChange = (newLang) => {

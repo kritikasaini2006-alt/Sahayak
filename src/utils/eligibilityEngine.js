@@ -1,5 +1,6 @@
 import { SCHEME_RULES } from '../data/schemeRules.js';
 import { MOCK_SCHEMES } from '../data/mockSchemes.js';
+import { getScopedKey } from './userStorage.js';
 
 export const PROFILE_STORAGE_KEY = 'sahayak_citizen_profile';
 
@@ -33,7 +34,7 @@ export function sanitizeProfileForStorage(profile) {
 export function saveCitizenProfile(profile) {
   try {
     const clean = sanitizeProfileForStorage(profile);
-    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(clean));
+    localStorage.setItem(getScopedKey(PROFILE_STORAGE_KEY), JSON.stringify(clean));
     return clean;
   } catch (error) {
     console.error('Failed to save citizen profile to localStorage:', error);
@@ -46,7 +47,7 @@ export function saveCitizenProfile(profile) {
  */
 export function loadCitizenProfile() {
   try {
-    const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
+    const raw = localStorage.getItem(getScopedKey(PROFILE_STORAGE_KEY));
     if (!raw) return null;
     return JSON.parse(raw);
   } catch (error) {
@@ -60,7 +61,7 @@ export function loadCitizenProfile() {
  */
 export function clearCitizenProfile() {
   try {
-    localStorage.removeItem(PROFILE_STORAGE_KEY);
+    localStorage.removeItem(getScopedKey(PROFILE_STORAGE_KEY));
     return true;
   } catch (error) {
     console.error('Failed to clear citizen profile from localStorage:', error);
