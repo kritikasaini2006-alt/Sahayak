@@ -237,7 +237,7 @@ export default function MyApplicationsPage() {
   );
 
   return (
-    <div className="py-8 md:py-12 space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-5 sm:py-7 space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header bar */}
       <div className="border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 print:hidden">
         <div className="space-y-2">

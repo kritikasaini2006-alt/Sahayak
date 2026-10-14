@@ -226,9 +226,9 @@ export default function DiscoverSchemesPage() {
   ]);
 
   return (
-    <div className="py-8 md:py-12 space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-5 sm:py-7 space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Header Banner */}
-      <div className="border-b border-slate-200 pb-6 space-y-3">
+      <div className="border-b border-slate-200 pb-4 space-y-2">
         <div className="flex items-center gap-2">
           <Badge variant="teal">Directory</Badge>
           <span className="text-xs text-slate-500 font-medium">Public Domain Welfare Schemes</span>
@@ -378,7 +378,7 @@ export default function DiscoverSchemesPage() {
       </div>
 
       {/* Main Grid: Sidebar + Cards */}
-      <div className="flex items-start gap-8">
+      <div className="flex items-start gap-6">
         {/* Desktop Filter Sidebar */}
         <SchemeFilterSidebar
           selectedCategory={selectedCategory}
@@ -400,7 +400,7 @@ export default function DiscoverSchemesPage() {
         />
 
         {/* Schemes Catalog Stream */}
-        <div className="flex-1 space-y-6">
+        <div className="flex-1 space-y-5">
           {/* Results Summary Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500">
             <div>
@@ -418,13 +418,13 @@ export default function DiscoverSchemesPage() {
 
           {/* Loading or Cards View */}
           {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-pulse">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-pulse">
               {[1, 2, 3, 4].map((i) => (
                 <div key={i} className="h-64 bg-slate-100 rounded-xl border border-slate-200" />
               ))}
             </div>
           ) : filteredAndSortedSchemes.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               {filteredAndSortedSchemes.map((scheme) => (
                 <SchemeCard
                   key={scheme.id}

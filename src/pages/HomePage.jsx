@@ -29,14 +29,14 @@ export default function HomePage() {
   const featuredSchemes = MOCK_SCHEMES.slice(0, 3);
 
   return (
-    <div className="space-y-16 md:space-y-24 pb-16">
+    <div className="space-y-10 md:space-y-14 pb-12">
       {/* Hero Section */}
-      <section className="relative bg-gradient-to-b from-navy-900 via-navy-800 to-navy-950 text-white overflow-hidden py-16 md:py-24">
+      <section className="relative bg-gradient-to-b from-navy-900 via-navy-800 to-navy-950 text-white overflow-hidden py-10 md:py-16">
         {/* Subtle geometric civic pattern background */}
         <div className="absolute inset-0 opacity-10 bg-[radial-gradient(#14b8a6_1px,transparent_1px)] [background-size:24px_24px] pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="max-w-3xl mx-auto text-center space-y-6">
+          <div className="max-w-3xl mx-auto text-center space-y-4 sm:space-y-5">
             <div className="inline-flex items-center gap-2 bg-navy-700/80 border border-teal-500/40 text-teal-300 px-3.5 py-1.5 rounded-full text-xs md:text-sm font-medium backdrop-blur-sm">
               <Sparkles className="w-4 h-4 text-teal-400" />
               <span>Next-Gen Civic Technology for Indian Citizens</span>
@@ -56,7 +56,7 @@ export default function HomePage() {
             {/* Quick Search Form */}
             <form
               onSubmit={handleSearchSubmit}
-              className="mt-8 flex flex-col sm:flex-row items-center gap-2 bg-white/10 p-2 rounded-2xl border border-white/20 backdrop-blur-md shadow-2xl max-w-2xl mx-auto"
+              className="mt-6 flex flex-col sm:flex-row items-center gap-2 bg-white/10 p-2 rounded-2xl border border-white/20 backdrop-blur-md shadow-2xl max-w-2xl mx-auto"
             >
               <div className="relative flex-1 w-full flex items-center">
                 <Search className="w-5 h-5 text-slate-300 absolute left-3.5" />
@@ -131,8 +131,8 @@ export default function HomePage() {
       </section>
 
       {/* 4-Step How It Works */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
-        <div className="text-center max-w-2xl mx-auto space-y-3">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div className="text-center max-w-2xl mx-auto space-y-2">
           <Badge variant="teal">How It Works</Badge>
           <h2 className="text-2xl sm:text-3xl font-extrabold text-navy-900">
             Four Simple Steps to Welfare Entitlements
@@ -142,9 +142,9 @@ export default function HomePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3 relative hover:border-teal-500 transition-colors">
-            <div className="w-10 h-10 rounded-lg bg-navy-50 text-navy-900 font-bold flex items-center justify-center text-base border border-navy-100">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-2.5 relative hover:border-teal-500 transition-colors">
+            <div className="w-9 h-9 rounded-lg bg-navy-50 text-navy-900 font-bold flex items-center justify-center text-sm border border-navy-100">
               01
             </div>
             <h3 className="font-bold text-navy-900 text-base">Share Basic Profile</h3>
@@ -153,8 +153,8 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3 relative hover:border-teal-500 transition-colors">
-            <div className="w-10 h-10 rounded-lg bg-teal-50 text-teal-800 font-bold flex items-center justify-center text-base border border-teal-100">
+          <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-2.5 relative hover:border-teal-500 transition-colors">
+            <div className="w-9 h-9 rounded-lg bg-teal-50 text-teal-800 font-bold flex items-center justify-center text-sm border border-teal-100">
               02
             </div>
             <h3 className="font-bold text-navy-900 text-base">Match Eligible Schemes</h3>
@@ -163,8 +163,8 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3 relative hover:border-teal-500 transition-colors">
-            <div className="w-10 h-10 rounded-lg bg-emerald-50 text-emerald-800 font-bold flex items-center justify-center text-base border border-emerald-100">
+          <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-2.5 relative hover:border-teal-500 transition-colors">
+            <div className="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-800 font-bold flex items-center justify-center text-sm border border-emerald-100">
               03
             </div>
             <h3 className="font-bold text-navy-900 text-base">Get Document Checklist</h3>
@@ -173,8 +173,8 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-3 relative hover:border-teal-500 transition-colors">
-            <div className="w-10 h-10 rounded-lg bg-amber-50 text-amber-900 font-bold flex items-center justify-center text-base border border-amber-100">
+          <div className="bg-white p-5 sm:p-6 rounded-xl border border-slate-200 shadow-sm space-y-2.5 relative hover:border-teal-500 transition-colors">
+            <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-900 font-bold flex items-center justify-center text-sm border border-amber-100">
               04
             </div>
             <h3 className="font-bold text-navy-900 text-base">Apply on Official Portals</h3>
@@ -186,14 +186,14 @@ export default function HomePage() {
       </section>
 
       {/* Featured Schemes Section */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
           <div>
             <Badge variant="primary">High-Impact Schemes</Badge>
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-navy-900 mt-2">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-navy-900 mt-1.5">
               Popular Welfare Initiatives
             </h2>
-            <p className="text-slate-600 text-sm mt-1">
+            <p className="text-slate-600 text-sm mt-0.5">
               Direct benefit schemes offering crucial health, shelter, and financial support.
             </p>
           </div>
@@ -205,7 +205,7 @@ export default function HomePage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {featuredSchemes.map((scheme) => (
             <SchemeCard key={scheme.id} scheme={scheme} />
           ))}
@@ -214,25 +214,25 @@ export default function HomePage() {
 
       {/* Call to Action Banner */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-gradient-to-r from-navy-900 via-navy-800 to-teal-900 rounded-3xl p-8 md:p-12 text-white relative overflow-hidden shadow-xl">
-          <div className="max-w-2xl space-y-5 relative z-10">
+        <div className="bg-gradient-to-r from-navy-900 via-navy-800 to-teal-900 rounded-3xl p-6 sm:p-8 md:p-10 text-white relative overflow-hidden shadow-xl">
+          <div className="max-w-2xl space-y-4 relative z-10">
             <Badge variant="teal" className="bg-teal-900/60 text-teal-200 border-teal-500/40">
               AI Conversational Guide
             </Badge>
-            <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
               Not sure which schemes you qualify for?
             </h2>
             <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
               Talk with our AI assistant in natural conversational language. Describe your livelihood, family status, or business goals to discover relevant benefits.
             </p>
-            <div className="flex flex-wrap items-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
               <Link to="/assistant">
-                <Button variant="teal" size="lg" icon={Sparkles}>
+                <Button variant="teal" size="md" icon={Sparkles}>
                   Start AI Consultation
                 </Button>
               </Link>
               <Link to="/eligibility">
-                <Button variant="outline" size="lg" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
+                <Button variant="outline" size="md" className="bg-white/10 text-white border-white/30 hover:bg-white/20">
                   Step-by-Step Questionnaire
                 </Button>
               </Link>

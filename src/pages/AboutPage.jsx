@@ -33,23 +33,23 @@ export default function AboutPage() {
   ];
 
   return (
-    <div className="py-8 md:py-16 space-y-12 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-6 sm:py-8 space-y-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Page Header */}
-      <div className="border-b border-slate-200 pb-8 space-y-3 text-center sm:text-left">
+      <div className="border-b border-slate-200 pb-5 space-y-2 text-center sm:text-left">
         <div className="flex items-center justify-center sm:justify-start gap-2">
           <Badge variant="teal">Civic Technology Initiative</Badge>
           <span className="text-xs text-slate-500 font-medium">Open Welfare Access</span>
         </div>
-        <h1 className="text-3xl sm:text-5xl font-extrabold text-navy-900 tracking-tight">
+        <h1 className="text-3xl sm:text-4xl font-extrabold text-navy-900 tracking-tight">
           About Sahayak AI
         </h1>
-        <p className="text-slate-600 text-base max-w-3xl leading-relaxed">
+        <p className="text-slate-600 text-sm sm:text-base max-w-3xl leading-relaxed">
           Bridging the gap between India's vast public welfare programs and the citizens who need them most through transparent, accessible technology.
         </p>
       </div>
 
       {/* Prominent Non-Affiliation Declaration */}
-      <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-6 md:p-8 space-y-3">
+      <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-5 sm:p-6 space-y-2.5">
         <div className="flex items-center gap-2 text-amber-900 font-bold text-base">
           <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0" />
           <span>Official Transparency & Non-Affiliation Notice</span>
@@ -60,23 +60,23 @@ export default function AboutPage() {
       </div>
 
       {/* The Problem & Our Mission */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
           <div className="w-10 h-10 rounded-xl bg-navy-50 text-navy-900 flex items-center justify-center">
             <Target className="w-5 h-5" />
           </div>
-          <h2 className="text-xl font-bold text-navy-900">The Challenge</h2>
-          <p className="text-sm text-slate-600 leading-relaxed">
+          <h2 className="text-lg sm:text-xl font-bold text-navy-900">The Challenge</h2>
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
             India runs hundreds of central and state welfare initiatives allocating billions of rupees. However, marginalized households, rural families, and informal laborers frequently miss out due to complex jargon, fragmented portals, lack of document clarity, or reliance on unauthorized middlemen.
           </p>
         </div>
 
-        <div className="bg-white p-6 md:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div className="bg-white p-5 sm:p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
           <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center">
             <Sparkles className="w-5 h-5" />
           </div>
-          <h2 className="text-xl font-bold text-navy-900">Our Civic Mission</h2>
-          <p className="text-sm text-slate-600 leading-relaxed">
+          <h2 className="text-lg sm:text-xl font-bold text-navy-900">Our Civic Mission</h2>
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
             Sahayak AI reimagines welfare discovery. We translate multi-page government gazettes into clear eligibility questions, document readiness checklists, and conversational guidance, empowering citizens to apply with confidence on official platforms.
           </p>
         </div>

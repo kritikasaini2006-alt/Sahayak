@@ -187,9 +187,9 @@ export default function CheckEligibilityPage() {
   };
 
   return (
-    <div className="py-8 md:py-12 space-y-8 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="py-5 sm:py-7 space-y-6 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
       {/* Page Header */}
-      <div className="border-b border-slate-200 pb-6 space-y-2">
+      <div className="border-b border-slate-200 pb-4 space-y-2">
         <div className="flex items-center gap-2">
           <Badge variant="teal">Eligibility Screener</Badge>
           <span className="text-xs text-slate-500 font-medium">Grounded in Official Guidelines</span>
@@ -263,7 +263,7 @@ export default function CheckEligibilityPage() {
       {!evaluationResults ? (
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
           {/* Stepper Progress */}
-          <div className="bg-slate-50 border-b border-slate-200 p-4 sm:p-6">
+          <div className="bg-slate-50 border-b border-slate-200 p-4 sm:p-5">
             <EligibilityStepper
               steps={steps}
               currentStep={currentStep}
@@ -276,7 +276,7 @@ export default function CheckEligibilityPage() {
           </div>
 
           {/* Form Step Body */}
-          <div className="p-6 md:p-8">
+          <div className="p-5 md:p-6">
             {currentStep === 1 && (
               <DemographicsStep
                 formData={formData}

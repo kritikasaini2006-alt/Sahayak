@@ -116,7 +116,7 @@ export default function ApplicationDashboard({
   };
 
   return (
-    <div className="space-y-8 animate-fadeIn">
+    <div className="space-y-5 animate-fadeIn">
       {/* 1. STATUS SUMMARY CARDS DASHBOARD */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         {[

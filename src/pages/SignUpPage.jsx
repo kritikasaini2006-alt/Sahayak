@@ -86,28 +86,28 @@ export default function SignUpPage() {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-6">
+    <div className="py-6 sm:py-10 px-4 flex flex-col items-center justify-start flex-1">
+      <div className="w-full max-w-[460px] space-y-4">
         {/* Civic Logo & Heading */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-navy-800 to-teal-800 text-white shadow-md mx-auto mb-2">
-            <span className="font-extrabold text-2xl tracking-tight text-teal-300">स</span>
+        <div className="text-center space-y-1">
+          <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-navy-800 to-teal-800 text-white shadow-md mx-auto mb-1">
+            <span className="font-extrabold text-xl tracking-tight text-teal-300">स</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-navy-900 tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-extrabold text-navy-900 tracking-tight">
             Create Your Account
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto">
+          <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
             Save your scheme progress, manage application records, and get personalized citizen guidance.
           </p>
         </div>
 
         {/* Card */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
+        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-sm p-5 sm:p-6 space-y-3.5">
           {/* Provider status badge */}
-          <div className="flex items-center justify-between text-xs pb-3 border-b border-slate-100">
+          <div className="flex items-center justify-between text-xs pb-2.5 border-b border-slate-100">
             <div className="flex items-center gap-1.5 text-slate-500">
               <ShieldCheck className="w-4 h-4 text-teal-600" />
-              <span>Independent Civic-Tech Security</span>
+              <span className="font-medium">Civic-Tech Security</span>
             </div>
             <Badge variant={isConfigured ? 'teal' : 'amber'}>
               {isConfigured ? 'Supabase Auth' : 'Config Needed'}
@@ -116,17 +116,20 @@ export default function SignUpPage() {
 
           {/* Unconfigured Warning Banner */}
           {!isConfigured && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl p-3 flex items-start gap-2">
+            <div className="bg-amber-50/90 border border-amber-200 text-amber-900 text-xs rounded-xl p-3 flex items-start gap-2.5 animate-fadeIn">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <div className="leading-relaxed">
-                <span className="font-bold">Supabase Config Needed:</span> <code className="bg-amber-100 px-1 rounded">VITE_SUPABASE_URL</code> and <code className="bg-amber-100 px-1 rounded">VITE_SUPABASE_ANON_KEY</code> are not detected in the environment. Please add them in your Vercel Project Settings.
+              <div className="leading-relaxed space-y-1">
+                <p className="font-bold">Supabase Config Needed</p>
+                <p className="text-slate-600 text-[11px]">
+                  Add <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">VITE_SUPABASE_URL</code> and <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">VITE_SUPABASE_ANON_KEY</code> to your <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">.env.local</code> file (project root) or Vercel Environment Variables.
+                </p>
               </div>
             </div>
           )}
 
           {/* Form Error Banner */}
           {formError && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm rounded-xl p-3 flex items-start gap-2 animate-fadeIn">
+            <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl p-3 flex items-start gap-2 animate-fadeIn">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <div className="flex-1 font-medium">{formError}</div>
             </div>
@@ -155,10 +158,10 @@ export default function SignUpPage() {
             </div>
           ) : (
             /* Sign Up Form */
-            <form onSubmit={handleSignUpSubmit} className="space-y-4">
+            <form onSubmit={handleSignUpSubmit} className="space-y-3">
               {/* Full Name */}
               <div>
-                <label htmlFor="signup-name" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="signup-name" className="block text-xs font-semibold text-slate-700 mb-1">
                   Full Name <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -173,14 +176,14 @@ export default function SignUpPage() {
                     onChange={(e) => setFullName(e.target.value)}
                     required
                     placeholder="e.g. Ramesh Kumar"
-                    className="w-full pl-9 pr-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
+                    className="w-full pl-9 pr-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                 </div>
               </div>
 
               {/* Email */}
               <div>
-                <label htmlFor="signup-email" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="signup-email" className="block text-xs font-semibold text-slate-700 mb-1">
                   Email Address <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -195,14 +198,14 @@ export default function SignUpPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     placeholder="name@example.com"
-                    className="w-full pl-9 pr-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
+                    className="w-full pl-9 pr-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                 </div>
               </div>
 
               {/* Password */}
               <div>
-                <label htmlFor="signup-password" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="signup-password" className="block text-xs font-semibold text-slate-700 mb-1">
                   Password <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -217,7 +220,7 @@ export default function SignUpPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     placeholder="At least 6 characters"
-                    className="w-full pl-9 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
+                    className="w-full pl-9 pr-10 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                   <button
                     type="button"
@@ -232,7 +235,7 @@ export default function SignUpPage() {
 
               {/* Confirm Password */}
               <div>
-                <label htmlFor="signup-confirm-password" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="signup-confirm-password" className="block text-xs font-semibold text-slate-700 mb-1">
                   Confirm Password <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -247,7 +250,7 @@ export default function SignUpPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     placeholder="Re-enter password"
-                    className="w-full pl-9 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
+                    className="w-full pl-9 pr-10 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                   <button
                     type="button"
@@ -261,8 +264,8 @@ export default function SignUpPage() {
               </div>
 
               {/* Terms of Service & Privacy Policy acceptance */}
-              <div className="pt-1">
-                <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-600">
+              <div className="pt-0.5">
+                <label className="flex items-start gap-2 cursor-pointer text-xs text-slate-600">
                   <input
                     type="checkbox"
                     checked={acceptTerms}
@@ -287,7 +290,7 @@ export default function SignUpPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-semibold text-sm rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-semibold text-sm rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed mt-1"
               >
                 {loading ? (
                   <>
@@ -305,7 +308,7 @@ export default function SignUpPage() {
           )}
 
           {/* Switch to Sign In */}
-          <div className="pt-4 border-t border-slate-100 text-center text-xs text-slate-500">
+          <div className="pt-3 border-t border-slate-100 text-center text-xs text-slate-500">
             Already have an account?{' '}
             <Link
               to="/login"

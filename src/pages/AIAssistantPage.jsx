@@ -424,9 +424,9 @@ export default function AIAssistantPage() {
   };
 
   return (
-    <div className="py-6 md:py-8 flex-1 flex flex-col max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+    <div className="py-4 sm:py-6 flex-1 flex flex-col max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
       {/* Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-200 gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-600 text-white flex items-center justify-center shadow-md">
             <Sparkles className="w-5 h-5 text-teal-100" />
@@ -508,9 +508,9 @@ export default function AIAssistantPage() {
       </div>
 
       {/* Chat Thread Container */}
-      <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm mt-4 flex flex-col overflow-hidden min-h-[480px]">
+      <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm mt-3.5 flex flex-col overflow-hidden min-h-[440px]">
         {/* Messages List */}
-        <div className="flex-1 p-4 md:p-6 overflow-y-auto space-y-5">
+        <div className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4">
           {messages.map((msg) => (
             <div
               key={msg.id}

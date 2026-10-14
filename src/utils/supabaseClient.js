@@ -8,24 +8,29 @@
  * - Password Recovery: POST /auth/v1/recover
  * - Logout: POST /auth/v1/logout
  *
+ * Vite Static Environment Variable Replacement:
+ * Uses explicit static property access (import.meta.env.VITE_SUPABASE_URL and
+ * import.meta.env.VITE_SUPABASE_ANON_KEY) so Vite reliably inlines production values.
+ *
  * Security & Integrity:
  * - Never fakes a successful login or simulates authentication on the frontend.
  * - Enforces real HTTP communication with the configured Supabase instance.
  * - Securely stores and restores verified Supabase sessions in browser storage.
  */
 
-function getEnvVar(key) {
-  if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
-    return import.meta.env[key];
-  }
-  if (typeof process !== 'undefined' && process.env && process.env[key]) {
-    return process.env[key];
-  }
-  return '';
-}
+// Direct static access so Vite AST transform reliably inlines them during build:
+const rawEnvUrl =
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_URL) ||
+  (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_URL) ||
+  '';
 
-export const VITE_SUPABASE_URL = getEnvVar('VITE_SUPABASE_URL');
-export const VITE_SUPABASE_ANON_KEY = getEnvVar('VITE_SUPABASE_ANON_KEY');
+const rawEnvAnonKey =
+  (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_SUPABASE_ANON_KEY) ||
+  (typeof process !== 'undefined' && process.env && process.env.VITE_SUPABASE_ANON_KEY) ||
+  '';
+
+export const VITE_SUPABASE_URL = String(rawEnvUrl).trim();
+export const VITE_SUPABASE_ANON_KEY = String(rawEnvAnonKey).trim();
 
 export const isSupabaseConfigured = Boolean(
   VITE_SUPABASE_URL &&

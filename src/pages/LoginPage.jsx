@@ -10,7 +10,6 @@ import {
   AlertCircle,
   Loader2,
   CheckCircle2,
-  Sparkles,
   KeyRound,
   Info,
 } from 'lucide-react';
@@ -84,59 +83,62 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-6">
+    <div className="py-6 sm:py-10 px-4 flex flex-col items-center justify-start flex-1">
+      <div className="w-full max-w-[450px] space-y-4">
         {/* Civic Logo & Heading */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-navy-800 to-teal-800 text-white shadow-md mx-auto mb-2">
-            <span className="font-extrabold text-2xl tracking-tight text-teal-300">स</span>
+        <div className="text-center space-y-1">
+          <div className="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br from-navy-800 to-teal-800 text-white shadow-md mx-auto mb-1">
+            <span className="font-extrabold text-xl tracking-tight text-teal-300">स</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-navy-900 tracking-tight">
-            {isForgotMode ? 'Reset Your Password' : 'Sign in to Sahayak AI'}
+          <h1 className="text-xl sm:text-2xl font-extrabold text-navy-900 tracking-tight">
+            {isForgotMode ? 'Reset Your Password' : 'Sign In to Sahayak AI'}
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto">
+          <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
             {isForgotMode
-              ? 'Enter your registered email address and we will send you instructions to reset your password.'
-              : 'Access your saved schemes, personalized eligibility records, and application checklists.'}
+              ? 'Enter your registered email address and we will send password reset instructions.'
+              : 'Access your saved schemes, eligibility records, and application checklists.'}
           </p>
         </div>
 
         {/* Redirect notice if redirected from protected route */}
         {location.state?.from && !isForgotMode && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3.5 text-xs text-amber-800 flex items-start gap-2.5">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex items-start gap-2">
             <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-semibold">Authentication Required:</span> Please log in to view your applications dashboard and user workspace.
+            <div className="leading-relaxed">
+              <span className="font-semibold">Sign In Required:</span> Please log in to view your applications workspace.
             </div>
           </div>
         )}
 
         {/* Main Form Card */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-sm p-6 sm:p-8 space-y-6">
+        <div className="bg-white border border-slate-200/90 rounded-2xl shadow-sm p-5 sm:p-6 space-y-4">
           {/* Provider status badge */}
           <div className="flex items-center justify-between text-xs pb-3 border-b border-slate-100">
             <div className="flex items-center gap-1.5 text-slate-500">
               <ShieldCheck className="w-4 h-4 text-teal-600" />
-              <span>Civic-Tech Secure Auth</span>
+              <span className="font-medium">Civic-Tech Security</span>
             </div>
             <Badge variant={isConfigured ? 'teal' : 'amber'}>
               {isConfigured ? 'Supabase Auth' : 'Config Needed'}
             </Badge>
           </div>
 
-          {/* Unconfigured Warning Banner */}
+          {/* Unconfigured Notice with clear instructions */}
           {!isConfigured && (
-            <div className="bg-amber-50 border border-amber-200 text-amber-900 text-xs rounded-xl p-3 flex items-start gap-2">
+            <div className="bg-amber-50/90 border border-amber-200 text-amber-900 text-xs rounded-xl p-3 flex items-start gap-2.5 animate-fadeIn">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <div className="leading-relaxed">
-                <span className="font-bold">Supabase Config Needed:</span> <code className="bg-amber-100 px-1 rounded">VITE_SUPABASE_URL</code> and <code className="bg-amber-100 px-1 rounded">VITE_SUPABASE_ANON_KEY</code> are not detected in the environment. Please add them in your Vercel Project Settings.
+              <div className="leading-relaxed space-y-1">
+                <p className="font-bold">Supabase Config Needed</p>
+                <p className="text-slate-600 text-[11px]">
+                  Add <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">VITE_SUPABASE_URL</code> and <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">VITE_SUPABASE_ANON_KEY</code> to your <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">.env.local</code> file (project root) or Vercel Environment Variables.
+                </p>
               </div>
             </div>
           )}
 
           {/* Form Error Banner */}
           {formError && (
-            <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm rounded-xl p-3 flex items-start gap-2 animate-fadeIn">
+            <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-xl p-3 flex items-start gap-2 animate-fadeIn">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <div className="flex-1 font-medium">{formError}</div>
             </div>
@@ -144,7 +146,7 @@ export default function LoginPage() {
 
           {/* Reset Sent Confirmation */}
           {resetSent ? (
-            <div className="bg-teal-50 border border-teal-200 text-teal-800 rounded-xl p-4 text-xs sm:text-sm space-y-2">
+            <div className="bg-teal-50 border border-teal-200 text-teal-800 rounded-xl p-4 text-xs space-y-2">
               <div className="flex items-center gap-2 font-bold text-teal-900">
                 <CheckCircle2 className="w-4 h-4 text-teal-600" />
                 Password Reset Instructions Sent
@@ -158,16 +160,16 @@ export default function LoginPage() {
                   setIsForgotMode(false);
                   setResetSent(false);
                 }}
-                className="mt-3 inline-block font-semibold text-teal-900 hover:underline"
+                className="mt-2 inline-block font-semibold text-teal-900 hover:underline"
               >
-                Return to Login
+                Return to Sign In
               </button>
             </div>
           ) : isForgotMode ? (
             /* Forgot Password Form */
-            <form onSubmit={handleForgotPassword} className="space-y-4">
+            <form onSubmit={handleForgotPassword} className="space-y-3.5">
               <div>
-                <label htmlFor="reset-email" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="reset-email" className="block text-xs font-semibold text-slate-700 mb-1">
                   Registered Email Address <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -182,12 +184,12 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     placeholder="name@example.com"
-                    className="w-full pl-9 pr-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
+                    className="w-full pl-9 pr-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-3 pt-2">
+              <div className="flex items-center justify-between gap-3 pt-1">
                 <button
                   type="button"
                   onClick={() => setIsForgotMode(false)}
@@ -208,10 +210,10 @@ export default function LoginPage() {
             </form>
           ) : (
             /* Standard Login Form */
-            <form onSubmit={handleLoginSubmit} className="space-y-4">
+            <form onSubmit={handleLoginSubmit} className="space-y-3.5">
               {/* Email */}
               <div>
-                <label htmlFor="login-email" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                <label htmlFor="login-email" className="block text-xs font-semibold text-slate-700 mb-1">
                   Email Address <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
@@ -226,14 +228,14 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                     placeholder="name@example.com"
-                    className="w-full pl-9 pr-3.5 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
+                    className="w-full pl-9 pr-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                 </div>
               </div>
 
               {/* Password */}
               <div>
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center justify-between mb-1">
                   <label htmlFor="login-password" className="block text-xs font-semibold text-slate-700">
                     Password <span className="text-rose-500">*</span>
                   </label>
@@ -260,7 +262,7 @@ export default function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-10 py-2.5 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
+                    className="w-full pl-9 pr-10 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                   <button
                     type="button"
@@ -277,7 +279,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-semibold text-sm rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-semibold text-xs sm:text-sm rounded-xl shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <>
@@ -295,12 +297,12 @@ export default function LoginPage() {
           )}
 
           {/* Switch to Sign Up */}
-          <div className="pt-4 border-t border-slate-100 text-center text-xs text-slate-500">
+          <div className="pt-3 border-t border-slate-100 text-center text-xs text-slate-500">
             Don't have an account yet?{' '}
             <Link
               to="/signup"
               state={{ from: location.state?.from }}
-              className="font-bold text-teal-700 hover:text-teal-900 hover:underline"
+              className="font-bold text-teal-700 hover:text-teal-900 hover:underline ml-1"
             >
               Sign Up for Free
             </Link>
@@ -308,16 +310,10 @@ export default function LoginPage() {
         </div>
 
         {/* Security / Privacy reassurance banner */}
-        <div className="text-center text-[11px] text-slate-500 space-y-1">
-          <p>
-            🔒 Sahayak AI never requests your Aadhaar number, OTP, or bank passwords.
-          </p>
-          <p>
-            All account authentication is handled through secure encrypted protocols.
-          </p>
+        <div className="text-center text-[11px] text-slate-400 space-y-0.5">
+          <p>🔒 Sahayak AI never requests your Aadhaar number, OTP, or bank passwords.</p>
         </div>
       </div>
     </div>
   );
 }
-
