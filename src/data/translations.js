@@ -1,0 +1,103 @@
+/**
+ * Multilingual Translations for Sahayak AI Assistant.
+ * Designed with an extensible architecture to easily support additional Indian languages (e.g. Marathi, Tamil, Bengali, Telugu).
+ */
+
+export const SUPPORTED_LANGUAGES = [
+  { code: 'en', label: 'English', nativeLabel: 'English', speechLang: 'en-IN' },
+  { code: 'hi', label: 'Hindi', nativeLabel: 'हिन्दी', speechLang: 'hi-IN' },
+];
+
+export const TRANSLATIONS = {
+  en: {
+    title: 'Sahayak Civic AI Assistant',
+    subtitle: 'Accessible guidance for Indian Central & State welfare initiatives grounded in official public rules',
+    badgeStatus: 'Civic Advisory Assistant',
+    disclaimerBar: 'Independent civic guidance tool. Sahayak AI does not process or verify official applications directly. Always submit applications at official .gov.in portals or Common Service Centres (CSCs).',
+    languageSelectorLabel: 'Language',
+    profileActive: 'Profile Loaded:',
+    noProfile: 'No profile loaded (generic advice)',
+    editProfile: 'Update Profile',
+    clearChat: 'Clear Chat',
+    clearConfirm: 'Are you sure you want to clear your current conversation history?',
+    inputPlaceholder: 'Ask about eligibility, documents, subsidies, or application steps...',
+    send: 'Send',
+    retry: 'Retry last question',
+    copy: 'Copy message',
+    copied: 'Copied!',
+    speak: 'Listen (Text to Speech)',
+    stopSpeaking: 'Stop speaking',
+    micStart: 'Click to speak in English',
+    micListening: 'Listening... (Speak now)',
+    sttUnsupported: 'Speech recognition is not supported in this browser. Please use Chrome, Edge, or Safari.',
+    sttDenied: 'Microphone access was denied. Please allow microphone permission in browser settings to speak.',
+    ttsUnsupported: 'Text-to-speech audio is not supported in this browser.',
+    offlineModeTag: 'Offline Demo Mode',
+    liveGeminiTag: 'Gemini AI Live',
+    sourcesHeader: 'Referenced Official Portals & Guidelines:',
+    typingIndicator: 'Sahayak AI is analyzing official guidelines...',
+    errorNetwork: 'Unable to connect to the backend server. Running in offline demo mode with verified guidelines.',
+    errorRateLimit: 'The AI service is experiencing high civic inquiry volume. Please wait a moment and click Retry.',
+    errorTimeout: 'The response took longer than 15 seconds. Please check your connection and retry.',
+    suggestedQuestionsTitle: 'Suggested Inquiries:',
+    suggestedPrompts: [
+      'What schemes am I eligible for based on my profile?',
+      'How do I apply for PM-KISAN ₹6,000 annual installment?',
+      'Who is eligible for Ayushman Bharat ₹5 Lakh cashless health cover?',
+      'What documents and rules apply to Sukanya Samriddhi Yojana?',
+      'Can I get collateral-free business credit under PM MUDRA or SVANidhi?',
+      'What benefits and toolkits are offered under PM Vishwakarma?',
+    ],
+    welcomeMessage: `Namaste! I am your Sahayak AI Civic Assistant.
+
+I can help you understand Indian Central and State government welfare schemes, check eligibility criteria, identify necessary documents, and guide you to official application portals.
+
+You can ask me questions in English or हिन्दी (Hindi). How can I assist you or your family today?`,
+  },
+  hi: {
+    title: 'सहायक नागरिक AI सहायक',
+    subtitle: 'आधिकारिक सरकारी नियमों पर आधारित केंद्रीय एवं राज्य कल्याणकारी योजनाओं की सुगम जानकारी',
+    badgeStatus: 'नागरिक परामर्श सहायक',
+    disclaimerBar: 'स्वतंत्र नागरिक मार्गदर्शन मंच। सहायक AI सीधे आवेदन जमा या स्वीकृत नहीं करता है। हमेशा आधिकारिक .gov.in पोर्टल या जन सेवा केंद्र (CSC) के माध्यम से ही आवेदन करें।',
+    languageSelectorLabel: 'भाषा',
+    profileActive: 'प्रोफ़ाइल सक्रिय:',
+    noProfile: 'कोई प्रोफ़ाइल नहीं (सामान्य मार्गदर्शन)',
+    editProfile: 'प्रोफ़ाइल बदलें',
+    clearChat: 'चैट साफ़ करें',
+    clearConfirm: 'क्या आप वाकई बातचीत का इतिहास साफ़ करना चाहते हैं?',
+    inputPlaceholder: 'योजनाओं, पात्रता, आवश्यक दस्तावेजों या आवेदन के बारे में पूछें...',
+    send: 'भेजें',
+    retry: 'पुनः प्रयास करें',
+    copy: 'संदेश कॉपी करें',
+    copied: 'कॉपी हो गया!',
+    speak: 'आवाज़ में सुनें',
+    stopSpeaking: 'आवाज़ बंद करें',
+    micStart: 'हिन्दी में बोलकर पूछने के लिए क्लिक करें',
+    micListening: 'सुन रहे हैं... (अब बोलें)',
+    sttUnsupported: 'इस ब्राउज़र में स्पीच रिकग्निशन समर्थित नहीं है। कृपया Chrome, Edge या Safari का उपयोग करें।',
+    sttDenied: 'माइक्रोफ़ोन की अनुमति अस्वीकृत है। कृपया ब्राउज़र सेटिंग्स में माइक्रोफ़ोन की अनुमति दें।',
+    ttsUnsupported: 'इस ब्राउज़र में टेक्स्ट-टू-स्पीच समर्थित नहीं है।',
+    offlineModeTag: 'ऑफ़लाइन डेमो मोड',
+    liveGeminiTag: 'जेमिनी AI लाइव',
+    sourcesHeader: 'संदर्भित आधिकारिक पोर्टल एवं दिशानिर्देश:',
+    typingIndicator: 'सहायक AI आधिकारिक नियमों की जांच कर रहा है...',
+    errorNetwork: 'सर्वर से संपर्क नहीं हो सका। सत्यापित दिशानिर्देशों के साथ ऑफ़लाइन डेमो मोड संचालित है।',
+    errorRateLimit: 'AI सेवा अभी अत्यधिक व्यस्त है। कृपया कुछ सेकंड रुककर पुनः प्रयास करें।',
+    errorTimeout: 'अनुरोध 15 सेकंड में पूरा नहीं हुआ। कृपया अपना इंटरनेट जांचें और पुनः प्रयास करें।',
+    suggestedQuestionsTitle: 'सुझाए गए प्रश्न:',
+    suggestedPrompts: [
+      'मेरी प्रोफ़ाइल के अनुसार मुझे कौन-कौन सी योजनाएं मिल सकती हैं?',
+      'पीएम-किसान सम्मान निधि की ₹6,000 सहायता कैसे प्राप्त करें?',
+      'आयुष्मान भारत ₹5 लाख मुफ्त इलाज के लिए पात्रता और नियम क्या हैं?',
+      'सुकन्या समृद्धि योजना में खाता खोलने के नियम और ब्याज दर क्या हैं?',
+      'पीएम मुद्रा या स्वनिधि योजना में बिना गारंटी ऋण कैसे मिलता है?',
+      'पीएम विश्वकर्मा योजना में ₹15,000 टूलकिट और अनुदान कैसे प्राप्त करें?',
+    ],
+    welcomeMessage: `नमस्ते! मैं आपका सहायक नागरिक AI (Sahayak AI) सलाहकार हूँ।
+
+मैं आपको भारत सरकार और राज्य सरकारों की कल्याणकारी योजनाओं, पात्रता शर्तों, आवश्यक दस्तावेजों को समझने और आधिकारिक आवेदन पोर्टलों तक पहुँचने में मदद कर सकता हूँ।
+
+आप मुझसे हिन्दी या English में सवाल पूछ सकते हैं। आज मैं आपकी या आपके परिवार की क्या सहायता कर सकता हूँ?`,
+  },
+};
+

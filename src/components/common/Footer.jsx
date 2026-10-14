@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, ExternalLink, Heart, Sparkles, BookOpen, Layers } from 'lucide-react';
+import { ShieldCheck, ExternalLink } from 'lucide-react';
 
 export default function Footer() {
   return (

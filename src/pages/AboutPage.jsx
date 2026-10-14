@@ -4,11 +4,8 @@ import {
   Sparkles,
   Users,
   Target,
-  ExternalLink,
-  BookOpen,
   HelpCircle,
   CheckCircle,
-  FileText,
   HeartHandshake,
 } from 'lucide-react';
 import Badge from '../components/common/Badge';

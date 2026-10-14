@@ -3,18 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import {
   Search,
   Sparkles,
-  CheckCircle2,
-  FileCheck2,
   ArrowRight,
   ShieldCheck,
-  Compass,
-  Building,
-  Users,
-  Award,
-  HelpCircle,
-  ExternalLink,
 } from 'lucide-react';
-import { MOCK_SCHEMES, SCHEME_CATEGORIES } from '../data/mockSchemes';
+import { MOCK_SCHEMES } from '../data/mockSchemes';
 import SchemeCard from '../components/common/SchemeCard';
 import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
