@@ -6,6 +6,7 @@ const testSuites = [
   { name: 'Saved Schemes & Applications Storage', path: 'scripts/test-applications.mjs' },
   { name: 'Chatbot Backend & Rate Limiting', path: 'scripts/test-chat.mjs' },
   { name: 'Authentication & User Data Isolation', path: 'scripts/test-auth.mjs' },
+  { name: 'Navbar UI/UX & Responsive Breakpoints', path: 'scripts/test-navbar.mjs' },
 ];
 
 console.log('====================================================');
