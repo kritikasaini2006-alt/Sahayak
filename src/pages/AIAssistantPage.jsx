@@ -14,7 +14,6 @@ import {
   Check,
   RotateCcw,
   Trash2,
-  Globe,
   UserCheck,
   AlertCircle,
   ExternalLink,
@@ -25,14 +24,14 @@ import {
 } from 'lucide-react';
 import Badge from '../components/common/Badge';
 import MicrophonePermissionModal from '../components/common/MicrophonePermissionModal';
-import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../data/translations';
+import { TRANSLATIONS } from '../data/translations';
 import { loadCitizenProfile, saveCitizenProfile } from '../utils/eligibilityEngine';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
 
 export default function AIAssistantPage() {
-  const { language, changeLanguage } = useTranslation();
+  const { language } = useTranslation();
   useDocumentTitle(language === 'hi' ? 'नागरिक AI सहायक' : 'AI Assistant');
   const { user } = useAuth();
 
@@ -117,9 +116,11 @@ export default function AIAssistantPage() {
         },
       ]);
     }
+
+    handleLanguageChange(language);
   }, [language]);
 
-  // Save language preference via global context and stop any active voice input
+  // Clean up active speech recognition on language change
   const handleLanguageChange = (newLang) => {
     if (recognitionRef.current) {
       try {
@@ -129,7 +130,6 @@ export default function AIAssistantPage() {
     }
     setIsListening(false);
     setIsConnectingMic(false);
-    changeLanguage(newLang);
   };
 
   // Helper to calculate target scrollTop to align an element near the top of the chat container
@@ -872,7 +872,7 @@ export default function AIAssistantPage() {
   return (
     <div className="py-4 sm:py-6 flex-1 flex flex-col max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
       {/* Header bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-200 gap-3">
+      <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 gap-3">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-600 text-white flex items-center justify-center shadow-md">
             <Sparkles className="w-5 h-5 text-teal-100" />
@@ -890,37 +890,15 @@ export default function AIAssistantPage() {
           </div>
         </div>
 
-        {/* Top Controls: Language Switcher & Clear Chat */}
-        <div className="flex items-center gap-2">
-          {/* Language Selector */}
-          <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200">
-            <Globe className="w-4 h-4 text-slate-500 ml-1.5" />
-            {SUPPORTED_LANGUAGES.map((lang) => (
-              <button
-                key={lang.code}
-                onClick={() => handleLanguageChange(lang.code)}
-                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
-                  language === lang.code
-                    ? 'bg-navy-800 text-white shadow-sm'
-                    : 'text-slate-600 hover:text-navy-900 hover:bg-slate-200/60'
-                }`}
-                title={`Switch to ${lang.label}`}
-              >
-                {lang.nativeLabel}
-              </button>
-            ))}
-          </div>
-
-          {/* Clear Chat Button */}
-          <button
-            onClick={handleClearChat}
-            className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-slate-200 transition-colors"
-            title={t.clearChat}
-            aria-label={t.clearChat}
-          >
-            <Trash2 className="w-4 h-4" />
-          </button>
-        </div>
+        {/* Clear Chat Button */}
+        <button
+          onClick={handleClearChat}
+          className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-slate-200 transition-colors shrink-0"
+          title={t.clearChat}
+          aria-label={t.clearChat}
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Citizen Profile Status Banner */}
