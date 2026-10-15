@@ -8,6 +8,7 @@ const testSuites = [
   { name: 'Authentication & User Data Isolation', path: 'scripts/test-auth.mjs' },
   { name: 'Navbar UI/UX & Responsive Breakpoints', path: 'scripts/test-navbar.mjs' },
   { name: 'Bilingual System & i18n Dictionary Parity', path: 'scripts/test-i18n.mjs' },
+  { name: 'Microphone Interaction & Permission Guidance Modal', path: 'scripts/test-microphone.mjs' },
 ];
 
 console.log('====================================================');

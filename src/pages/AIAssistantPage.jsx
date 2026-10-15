@@ -20,8 +20,11 @@ import {
   ExternalLink,
   Clock,
   Info,
+  Loader2,
+  X,
 } from 'lucide-react';
 import Badge from '../components/common/Badge';
+import MicrophonePermissionModal from '../components/common/MicrophonePermissionModal';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../data/translations';
 import { loadCitizenProfile } from '../utils/eligibilityEngine';
 import useDocumentTitle from '../hooks/useDocumentTitle';
@@ -55,12 +58,19 @@ export default function AIAssistantPage() {
   const [copiedId, setCopiedId] = useState(null);
   const [speakingId, setSpeakingId] = useState(null);
   const [isListening, setIsListening] = useState(false);
+  const [isConnectingMic, setIsConnectingMic] = useState(false);
   const [speechError, setSpeechError] = useState(null);
+  const [showMicModal, setShowMicModal] = useState(false);
+  const [micModalError, setMicModalError] = useState(null);
+  const [isRetryingMic, setIsRetryingMic] = useState(false);
 
   // References
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
   const inputRef = useRef(null);
+  const micButtonRef = useRef(null);
+  const permStatusRef = useRef(null);
+  const speechErrorTimeoutRef = useRef(null);
 
   // Load citizen profile on mount or user change
   useEffect(() => {
@@ -98,7 +108,7 @@ export default function AIAssistantPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping]);
 
-  // Clean up any ongoing TTS on unmount
+  // Clean up any ongoing TTS / STT on unmount
   useEffect(() => {
     return () => {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -106,30 +116,72 @@ export default function AIAssistantPage() {
       }
       if (recognitionRef.current) {
         try {
-          recognitionRef.current.stop();
+          recognitionRef.current.abort();
         } catch {}
+      }
+      if (speechErrorTimeoutRef.current) {
+        clearTimeout(speechErrorTimeoutRef.current);
       }
     };
   }, []);
 
-  // Speech-to-Text (STT) Setup
-  const handleToggleListening = () => {
+  // Helper to show brief contextual error banner with auto-dismiss
+  const showEphemeralSpeechError = (msg) => {
+    if (speechErrorTimeoutRef.current) {
+      clearTimeout(speechErrorTimeoutRef.current);
+    }
+    setSpeechError(msg);
+    speechErrorTimeoutRef.current = setTimeout(() => {
+      setSpeechError(null);
+    }, 5000);
+  };
+
+  // Query microphone permission state where supported (Chromium / Permissions API)
+  const getMicrophonePermissionState = async () => {
+    if (
+      typeof navigator === 'undefined' ||
+      !navigator.permissions ||
+      !navigator.permissions.query
+    ) {
+      return 'unknown';
+    }
+    try {
+      const status = await navigator.permissions.query({ name: 'microphone' });
+      permStatusRef.current = status;
+
+      status.onchange = () => {
+        if (status.state === 'granted') {
+          setShowMicModal(false);
+          setMicModalError(null);
+          setSpeechError(null);
+        }
+      };
+
+      return status.state; // 'granted' | 'denied' | 'prompt'
+    } catch {
+      // Browser doesn't support { name: 'microphone' } query (e.g. Safari / Firefox)
+      return 'unknown';
+    }
+  };
+
+  // Initialize and start Speech Recognition
+  const startRecognition = () => {
     const SpeechRecognition =
       typeof window !== 'undefined' &&
       (window.SpeechRecognition || window.webkitSpeechRecognition);
 
     if (!SpeechRecognition) {
-      setSpeechError(t.sttUnsupported);
-      setTimeout(() => setSpeechError(null), 4000);
+      setIsConnectingMic(false);
+      showEphemeralSpeechError(t.sttUnsupported);
       return;
     }
 
-    if (isListening) {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      setIsListening(false);
-      return;
+    // Stop and clean up any previous instance
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {}
+      recognitionRef.current = null;
     }
 
     try {
@@ -139,12 +191,15 @@ export default function AIAssistantPage() {
       recognition.interimResults = false;
 
       recognition.onstart = () => {
+        setIsConnectingMic(false);
         setIsListening(true);
         setSpeechError(null);
+        setShowMicModal(false);
+        setMicModalError(null);
       };
 
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
+        const transcript = event.results?.[0]?.[0]?.transcript;
         if (transcript) {
           setInputPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript));
         }
@@ -152,16 +207,26 @@ export default function AIAssistantPage() {
 
       recognition.onerror = (event) => {
         console.warn('Speech Recognition error:', event.error);
-        if (event.error === 'not-allowed') {
-          setSpeechError(t.sttDenied);
-        } else if (event.error !== 'no-speech') {
-          setSpeechError(`Speech error: ${event.error}`);
-        }
+        setIsConnectingMic(false);
         setIsListening(false);
-        setTimeout(() => setSpeechError(null), 4000);
+
+        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+          // Native browser permission prompt denied or blocked in browser settings
+          setShowMicModal(true);
+          setSpeechError(null);
+        } else if (event.error === 'audio-capture') {
+          showEphemeralSpeechError(t.micNoDevice || 'No microphone detected on your device.');
+        } else if (event.error === 'network') {
+          showEphemeralSpeechError(t.micNetworkError || 'Speech recognition network error.');
+        } else if (event.error === 'no-speech') {
+          showEphemeralSpeechError(t.micNoSpeech || 'No speech detected. Click the mic to try again.');
+        } else if (event.error !== 'aborted') {
+          showEphemeralSpeechError(`Speech error: ${event.error}`);
+        }
       };
 
       recognition.onend = () => {
+        setIsConnectingMic(false);
         setIsListening(false);
       };
 
@@ -169,10 +234,82 @@ export default function AIAssistantPage() {
       recognition.start();
     } catch (err) {
       console.error('Failed to initialize speech recognition:', err);
-      setSpeechError('Could not start microphone service.');
+      setIsConnectingMic(false);
       setIsListening(false);
-      setTimeout(() => setSpeechError(null), 4000);
+      if (err.name === 'NotAllowedError') {
+        setShowMicModal(true);
+      } else {
+        showEphemeralSpeechError('Could not start microphone service.');
+      }
     }
+  };
+
+  // Click-to-activate handler
+  const handleToggleListening = async () => {
+    const SpeechRecognition =
+      typeof window !== 'undefined' &&
+      (window.SpeechRecognition || window.webkitSpeechRecognition);
+
+    if (!SpeechRecognition) {
+      showEphemeralSpeechError(t.sttUnsupported);
+      return;
+    }
+
+    // If currently listening or connecting, click stops listening
+    if (isListening || isConnectingMic) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+      setIsListening(false);
+      setIsConnectingMic(false);
+      return;
+    }
+
+    // Check permission state where supported
+    const permState = await getMicrophonePermissionState();
+
+    if (permState === 'denied') {
+      // Microphone is already blocked in browser site settings
+      setShowMicModal(true);
+      setMicModalError(null);
+      return;
+    }
+
+    // Permission is either 'granted', 'prompt', or 'unknown'
+    setIsConnectingMic(true);
+    startRecognition();
+  };
+
+  // Try Again handler from permission modal
+  const handleTryAgain = async () => {
+    setIsRetryingMic(true);
+    setMicModalError(null);
+
+    const permState = await getMicrophonePermissionState();
+
+    if (permState === 'denied') {
+      setIsRetryingMic(false);
+      setMicModalError(
+        t.micStillBlocked ||
+          'Microphone is still blocked in browser settings. Please switch it to "Allow" and try again.'
+      );
+      return;
+    }
+
+    setIsRetryingMic(false);
+    startRecognition();
+  };
+
+  // Close modal and restore focus to microphone button
+  const handleCloseMicModal = () => {
+    setShowMicModal(false);
+    setMicModalError(null);
+    setIsRetryingMic(false);
+    setTimeout(() => {
+      micButtonRef.current?.focus();
+    }, 50);
   };
 
   // Text-to-Speech (TTS) Read-Aloud
@@ -238,11 +375,12 @@ export default function AIAssistantPage() {
     if (!textToSend || isTyping) return;
 
     // Stop active speech recognition or speech synthesis
-    if (isListening && recognitionRef.current) {
+    if ((isListening || isConnectingMic) && recognitionRef.current) {
       try {
         recognitionRef.current.stop();
       } catch {}
       setIsListening(false);
+      setIsConnectingMic(false);
     }
     if (speakingId && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
@@ -688,11 +826,41 @@ export default function AIAssistantPage() {
           ))}
         </div>
 
-        {/* Speech Error Banner if permission denied or unsupported */}
+        {/* Contextual Speech Error Banner (auto-dismissed / dismissible) */}
         {speechError && (
-          <div className="px-4 py-2 bg-amber-50 border-t border-amber-200 text-xs text-amber-800 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-            <span>{speechError}</span>
+          <div className="px-4 py-2.5 bg-amber-50 border-t border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-2 animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+              <span>{speechError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSpeechError(null)}
+              className="text-amber-700 hover:text-amber-900 p-1 rounded-md hover:bg-amber-100/60 transition-colors"
+              aria-label="Dismiss error"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Active Listening Indicator */}
+        {isListening && (
+          <div className="px-4 py-2 bg-rose-50 border-t border-rose-200 flex items-center justify-between text-xs text-rose-950 animate-fadeIn">
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600"></span>
+              </span>
+              <span className="font-semibold">{t.micListening}</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleListening}
+              className="text-rose-700 hover:text-rose-900 font-bold underline text-[11px]"
+            >
+              {t.micStop}
+            </button>
           </div>
         )}
 
@@ -707,17 +875,39 @@ export default function AIAssistantPage() {
           >
             {/* Microphone Button (Speech-to-Text) */}
             <button
+              ref={micButtonRef}
               type="button"
               onClick={handleToggleListening}
-              className={`p-2.5 rounded-xl border transition-all ${
+              disabled={isTyping}
+              className={`p-2.5 rounded-xl border transition-all relative ${
                 isListening
-                  ? 'bg-rose-600 text-white border-rose-600 animate-pulse shadow-md'
+                  ? 'bg-rose-600 text-white border-rose-600 shadow-md ring-2 ring-rose-300'
+                  : isConnectingMic
+                  ? 'bg-teal-50 text-teal-700 border-teal-300'
                   : 'bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border-slate-200'
               }`}
-              title={isListening ? t.micListening : t.micStart}
-              aria-label={isListening ? t.micListening : t.micStart}
+              title={
+                isListening
+                  ? t.micStop
+                  : isConnectingMic
+                  ? t.micConnecting
+                  : t.micStart
+              }
+              aria-label={
+                isListening
+                  ? t.micStop
+                  : isConnectingMic
+                  ? t.micConnecting
+                  : t.micStart
+              }
             >
-              {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+              {isConnectingMic ? (
+                <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
+              ) : isListening ? (
+                <MicOff className="w-4 h-4 animate-pulse" />
+              ) : (
+                <Mic className="w-4 h-4" />
+              )}
             </button>
 
             {/* Text Input */}
@@ -726,11 +916,11 @@ export default function AIAssistantPage() {
               type="text"
               value={inputPrompt}
               onChange={(e) => setInputPrompt(e.target.value)}
-              placeholder={isListening ? t.micListening : t.inputPlaceholder}
+              placeholder={isListening ? t.micListening : isConnectingMic ? t.micConnecting : t.inputPlaceholder}
               disabled={isTyping}
               className={`flex-1 px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all ${
                 isListening
-                  ? 'bg-rose-50/50 border-rose-300 placeholder-rose-700'
+                  ? 'bg-rose-50/50 border-rose-300 placeholder-rose-700 ring-2 ring-rose-200'
                   : 'bg-slate-50/70 border-slate-300'
               }`}
             />
@@ -753,6 +943,17 @@ export default function AIAssistantPage() {
           </p>
         </div>
       </div>
+
+      {/* Microphone Permission Blocked Modal */}
+      <MicrophonePermissionModal
+        isOpen={showMicModal}
+        onClose={handleCloseMicModal}
+        onTryAgain={handleTryAgain}
+        isRetrying={isRetryingMic}
+        errorMessage={micModalError}
+        language={language}
+        translations={t}
+      />
     </div>
   );
 }
