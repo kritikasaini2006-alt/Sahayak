@@ -406,7 +406,7 @@ export default function DiscoverSchemesPage() {
         />
 
         {/* Schemes Catalog Stream */}
-        <div className="flex-1 space-y-5">
+        <div className="flex-1 min-w-0 space-y-5 flex flex-col">
           {/* Results Summary Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500">
             <div>
@@ -422,48 +422,54 @@ export default function DiscoverSchemesPage() {
             </div>
           </div>
 
-          {/* Loading or Cards View */}
-          {isLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-pulse">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-64 bg-slate-100 rounded-xl border border-slate-200" />
-              ))}
-            </div>
-          ) : filteredAndSortedSchemes.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {filteredAndSortedSchemes.map((scheme) => (
-                <SchemeCard
-                  key={scheme.id}
-                  scheme={scheme}
-                  onSaveToggle={toggleSaveScheme}
-                  isSaved={savedSchemeIds.includes(scheme.id)}
-                  onViewDetails={(s) => setSelectedSchemeForModal(s)}
-                  eligibilityStatus={citizenProfile ? eligibilityMap.get(scheme.id)?.status : undefined}
-                />
-              ))}
-            </div>
-          ) : (
-            /* Empty State */
-            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-4 max-w-lg mx-auto shadow-sm">
-              <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
-                <BookOpen className="w-7 h-7" />
+          {/* Loading, Cards View, or Empty State Container */}
+          <div className="flex-1 flex flex-col min-h-[460px] sm:min-h-[540px]">
+            {isLoading ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-pulse">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-64 bg-slate-100 rounded-xl border border-slate-200" />
+                ))}
               </div>
-              <h3 className="text-lg font-bold text-navy-900">{t('schemes.emptyTitle')}</h3>
-              <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-                {t('schemes.emptySubtitle')}
-              </p>
-              <div className="pt-2">
-                <Button
-                  variant="teal"
-                  size="sm"
-                  onClick={handleResetFilters}
-                  icon={RefreshCw}
-                >
-                  {t('schemes.resetFilters')}
-                </Button>
+            ) : filteredAndSortedSchemes.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {filteredAndSortedSchemes.map((scheme) => (
+                  <SchemeCard
+                    key={scheme.id}
+                    scheme={scheme}
+                    onSaveToggle={toggleSaveScheme}
+                    isSaved={savedSchemeIds.includes(scheme.id)}
+                    onViewDetails={(s) => setSelectedSchemeForModal(s)}
+                    eligibilityStatus={citizenProfile ? eligibilityMap.get(scheme.id)?.status : undefined}
+                  />
+                ))}
               </div>
-            </div>
-          )}
+            ) : (
+              /* Empty State: Stretched across available results area with vertical and horizontal centering */
+              <div className="flex-1 w-full h-full min-h-[400px] sm:min-h-[480px] bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
+                <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
+                  <BookOpen className="w-8 h-8" />
+                </div>
+                <div className="space-y-1.5 max-w-md mx-auto">
+                  <h3 className="text-lg sm:text-xl font-bold text-navy-900">
+                    {t('schemes.emptyTitle')}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                    {t('schemes.emptySubtitle')}
+                  </p>
+                </div>
+                <div className="pt-2">
+                  <Button
+                    variant="teal"
+                    size="sm"
+                    onClick={handleResetFilters}
+                    icon={RefreshCw}
+                  >
+                    {t('schemes.resetFilters')}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
