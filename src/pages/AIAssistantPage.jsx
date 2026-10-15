@@ -22,8 +22,6 @@ import {
   Info,
   Loader2,
   X,
-  Square,
-  Radio,
 } from 'lucide-react';
 import Badge from '../components/common/Badge';
 import MicrophonePermissionModal from '../components/common/MicrophonePermissionModal';
@@ -60,15 +58,10 @@ export default function AIAssistantPage() {
   const [copiedId, setCopiedId] = useState(null);
   const [speakingId, setSpeakingId] = useState(null);
 
-  // Voice Input States: Live Speech & Cloud Voice Recording
+  // Speech Recognition States (Native Browser Speech)
   const [isListening, setIsListening] = useState(false);
   const [isConnectingMic, setIsConnectingMic] = useState(false);
-  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
-  const [isTranscribingAudio, setIsTranscribingAudio] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0);
-  const [voiceMode, setVoiceMode] = useState('cloud'); // 'cloud' (recommended, reliable server-side STT) or 'live'
   const [speechError, setSpeechError] = useState(null);
-  const [voiceNotice, setVoiceNotice] = useState(null);
   const [showMicModal, setShowMicModal] = useState(false);
   const [micModalError, setMicModalError] = useState(null);
   const [isRetryingMic, setIsRetryingMic] = useState(false);
@@ -76,16 +69,10 @@ export default function AIAssistantPage() {
   // References
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
-  const mediaStreamRef = useRef(null);
-  const recordingTimerRef = useRef(null);
-  const autoStopTimeoutRef = useRef(null);
   const inputRef = useRef(null);
   const micButtonRef = useRef(null);
   const permStatusRef = useRef(null);
   const speechErrorTimeoutRef = useRef(null);
-  const voiceNoticeTimeoutRef = useRef(null);
 
   // Load citizen profile on mount or user change
   useEffect(() => {
@@ -143,28 +130,8 @@ export default function AIAssistantPage() {
         } catch {}
         recognitionRef.current = null;
       }
-      if (mediaRecorderRef.current) {
-        try {
-          mediaRecorderRef.current.onstop = null;
-          mediaRecorderRef.current.stop();
-        } catch {}
-        mediaRecorderRef.current = null;
-      }
-      if (mediaStreamRef.current) {
-        mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-        mediaStreamRef.current = null;
-      }
-      if (recordingTimerRef.current) {
-        clearInterval(recordingTimerRef.current);
-      }
-      if (autoStopTimeoutRef.current) {
-        clearTimeout(autoStopTimeoutRef.current);
-      }
       if (speechErrorTimeoutRef.current) {
         clearTimeout(speechErrorTimeoutRef.current);
-      }
-      if (voiceNoticeTimeoutRef.current) {
-        clearTimeout(voiceNoticeTimeoutRef.current);
       }
     };
   }, []);
@@ -178,23 +145,6 @@ export default function AIAssistantPage() {
     speechErrorTimeoutRef.current = setTimeout(() => {
       setSpeechError(null);
     }, 9000);
-  };
-
-  // Helper to show brief voice success banner with auto-dismiss
-  const showEphemeralVoiceNotice = (msg) => {
-    if (voiceNoticeTimeoutRef.current) {
-      clearTimeout(voiceNoticeTimeoutRef.current);
-    }
-    setVoiceNotice(msg);
-    voiceNoticeTimeoutRef.current = setTimeout(() => {
-      setVoiceNotice(null);
-    }, 4500);
-  };
-
-  const formatRecordingTime = (secs) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
   // Query microphone permission state where supported (Chromium / Permissions API)
@@ -226,184 +176,6 @@ export default function AIAssistantPage() {
   };
 
   // =========================================================================
-  // Cloud Audio Recording via MediaRecorder -> /api/transcribe (Gemini 1.5)
-  // =========================================================================
-  const startCloudAudioRecording = async () => {
-    setSpeechError(null);
-    setVoiceNotice(null);
-
-    // Microphone access requires a secure context (HTTPS or localhost)
-    if (typeof window !== 'undefined' && window.isSecureContext === false) {
-      showEphemeralSpeechError(
-        t.micInsecureContext || 'Microphone access requires a secure connection (HTTPS or localhost).'
-      );
-      return;
-    }
-
-    const permState = await getMicrophonePermissionState();
-    if (permState === 'denied') {
-      setShowMicModal(true);
-      setMicModalError(null);
-      return;
-    }
-
-    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      showEphemeralSpeechError(t.sttUnsupported || 'Microphone recording is not supported in this browser.');
-      return;
-    }
-
-    try {
-      setIsConnectingMic(true);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaStreamRef.current = stream;
-
-      const mimeType = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/mp4',
-        'audio/ogg',
-        'audio/wav',
-      ].find((type) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(type)) || '';
-
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      mediaRecorderRef.current = recorder;
-      audioChunksRef.current = [];
-
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) {
-          audioChunksRef.current.push(e.data);
-        }
-      };
-
-      recorder.onstop = async () => {
-        clearInterval(recordingTimerRef.current);
-        clearTimeout(autoStopTimeoutRef.current);
-        setRecordingDuration(0);
-
-        // Immediately release all microphone hardware tracks
-        if (mediaStreamRef.current) {
-          mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-          mediaStreamRef.current = null;
-        }
-
-        const chunks = audioChunksRef.current;
-        audioChunksRef.current = [];
-        setIsRecordingAudio(false);
-
-        if (!chunks || chunks.length === 0) {
-          return;
-        }
-
-        const audioBlob = new Blob(chunks, { type: mimeType || 'audio/webm' });
-
-        // Skip negligible clips (< 1500 bytes)
-        if (audioBlob.size < 1500) {
-          showEphemeralSpeechError(t.micNoSpeech || 'No speech was detected. Click the mic to try speaking again.');
-          return;
-        }
-
-        setIsTranscribingAudio(true);
-        try {
-          const reader = new FileReader();
-          reader.readAsDataURL(audioBlob);
-          reader.onloadend = async () => {
-            try {
-              const base64Data = reader.result;
-              const res = await fetch('/api/transcribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  audio: base64Data,
-                  mimeType: mimeType || 'audio/webm',
-                  language,
-                }),
-              });
-
-              const data = await res.json();
-              setIsTranscribingAudio(false);
-
-              if (!res.ok || data.error) {
-                showEphemeralSpeechError(data.error || 'Audio transcription failed. Please try again or type below.');
-                return;
-              }
-
-              if (data.transcript && data.transcript.trim()) {
-                setInputPrompt((prev) => (prev ? `${prev} ${data.transcript.trim()}` : data.transcript.trim()));
-                inputRef.current?.focus();
-                showEphemeralVoiceNotice(t.micVoiceSuccess || 'Voice transcribed! You can edit the text before sending.');
-              } else {
-                showEphemeralSpeechError(t.micNoSpeech || 'No speech was detected. Please try recording again.');
-              }
-            } catch (err) {
-              setIsTranscribingAudio(false);
-              console.error('Fetch error during audio transcription:', err);
-              showEphemeralSpeechError('Could not reach transcription service. Please try again or type your question below.');
-            }
-          };
-        } catch (err) {
-          setIsTranscribingAudio(false);
-          showEphemeralSpeechError('Failed to process audio recording.');
-        }
-      };
-
-      recorder.start(250);
-      setIsConnectingMic(false);
-      setIsRecordingAudio(true);
-      setRecordingDuration(0);
-
-      recordingTimerRef.current = setInterval(() => {
-        setRecordingDuration((prev) => prev + 1);
-      }, 1000);
-
-      autoStopTimeoutRef.current = setTimeout(() => {
-        stopCloudAudioRecording();
-      }, 60000);
-    } catch (err) {
-      console.warn('getUserMedia error for cloud audio recording:', err);
-      setIsConnectingMic(false);
-      setIsRecordingAudio(false);
-
-      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-        setShowMicModal(true);
-      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-        showEphemeralSpeechError(t.micNoDevice || 'No microphone detected on your device.');
-      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-        showEphemeralSpeechError(t.micInUse || 'Microphone is already in use by another application.');
-      } else {
-        showEphemeralSpeechError(`Microphone error: ${err.message || err.name}`);
-      }
-    }
-  };
-
-  const stopCloudAudioRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      try {
-        mediaRecorderRef.current.stop();
-      } catch {}
-    }
-  };
-
-  const cancelCloudAudioRecording = () => {
-    clearInterval(recordingTimerRef.current);
-    clearTimeout(autoStopTimeoutRef.current);
-    audioChunksRef.current = [];
-    if (mediaRecorderRef.current) {
-      try {
-        mediaRecorderRef.current.onstop = null;
-        mediaRecorderRef.current.stop();
-      } catch {}
-      mediaRecorderRef.current = null;
-    }
-    if (mediaStreamRef.current) {
-      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
-      mediaStreamRef.current = null;
-    }
-    setIsRecordingAudio(false);
-    setIsConnectingMic(false);
-    setRecordingDuration(0);
-  };
-
-  // =========================================================================
   // Native Browser SpeechRecognition (Web Speech API)
   // =========================================================================
   const startRecognition = () => {
@@ -413,7 +185,10 @@ export default function AIAssistantPage() {
 
     if (!SpeechRecognition) {
       setIsConnectingMic(false);
-      showEphemeralSpeechError(t.sttUnsupported);
+      showEphemeralSpeechError(
+        t.sttUnsupported ||
+          'Live voice input works best in Google Chrome. Please use Chrome or type your message.'
+      );
       return;
     }
 
@@ -462,23 +237,21 @@ export default function AIAssistantPage() {
           // Native browser permission denied or revoked
           setShowMicModal(true);
           setSpeechError(null);
-        } else if (event.error === 'service-not-allowed') {
-          // Speech recognition service unavailable (e.g. Brave Google Services disabled)
+        } else if (event.error === 'service-not-allowed' || event.error === 'network') {
+          // Unsupported browser or speech service blocked (e.g. Brave)
           showEphemeralSpeechError(
-            t.micServiceNotAllowed ||
-              'Speech recognition service is disabled in your browser settings (e.g. Brave Google Services). Click Record Voice Note or type below.'
+            t.micNetworkError ||
+              'Live voice input works best in Google Chrome. Please use Chrome or type your message.'
           );
         } else if (event.error === 'audio-capture') {
           showEphemeralSpeechError(t.micNoDevice || 'No microphone detected on your device.');
-        } else if (event.error === 'network') {
-          showEphemeralSpeechError(
-            t.micNetworkError ||
-              'Speech recognition service unreachable. This may be caused by browser privacy shields (e.g. Brave), ad blockers, or network filters. Click Record Voice Note or type below.'
-          );
         } else if (event.error === 'no-speech') {
           showEphemeralSpeechError(t.micNoSpeech || 'No speech detected. Click the mic to try again.');
         } else if (event.error !== 'aborted') {
-          showEphemeralSpeechError(`Speech error: ${event.error}`);
+          showEphemeralSpeechError(
+            t.micNetworkError ||
+              'Live voice input works best in Google Chrome. Please use Chrome or type your message.'
+          );
         }
       };
 
@@ -497,7 +270,10 @@ export default function AIAssistantPage() {
       if (err.name === 'NotAllowedError') {
         setShowMicModal(true);
       } else {
-        showEphemeralSpeechError('Could not start microphone service.');
+        showEphemeralSpeechError(
+          t.sttUnsupported ||
+            'Live voice input works best in Google Chrome. Please use Chrome or type your message.'
+        );
       }
     }
   };
@@ -556,7 +332,10 @@ export default function AIAssistantPage() {
       (window.SpeechRecognition || window.webkitSpeechRecognition);
 
     if (!SpeechRecognition) {
-      showEphemeralSpeechError(t.sttUnsupported);
+      showEphemeralSpeechError(
+        t.sttUnsupported ||
+          'Live voice input works best in Google Chrome. Please use Chrome or type your message.'
+      );
       return;
     }
 
@@ -594,33 +373,6 @@ export default function AIAssistantPage() {
     await triggerMicrophoneAndStart(permState);
   };
 
-  // Unified Mic Button Click Handler (delegates to Cloud Audio Recording or Live Speech)
-  const handleMicButtonClick = async () => {
-    if (isRecordingAudio) {
-      stopCloudAudioRecording();
-      return;
-    }
-    if (isTranscribingAudio) {
-      return;
-    }
-    if (isListening || isConnectingMic) {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch {}
-      }
-      setIsListening(false);
-      setIsConnectingMic(false);
-      return;
-    }
-
-    if (voiceMode === 'cloud') {
-      await startCloudAudioRecording();
-    } else {
-      await handleToggleListening();
-    }
-  };
-
   // Try Again handler from permission modal
   const handleTryAgain = async () => {
     setIsRetryingMic(true);
@@ -639,12 +391,7 @@ export default function AIAssistantPage() {
 
     setIsRetryingMic(false);
     setShowMicModal(false);
-
-    if (voiceMode === 'cloud') {
-      await startCloudAudioRecording();
-    } else {
-      await triggerMicrophoneAndStart(permState);
-    }
+    await triggerMicrophoneAndStart(permState);
   };
 
   // Close modal and restore focus to microphone button
@@ -719,10 +466,7 @@ export default function AIAssistantPage() {
     const textToSend = (customPrompt !== null ? customPrompt : inputPrompt).trim();
     if (!textToSend || isTyping) return;
 
-    // Stop active audio recording, speech recognition or speech synthesis
-    if (isRecordingAudio) {
-      cancelCloudAudioRecording();
-    }
+    // Stop active speech recognition or speech synthesis
     if ((isListening || isConnectingMic) && recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -1182,30 +926,11 @@ export default function AIAssistantPage() {
               <span className="leading-relaxed">{speechError}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-              {voiceMode === 'live' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSpeechError(null);
-                    setVoiceMode('cloud');
-                    startCloudAudioRecording();
-                  }}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-semibold text-[11px] transition-colors shadow-2xs"
-                  title={t.micUseCloudFallback || 'Try AI Voice Recording'}
-                >
-                  <Sparkles className="w-3 h-3" />
-                  <span>{t.micUseCloudFallback || 'Try AI Voice Recording'}</span>
-                </button>
-              )}
               <button
                 type="button"
                 onClick={() => {
                   setSpeechError(null);
-                  if (voiceMode === 'cloud') {
-                    startCloudAudioRecording();
-                  } else {
-                    handleToggleListening();
-                  }
+                  handleToggleListening();
                 }}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300/80 text-amber-950 font-semibold text-[11px] transition-colors shadow-2xs"
                 title={t.micRetry || 'Retry'}
@@ -1225,78 +950,7 @@ export default function AIAssistantPage() {
           </div>
         )}
 
-        {/* Voice Notice Banner (e.g. transcribing completed, tips) */}
-        {voiceNotice && (
-          <div className="px-4 py-2 bg-teal-50 border-t border-teal-200 text-xs text-teal-900 flex items-center justify-between gap-2 animate-fadeIn">
-            <div className="flex items-center gap-2">
-              <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>{voiceNotice}</span>
-            </div>
-            <button
-              type="button"
-              onClick={() => setVoiceNotice(null)}
-              className="text-teal-700 hover:text-teal-900 p-1 rounded-md hover:bg-teal-100/60 transition-colors"
-              aria-label="Dismiss notice"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
-
-        {/* Active Audio Recording Banner (Cloud STT) */}
-        {isRecordingAudio && (
-          <div className="px-4 py-2.5 bg-rose-50 border-t border-rose-200 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 text-xs text-rose-950 animate-fadeIn">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <span className="relative flex h-3 w-3 shrink-0">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-rose-600"></span>
-              </span>
-              <span className="font-semibold text-rose-900 truncate">
-                {t.micRecordingVoice || 'Recording audio... Speak naturally in Hindi or English'}
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-mono text-[11px] font-semibold border border-rose-200 shrink-0">
-                0:{recordingDuration < 10 ? `0${recordingDuration}` : recordingDuration}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
-              <button
-                type="button"
-                onClick={stopCloudAudioRecording}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition-colors shadow-2xs"
-                title={t.micDoneSpeaking || 'Done Speaking'}
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>{t.micDoneSpeaking || 'Done Speaking'}</span>
-              </button>
-              <button
-                type="button"
-                onClick={cancelCloudAudioRecording}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-rose-200 text-rose-700 hover:bg-rose-100/60 font-medium text-xs transition-colors"
-                title={t.micCancelRecording || 'Cancel'}
-              >
-                <X className="w-3.5 h-3.5" />
-                <span>{t.micCancelRecording || 'Cancel'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Transcribing Audio State */}
-        {isTranscribingAudio && (
-          <div className="px-4 py-2.5 bg-teal-50 border-t border-teal-200 flex items-center justify-between text-xs text-teal-950 animate-fadeIn">
-            <div className="flex items-center gap-2.5">
-              <Loader2 className="w-4 h-4 animate-spin text-teal-600 shrink-0" />
-              <span className="font-semibold text-teal-900">
-                {t.micTranscribingVoice || 'Converting audio to text using Sahayak AI...'}
-              </span>
-            </div>
-            <span className="text-[11px] text-teal-700 italic">
-              {language === 'hi' ? 'कृपया प्रतीक्षा करें...' : 'Please wait...'}
-            </span>
-          </div>
-        )}
-
-        {/* Active Listening Indicator (Live Speech API) */}
+        {/* Active Listening Indicator */}
         {isListening && (
           <div className="px-4 py-2 bg-rose-50 border-t border-rose-200 flex items-center justify-between text-xs text-rose-950 animate-fadeIn">
             <div className="flex items-center gap-2">
@@ -1329,73 +983,37 @@ export default function AIAssistantPage() {
             <button
               ref={micButtonRef}
               type="button"
-              onClick={handleMicButtonClick}
-              disabled={isTyping || isTranscribingAudio}
+              onClick={handleToggleListening}
+              disabled={isTyping}
               className={`p-2.5 rounded-xl border transition-all relative ${
-                isRecordingAudio || isListening
+                isListening
                   ? 'bg-rose-600 text-white border-rose-600 shadow-md ring-2 ring-rose-300'
-                  : isConnectingMic || isTranscribingAudio
+                  : isConnectingMic
                   ? 'bg-teal-50 text-teal-700 border-teal-300'
                   : 'bg-slate-100 hover:bg-teal-50 text-slate-600 hover:text-teal-700 border-slate-200'
               }`}
               title={
-                isRecordingAudio
-                  ? t.micDoneSpeaking || 'Done Speaking'
-                  : isListening
+                isListening
                   ? t.micStop
-                  : isTranscribingAudio
-                  ? t.micTranscribingVoice || 'Transcribing...'
                   : isConnectingMic
                   ? t.micConnecting
-                  : voiceMode === 'cloud'
-                  ? t.micRecordVoiceClip || 'Record Voice Note'
                   : t.micStart
               }
               aria-label={
-                isRecordingAudio
-                  ? t.micDoneSpeaking || 'Done Speaking'
-                  : isListening
+                isListening
                   ? t.micStop
-                  : isTranscribingAudio
-                  ? t.micTranscribingVoice || 'Transcribing...'
                   : isConnectingMic
                   ? t.micConnecting
-                  : voiceMode === 'cloud'
-                  ? t.micRecordVoiceClip || 'Record Voice Note'
                   : t.micStart
               }
             >
-              {isConnectingMic || isTranscribingAudio ? (
+              {isConnectingMic ? (
                 <Loader2 className="w-4 h-4 animate-spin text-teal-600" />
-              ) : isRecordingAudio ? (
-                <Square className="w-4 h-4 fill-white animate-pulse" />
               ) : isListening ? (
                 <MicOff className="w-4 h-4 animate-pulse" />
               ) : (
                 <Mic className="w-4 h-4" />
               )}
-            </button>
-
-            {/* Voice Mode Selector Pill (visible on sm+ screens) */}
-            <button
-              type="button"
-              onClick={() => {
-                const nextMode = voiceMode === 'cloud' ? 'live' : 'cloud';
-                setVoiceMode(nextMode);
-                setVoiceNotice(
-                  nextMode === 'cloud'
-                    ? (language === 'hi' ? 'AI वॉइस नोट सक्रिय (सर्वर आधारित)' : 'AI Voice Mode active (Cloud STT)')
-                    : (language === 'hi' ? 'लाइव ब्राउज़र वॉइस मोड सक्रिय' : 'Live Browser Voice Mode active')
-                );
-              }}
-              disabled={isRecordingAudio || isListening || isTranscribingAudio}
-              className="hidden sm:inline-flex items-center gap-1 px-2.5 py-2 text-xs font-medium text-slate-600 hover:text-navy-900 bg-slate-100/80 hover:bg-slate-200/70 border border-slate-200 rounded-xl transition-colors shrink-0 disabled:opacity-50"
-              title={language === 'hi' ? 'वॉइस मोड बदलें (AI वॉइस नोट / लाइव आवाज़)' : 'Switch voice mode (AI Voice Note / Live Speech)'}
-            >
-              <Radio className={`w-3.5 h-3.5 ${voiceMode === 'cloud' ? 'text-teal-600' : 'text-slate-400'}`} />
-              <span className="text-[11px] font-semibold">
-                {voiceMode === 'cloud' ? (t.micVoiceModeCloud || 'AI Voice') : (t.micVoiceModeLive || 'Live Speech')}
-              </span>
             </button>
 
             {/* Text Input */}
@@ -1405,22 +1023,16 @@ export default function AIAssistantPage() {
               value={inputPrompt}
               onChange={(e) => setInputPrompt(e.target.value)}
               placeholder={
-                isRecordingAudio
-                  ? t.micRecordingVoice || 'Recording audio...'
-                  : isTranscribingAudio
-                  ? t.micTranscribingVoice || 'Transcribing audio...'
-                  : isListening
+                isListening
                   ? t.micListening
                   : isConnectingMic
                   ? t.micConnecting
                   : t.inputPlaceholder
               }
-              disabled={isTyping || isTranscribingAudio}
+              disabled={isTyping}
               className={`flex-1 px-4 py-2.5 rounded-xl border text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 transition-all ${
-                isRecordingAudio || isListening
+                isListening
                   ? 'bg-rose-50/50 border-rose-300 placeholder-rose-700 ring-2 ring-rose-200'
-                  : isTranscribingAudio
-                  ? 'bg-teal-50/50 border-teal-300 placeholder-teal-700 ring-2 ring-teal-200'
                   : 'bg-slate-50/70 border-slate-300'
               }`}
             />
@@ -1428,7 +1040,7 @@ export default function AIAssistantPage() {
             {/* Send Button */}
             <button
               type="submit"
-              disabled={!inputPrompt.trim() || isTyping || isTranscribingAudio}
+              disabled={!inputPrompt.trim() || isTyping}
               className="p-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors shadow-sm flex items-center justify-center shrink-0"
               aria-label={t.send}
             >

@@ -50,38 +50,6 @@ export default defineConfig(({ mode }) => {
               });
               return;
             }
-
-            if (req.url === '/api/transcribe' && req.method === 'POST') {
-              let bodyStr = '';
-              let tooLarge = false;
-              req.on('data', (chunk) => {
-                bodyStr += chunk;
-                if (bodyStr.length > 5 * 1024 * 1024) {
-                  tooLarge = true;
-                  res.statusCode = 413;
-                  res.setHeader('Content-Type', 'application/json');
-                  res.end(JSON.stringify({ error: 'Payload Too Large: Maximum audio request size is 5 MB.' }));
-                  req.destroy();
-                }
-              });
-              req.on('end', async () => {
-                if (tooLarge) return;
-                try {
-                  const { processTranscribeRequest } = await import('./api/transcribe.js');
-                  const payload = bodyStr ? JSON.parse(bodyStr) : {};
-                  const result = await processTranscribeRequest(payload);
-                  res.statusCode = result.status;
-                  res.setHeader('Content-Type', 'application/json');
-                  res.end(JSON.stringify(result.body));
-                } catch (err) {
-                  console.error('Error handling /api/transcribe in Vite dev middleware:', err?.name || 'InternalError');
-                  res.statusCode = 500;
-                  res.setHeader('Content-Type', 'application/json');
-                  res.end(JSON.stringify({ error: err.message || 'Internal server error' }));
-                }
-              });
-              return;
-            }
             next();
           });
         },

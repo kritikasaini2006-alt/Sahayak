@@ -99,18 +99,20 @@ if (checksSecureContext && handlesMissingMediaDevices) {
 }
 
 // ==========================================
-// Test 6: Network Error Accurate Messaging (No False Offline Accusation)
+// Test 6: Friendly Chrome Recommendation in Unsupported Browsers (e.g. Brave)
 // ==========================================
-// Message must not claim "Please check your internet connection" when the cloud service is unreachable
 const enNetMsg = en.assistant?.micNetworkError || '';
 const hiNetMsg = hi.assistant?.micNetworkError || '';
-const doesNotBlameInternetOnly = !enNetMsg.includes('Please check your internet connection') &&
-  (enNetMsg.includes('privacy shields') || enNetMsg.includes('unreachable') || enNetMsg.includes('filters'));
+const enSttUnsupported = en.assistant?.sttUnsupported || '';
+const hiSttUnsupported = hi.assistant?.sttUnsupported || '';
 
-if (doesNotBlameInternetOnly && hiNetMsg.length > 0) {
-  console.log('✅ Test 6 Passed: Network error message provides accurate guidance regarding privacy shields and filters without falsely claiming internet is disconnected.');
+const hasChromeFriendlyNoticeEn = enNetMsg.includes('Google Chrome') && enSttUnsupported.includes('Google Chrome');
+const hasChromeFriendlyNoticeHi = hiNetMsg.includes('Google Chrome') && hiSttUnsupported.includes('Google Chrome');
+
+if (hasChromeFriendlyNoticeEn && hasChromeFriendlyNoticeHi) {
+  console.log('✅ Test 6 Passed: Friendly guidance displayed when browser speech service is unsupported or blocked (recommending Google Chrome or text typing).');
 } else {
-  console.error('❌ Test 6 Failed: Network error still inaccurately claims internet is disconnected.');
+  console.error('❌ Test 6 Failed: Friendly Google Chrome recommendation missing in error messages.');
   process.exit(1);
 }
 
@@ -233,4 +235,19 @@ if (micKeysValid) {
   process.exit(1);
 }
 
-console.log('\n🎉 ALL 11 MICROPHONE & VOICE PERMISSION TESTS PASSED WITH 100% SUCCESS!\n');
+// ==========================================
+// Test 12: Pure Browser-Native Speech Recognition (Zero Cloud STT Endpoints)
+// ==========================================
+const noTranscribeEndpoint = !aiContent.includes('/api/transcribe');
+const noMediaRecorderAudio = !aiContent.includes('new MediaRecorder');
+const noCloudVoiceKeys = !aiContent.includes('micRecordVoiceClip') && !aiContent.includes('voiceMode');
+const usesNativeWebSpeechOnly = aiContent.includes('window.SpeechRecognition || window.webkitSpeechRecognition');
+
+if (noTranscribeEndpoint && noMediaRecorderAudio && noCloudVoiceKeys && usesNativeWebSpeechOnly) {
+  console.log('✅ Test 12 Passed: Pure browser-native Web Speech API verified. Zero cloud speech endpoints, MediaRecorder dependencies, or paid fallbacks.');
+} else {
+  console.error('❌ Test 12 Failed: Detected leftover cloud speech endpoints or MediaRecorder references in AIAssistantPage.');
+  process.exit(1);
+}
+
+console.log('\n🎉 ALL 12 MICROPHONE & CHROME-NATIVE VOICE TESTS PASSED WITH 100% SUCCESS!\n');
