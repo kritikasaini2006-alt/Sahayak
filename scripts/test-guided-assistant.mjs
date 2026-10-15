@@ -297,6 +297,9 @@ async function runGuidedAssistantTests() {
     const assistantPagePath = path.resolve(__dirname, '../src/pages/AIAssistantPage.jsx');
     const pageContent = fs.readFileSync(assistantPagePath, 'utf8');
 
+    const appLayoutPath = path.resolve(__dirname, '../src/components/layout/AppLayout.jsx');
+    const appLayoutContent = fs.readFileSync(appLayoutPath, 'utf8');
+
     const calculatesRelativePosition = pageContent.includes('getMessageTargetScrollTop') &&
       (pageContent.includes('messageEl.offsetTop') || pageContent.includes('messageRect.top - containerRect.top'));
     const scrollsContainerOnly = pageContent.includes('container.scrollTo({') &&
@@ -304,11 +307,13 @@ async function runGuidedAssistantTests() {
       pageContent.includes("behavior: 'smooth'");
     const doesNotScrollWindow = !pageContent.includes('latestAIMessageRef.current.scrollIntoView') &&
       !pageContent.includes('window.scrollTo');
-    const hasBoundedContainerLayout = pageContent.includes('h-[calc(100dvh-200px)]') &&
+    const hasBoundedContainerLayout = pageContent.includes('min-h-0') &&
       pageContent.includes('pb-8') &&
       pageContent.includes('relative flex-1');
+    const appLayoutBounded = appLayoutContent.includes("isAssistantPage ? 'h-screen overflow-hidden' : 'min-h-screen'") &&
+      appLayoutContent.includes('!isAssistantPage && <Footer />');
 
-    if (calculatesRelativePosition && scrollsContainerOnly && doesNotScrollWindow && hasBoundedContainerLayout) {
+    if (calculatesRelativePosition && scrollsContainerOnly && doesNotScrollWindow && hasBoundedContainerLayout && appLayoutBounded) {
       console.log('✅ Test 13 Passed: Chat container exclusively scrolled to start of AI response; document/footer never scrolled.');
     } else {
       console.error('❌ Test 13 Failed: Container-only scroll calculation or bounded layout check failed.');

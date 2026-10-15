@@ -160,6 +160,19 @@ export default function AIAssistantPage() {
 
         const targetScrollTop = getMessageTargetScrollTop(container, messageEl, 16);
 
+        // Development diagnostic logging
+        if (process.env.NODE_ENV !== 'production' || import.meta.env?.DEV) {
+          console.log('[Sahayak Chat Scroll Diagnostic: scrollToAIMessageStart]', {
+            messageId: latestAssistantMessageId,
+            messageOffsetTop: messageEl.offsetTop,
+            targetScrollTop,
+            containerScrollTopBefore: container.scrollTop,
+            containerScrollHeight: container.scrollHeight,
+            containerClientHeight: container.clientHeight,
+            windowScrollY: typeof window !== 'undefined' ? window.scrollY : 0,
+          });
+        }
+
         // Scroll the CHAT CONTAINER ONLY — never scroll the window or document down to the footer!
         container.scrollTo({
           top: targetScrollTop,
@@ -188,6 +201,17 @@ export default function AIAssistantPage() {
 
         const targetScrollTop = getMessageTargetScrollTop(container, userEl, 16);
 
+        if (process.env.NODE_ENV !== 'production' || import.meta.env?.DEV) {
+          console.log('[Sahayak Chat Scroll Diagnostic: scrollToUserMsg]', {
+            userMessageId: latestUserMessageId,
+            userOffsetTop: userEl.offsetTop,
+            targetScrollTop,
+            containerScrollTopBefore: container.scrollTop,
+            containerScrollHeight: container.scrollHeight,
+            containerClientHeight: container.clientHeight,
+          });
+        }
+
         container.scrollTo({
           top: targetScrollTop,
           behavior: 'smooth',
@@ -202,6 +226,44 @@ export default function AIAssistantPage() {
       }
     }
   }, [latestUserMessageId]);
+
+  // Development-only diagnostics tracking container & window scroll positions
+  useEffect(() => {
+    if (typeof window === 'undefined' || !(process.env.NODE_ENV !== 'production' || import.meta.env?.DEV)) {
+      return;
+    }
+
+    const container = chatContainerRef.current;
+    const handleContainerScroll = () => {
+      console.log('[Sahayak Diagnostic: Container Scroll Event]', {
+        scrollTop: container.scrollTop,
+        scrollHeight: container.scrollHeight,
+        clientHeight: container.clientHeight,
+      });
+    };
+
+    const handleWindowScroll = () => {
+      if (window.scrollY > 0) {
+        console.warn('[Sahayak Diagnostic: Document/Window Scroll Detected on Chat Page!]', {
+          scrollY: window.scrollY,
+          innerHeight: window.innerHeight,
+          scrollHeight: document.documentElement.scrollHeight,
+        });
+      }
+    };
+
+    if (container) {
+      container.addEventListener('scroll', handleContainerScroll, { passive: true });
+    }
+    window.addEventListener('scroll', handleWindowScroll, { passive: true });
+
+    return () => {
+      if (container) {
+        container.removeEventListener('scroll', handleContainerScroll);
+      }
+      window.removeEventListener('scroll', handleWindowScroll);
+    };
+  }, []);
 
   // Clean up any ongoing TTS / STT / MediaRecorder on unmount
   useEffect(() => {
@@ -818,7 +880,7 @@ export default function AIAssistantPage() {
   };
 
   return (
-    <div className="py-4 sm:py-6 flex-1 flex flex-col max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+    <div className="py-2.5 sm:py-3.5 flex-1 min-h-0 flex flex-col max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 w-full overflow-hidden">
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-200 gap-3">
         <div className="flex items-center gap-3">
@@ -902,11 +964,11 @@ export default function AIAssistantPage() {
       </div>
 
       {/* Chat Thread Container */}
-      <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm mt-3.5 flex flex-col overflow-hidden h-[calc(100dvh-200px)] min-h-[520px] max-h-[860px]">
+      <div className="flex-1 min-h-0 bg-white border border-slate-200 rounded-2xl shadow-sm mt-2.5 flex flex-col overflow-hidden">
         {/* Messages List */}
         <div
           ref={chatContainerRef}
-          className="relative flex-1 p-3.5 sm:p-5 pb-8 overflow-y-auto space-y-4"
+          className="relative flex-1 min-h-0 p-3.5 sm:p-5 pb-8 overflow-y-auto space-y-4"
         >
           {messages.map((msg) => {
             const isLatestAssistant = msg.id === latestAssistantMessageId;
