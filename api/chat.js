@@ -199,20 +199,16 @@ export async function processChatRequest({
     };
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+  const apiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : '';
+  const model = process.env.GEMINI_MODEL ? process.env.GEMINI_MODEL.trim() : 'gemini-3.5-flash';
 
-  // If no Gemini API key is configured on the server, respond in clearly labeled Demo Mode
-  if (!apiKey || apiKey.trim() === '') {
-    const reply = generateOfflineSampleReply(prompt, language, sanitizedProfile);
+  // If no Gemini API key is configured on the server, return clear configuration error
+  if (!apiKey) {
     return {
-      status: 200,
+      status: 503,
       body: {
-        reply,
-        isDemoMode: true,
-        demoReason: 'GEMINI_API_KEY is not configured in server environment. Running in Offline Demo Mode.',
-        modelUsed: 'offline_catalog_engine',
-        sources: ['india.gov.in', 'myscheme.gov.in'],
+        error: 'Gemini AI is not configured. Please set the GEMINI_API_KEY environment variable in your Vercel Project Settings.',
+        isConfigMissing: true,
       },
     };
   }
@@ -271,8 +267,31 @@ export async function processChatRequest({
     clearTimeout(timeoutId);
 
     if (!response.ok) {
-      // Handle Rate Limit (429)
-      if (response.status === 429) {
+      let errorData = null;
+      try {
+        errorData = await response.json();
+      } catch {}
+
+      const errorMessage = errorData?.error?.message || '';
+      const errorStatus = errorData?.error?.status || '';
+
+      // Handle invalid API key (HTTP 400 with API_KEY_INVALID or 403)
+      if (
+        (response.status === 400 && (errorMessage.includes('API_KEY_INVALID') || errorMessage.includes('API key not valid'))) ||
+        response.status === 403
+      ) {
+        console.error('Gemini Authentication Error: Invalid API key');
+        return {
+          status: 401,
+          body: {
+            error: 'Invalid Gemini API key. Please verify your GEMINI_API_KEY configuration in Vercel.',
+            isAuthError: true,
+          },
+        };
+      }
+
+      // Handle Rate Limit / Quota Exceeded (HTTP 429)
+      if (response.status === 429 || errorStatus === 'RESOURCE_EXHAUSTED') {
         return {
           status: 429,
           body: {
@@ -282,37 +301,57 @@ export async function processChatRequest({
         };
       }
 
-      // Safe logging: Never log user prompt or citizen data to server logs
-      console.error(`Gemini API Error (HTTP ${response.status})`);
+      // Handle Model Not Found / Deprecated (HTTP 404)
+      if (response.status === 404 || errorStatus === 'NOT_FOUND') {
+        console.error(`Gemini Model Error: Model "${model}" not found or unsupported`);
+        return {
+          status: 502,
+          body: {
+            error: `Gemini model "${model}" is not available. Please configure GEMINI_MODEL="gemini-3.5-flash" in your environment variables.`,
+          },
+        };
+      }
 
-      // Fallback gracefully to offline sample response if Gemini service errors
-      const fallbackReply = generateOfflineSampleReply(prompt, language, sanitizedProfile);
+      // Handle Service Unavailable / High demand (HTTP 503)
+      if (response.status === 503 || errorStatus === 'UNAVAILABLE') {
+        return {
+          status: 503,
+          body: {
+            error: 'Gemini AI service is currently experiencing high demand. Please try again in a few moments.',
+          },
+        };
+      }
+
+      // General Gemini API Error
+      console.error(`Gemini API Error (HTTP ${response.status})`);
       return {
-        status: 200,
+        status: 502,
         body: {
-          reply: fallbackReply,
-          isDemoMode: true,
-          demoReason: `Gemini API returned status ${response.status}. Served verified offline catalog guidance.`,
-          modelUsed: 'offline_catalog_engine',
-          sources: ['india.gov.in', 'myscheme.gov.in'],
+          error: `Gemini AI service returned an error (${response.status}). Please try again.`,
         },
       };
     }
 
     const data = await response.json();
     const candidate = data.candidates && data.candidates[0];
-    const replyText =
-      candidate && candidate.content && candidate.content.parts && candidate.content.parts[0]
-        ? candidate.content.parts[0].text
-        : 'I apologize, but I could not formulate a response. Please try rephrasing your question.';
+    const replyText = candidate?.content?.parts?.[0]?.text;
+
+    if (!replyText || !replyText.trim()) {
+      return {
+        status: 502,
+        body: {
+          error: 'Gemini API returned an empty response. Please try rephrasing your question.',
+        },
+      };
+    }
 
     return {
       status: 200,
       body: {
-        reply: replyText,
+        reply: replyText.trim(),
         isDemoMode: false,
         modelUsed: model,
-        sources: ['Official Gazette Rules', 'National Portal of India'],
+        sources: ['Official Gazette Rules', 'National Portal of India', 'myscheme.gov.in'],
       },
     };
   } catch (err) {
@@ -322,7 +361,7 @@ export async function processChatRequest({
       return {
         status: 504,
         body: {
-          error: 'The request to the AI service timed out after 15 seconds. Please check your connection and retry.',
+          error: 'The request to Gemini AI timed out after 15 seconds. Please check your connection and retry.',
           isTimeout: true,
         },
       };
@@ -331,16 +370,10 @@ export async function processChatRequest({
     // Safe error logging: only log error name, never citizen prompt
     console.error('Fetch error connecting to Gemini API:', err?.name || 'NetworkError');
 
-    // Fallback to offline catalog demo
-    const fallbackReply = generateOfflineSampleReply(prompt, language, sanitizedProfile);
     return {
-      status: 200,
+      status: 502,
       body: {
-        reply: fallbackReply,
-        isDemoMode: true,
-        demoReason: 'Network error connecting to Gemini API. Served verified offline catalog guidance.',
-        modelUsed: 'offline_catalog_engine',
-        sources: ['india.gov.in', 'myscheme.gov.in'],
+        error: 'Network error connecting to Gemini AI service. Please check server connectivity.',
       },
     };
   }
