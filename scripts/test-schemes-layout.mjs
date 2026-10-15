@@ -116,4 +116,40 @@ if (hasResultsSummaryBar && hasGroundedBadge) {
   process.exit(1);
 }
 
-console.log('\n🎉 ALL 5 DISCOVER SCHEMES LAYOUT TESTS PASSED WITH 100% SUCCESS!\n');
+// -------------------------------------------------------------
+// Test 6: SchemeCard Title Quick Preview Interactivity & Accessibility
+// -------------------------------------------------------------
+const cardPath = path.resolve(__dirname, '../src/components/common/SchemeCard.jsx');
+const cardContent = fs.readFileSync(cardPath, 'utf8');
+
+const hasTitleButtonRole = cardContent.includes('role="button"') && cardContent.includes('tabIndex={0}');
+const hasTitleAriaExpanded = cardContent.includes('aria-expanded={expanded}');
+const hasTitleClickToggle = cardContent.includes('onClick={() => setExpanded((prev) => !prev)}') || cardContent.includes('onClick={() => setExpanded(');
+const hasTitleKeyboardNav = cardContent.includes("e.key === 'Enter'") && cardContent.includes("e.key === ' '");
+const hasCursorPointer = cardContent.includes('cursor-pointer') && cardContent.includes('hover:text-[#454F2A]');
+
+if (hasTitleButtonRole && hasTitleAriaExpanded && hasTitleClickToggle && hasTitleKeyboardNav && hasCursorPointer) {
+  console.log('✅ Test 6 Passed: SchemeCard title is accessible toggle button with keyboard (Enter/Space) and hover styling.');
+} else {
+  console.error('❌ Test 6 Failed: SchemeCard title missing role="button", keyboard accessibility, or click toggle.');
+  process.exit(1);
+}
+
+// -------------------------------------------------------------
+// Test 7: Clean Footer Actions & Independent Controls
+// -------------------------------------------------------------
+const hasNoSeparatePreviewBtn = !cardContent.includes("t('schemes.quickPreview')") || !cardContent.includes('ChevronRight');
+const hasBookmarkStopPropagation = cardContent.includes('e.stopPropagation()') && cardContent.includes('onSaveToggle');
+const hasFullDetailsAction = cardContent.includes("t('schemes.fullDetails')") && cardContent.includes('onViewDetails(scheme)');
+const hasOfficialPortalLink = cardContent.includes("t('schemes.officialPortal')") && cardContent.includes('scheme.officialPortal');
+const articleNotClickable = !cardContent.match(/<article[^>]*onClick/);
+
+if (hasNoSeparatePreviewBtn && hasBookmarkStopPropagation && hasFullDetailsAction && hasOfficialPortalLink && articleNotClickable) {
+  console.log('✅ Test 7 Passed: Separate footer quick preview button removed; bookmark, full details, and official portal preserved independently.');
+} else {
+  console.error('❌ Test 7 Failed: Footer actions or independent controls verification failed.');
+  process.exit(1);
+}
+
+console.log('\n🎉 ALL 7 DISCOVER SCHEMES & SCHEME CARD TESTS PASSED WITH 100% SUCCESS!\n');
+

@@ -4,7 +4,6 @@ import {
   ExternalLink,
   CheckCircle2,
   FileText,
-  ChevronRight,
   Bookmark,
   Building2,
   Coins,
@@ -69,10 +68,14 @@ export default function SchemeCard({
           </div>
 
           <button
-            onClick={() => onSaveToggle && onSaveToggle(scheme.id)}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onSaveToggle) onSaveToggle(scheme.id);
+            }}
             title={isSaved ? t('schemes.savedInApplications') : t('schemes.saveScheme')}
             aria-label={isSaved ? t('schemes.savedInApplications') : t('schemes.saveScheme')}
-            className={`p-1.5 rounded-lg border transition-colors shrink-0 ${
+            className={`p-1.5 rounded-lg border transition-colors shrink-0 cursor-pointer ${
               isSaved
                 ? 'bg-[#454F2A]/15 border-[#454F2A]/40 text-[#454F2A]'
                 : 'border-[#445363]/20 text-[#445363]/50 hover:text-[#454F2A] hover:bg-[#E5E8E1]'
@@ -85,10 +88,18 @@ export default function SchemeCard({
         {/* Title and Ministry */}
         <div>
           <h3
-            onClick={() => onViewDetails && onViewDetails(scheme)}
-            className={`text-lg font-bold text-[#445363] group-hover:text-[#454F2A] transition-colors leading-snug ${
-              onViewDetails ? 'cursor-pointer' : ''
-            }`}
+            role="button"
+            tabIndex={0}
+            aria-expanded={expanded}
+            onClick={() => setExpanded((prev) => !prev)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setExpanded((prev) => !prev);
+              }
+            }}
+            title={expanded ? t('schemes.showLess') : t('schemes.quickPreview')}
+            className="text-lg font-bold text-[#445363] hover:text-[#454F2A] focus:text-[#454F2A] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#454F2A]/40 focus-visible:ring-offset-2 rounded-md transition-colors leading-snug cursor-pointer select-none inline-block"
           >
             {title}
           </h3>
@@ -172,18 +183,11 @@ export default function SchemeCard({
       {/* Footer Actions */}
       <div className="px-5 py-3.5 bg-[#E5E8E1]/50 border-t border-[#445363]/10 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="text-xs font-semibold text-[#445363] hover:text-[#454F2A] flex items-center gap-1 transition-colors"
-          >
-            {expanded ? t('schemes.showLess') : t('schemes.quickPreview')}
-            <ChevronRight className={`w-3.5 h-3.5 transition-transform ${expanded ? '-rotate-90' : 'rotate-90'}`} />
-          </button>
-
           {onViewDetails && (
             <button
+              type="button"
               onClick={() => onViewDetails(scheme)}
-              className="text-xs font-bold text-[#454F2A] hover:text-[#384022] underline flex items-center gap-1"
+              className="text-xs font-bold text-[#454F2A] hover:text-[#384022] underline flex items-center gap-1 cursor-pointer"
             >
               <span>{t('schemes.fullDetails')}</span>
             </button>
