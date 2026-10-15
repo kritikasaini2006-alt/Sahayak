@@ -1,7 +1,9 @@
 import React from 'react';
 import { Check } from 'lucide-react';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function EligibilityStepper({ steps, currentStep, onStepClick }) {
+  const { t } = useTranslation();
   const progressPercentage = Math.round(((currentStep - 1) / (steps.length - 1)) * 100);
 
   return (
@@ -54,7 +56,7 @@ export default function EligibilityStepper({ steps, currentStep, onStepClick }) 
               </div>
               <div className="overflow-hidden">
                 <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                  Step {step.number}
+                  {t('common.step', 'Step')} {step.number}
                 </span>
                 <span
                   className={`block text-xs font-semibold truncate ${

@@ -27,6 +27,7 @@ import {
 import { SAMPLE_PROFILES } from '../data/sampleProfiles';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../context/LanguageContext';
 
 const INITIAL_FORM_STATE = {
   age: '',
@@ -45,7 +46,8 @@ const INITIAL_FORM_STATE = {
 };
 
 export default function CheckEligibilityPage() {
-  useDocumentTitle('Check Eligibility');
+  const { t, language } = useTranslation();
+  useDocumentTitle(t('eligibility.pageTitle'));
   const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
@@ -79,10 +81,10 @@ export default function CheckEligibilityPage() {
   };
 
   const steps = [
-    { number: 1, title: 'Demographics' },
-    { number: 2, title: 'Livelihood & Income' },
-    { number: 3, title: 'Household' },
-    { number: 4, title: 'Review' },
+    { number: 1, title: t('eligibility.step1Title') },
+    { number: 2, title: t('eligibility.step2Title') },
+    { number: 3, title: t('eligibility.step3Title') },
+    { number: 4, title: t('eligibility.step4Title') },
   ];
 
   // Validation function for current step
@@ -91,32 +93,32 @@ export default function CheckEligibilityPage() {
 
     if (stepNumber === 1) {
       if (!formData.age && formData.age !== 0) {
-        newErrors.age = 'Please enter your age.';
+        newErrors.age = language === 'hi' ? 'कृपया अपनी आयु दर्ज करें।' : 'Please enter your age.';
       } else {
         const ageNum = Number(formData.age);
         if (isNaN(ageNum) || ageNum < 1 || ageNum > 120) {
-          newErrors.age = 'Please enter a valid age between 1 and 120.';
+          newErrors.age = language === 'hi' ? 'कृपया 1 से 120 के बीच मान्य आयु दर्ज करें।' : 'Please enter a valid age between 1 and 120.';
         }
       }
 
       if (!formData.state) {
-        newErrors.state = 'Please select your State or Union Territory.';
+        newErrors.state = language === 'hi' ? 'कृपया अपना राज्य या केंद्र शासित प्रदेश चुनें।' : 'Please select your State or Union Territory.';
       }
 
       if (!formData.areaType) {
-        newErrors.areaType = 'Please select whether you live in a rural or urban area.';
+        newErrors.areaType = language === 'hi' ? 'कृपया ग्रामीण या शहरी क्षेत्र का चयन करें।' : 'Please select whether you live in a rural or urban area.';
       }
     } else if (stepNumber === 2) {
       if (!formData.occupation) {
-        newErrors.occupation = 'Please select your primary occupation or livelihood.';
+        newErrors.occupation = language === 'hi' ? 'कृपया अपना मुख्य व्यवसाय या आजीविका चुनें।' : 'Please select your primary occupation or livelihood.';
       }
 
       if (formData.annualIncome === '' || formData.annualIncome === undefined) {
-        newErrors.annualIncome = 'Please provide an estimated annual household income (use 0 if none).';
+        newErrors.annualIncome = language === 'hi' ? 'कृपया अनुमानित वार्षिक आय दर्ज करें (यदि कोई नहीं है तो 0 लिखें)।' : 'Please provide an estimated annual household income (use 0 if none).';
       } else {
         const incomeNum = Number(formData.annualIncome);
         if (isNaN(incomeNum) || incomeNum < 0) {
-          newErrors.annualIncome = 'Annual income must be a valid non-negative number.';
+          newErrors.annualIncome = language === 'hi' ? 'वार्षिक आय एक मान्य धनात्मक संख्या होनी चाहिए।' : 'Annual income must be a valid non-negative number.';
         }
       }
     }
@@ -150,7 +152,7 @@ export default function CheckEligibilityPage() {
     if (saveToStorage) {
       const saved = saveCitizenProfile(formData);
       setStoredProfile(saved);
-      showNotification('Citizen profile saved to local browser storage.');
+      showNotification(language === 'hi' ? 'नागरिक प्रोफ़ाइल स्थानीय स्टोरेज में सुरक्षित हो गई है।' : 'Citizen profile saved to local browser storage.');
     }
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -161,7 +163,7 @@ export default function CheckEligibilityPage() {
     setErrors({});
     setCurrentStep(1);
     setEvaluationResults(null);
-    showNotification(`Applied sample profile: "${sample.name}". You can navigate steps or click Review to evaluate.`);
+    showNotification(language === 'hi' ? `नमूना प्रोफ़ाइल लागू: "${sample.name}"` : `Applied sample profile: "${sample.name}". You can navigate steps or click Review to evaluate.`);
   };
 
   const handleClearProfile = () => {
@@ -170,7 +172,7 @@ export default function CheckEligibilityPage() {
     setFormData(INITIAL_FORM_STATE);
     setEvaluationResults(null);
     setCurrentStep(1);
-    showNotification('Stored citizen profile data has been wiped from local storage.');
+    showNotification(language === 'hi' ? 'सहेजी गई नागरिक प्रोफ़ाइल साफ़ कर दी गई है।' : 'Stored citizen profile data has been wiped from local storage.');
   };
 
   const handleEditProfile = () => {
@@ -191,14 +193,14 @@ export default function CheckEligibilityPage() {
       {/* Page Header */}
       <div className="border-b border-slate-200 pb-4 space-y-2">
         <div className="flex items-center gap-2">
-          <Badge variant="teal">Eligibility Screener</Badge>
-          <span className="text-xs text-slate-500 font-medium">Grounded in Official Guidelines</span>
+          <Badge variant="teal">{t('eligibility.screenerBadge')}</Badge>
+          <span className="text-xs text-slate-500 font-medium">{t('eligibility.screenerNote')}</span>
         </div>
         <h1 className="text-2xl sm:text-4xl font-extrabold text-navy-900 tracking-tight">
-          Citizen Profile & Scheme Eligibility Checker
+          {t('eligibility.pageTitle')}
         </h1>
         <p className="text-slate-600 text-sm max-w-3xl leading-relaxed">
-          Complete a structured profile evaluation to discover central and state government schemes you qualify for. Rules are grounded in published ministry guidelines without fabricating eligibility.
+          {t('eligibility.pageSubtitle')}
         </p>
       </div>
 
@@ -216,7 +218,7 @@ export default function CheckEligibilityPage() {
             onClick={() => setNotification(null)}
             className="text-slate-400 hover:text-white text-xs font-bold ml-4"
           >
-            Dismiss
+            {t('common.dismiss')}
           </button>
         </div>
       )}
@@ -239,10 +241,10 @@ export default function CheckEligibilityPage() {
         <div className="bg-slate-100/80 border border-slate-200 rounded-xl p-4 space-y-2.5">
           <div className="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider">
             <FlaskConical className="w-4 h-4 text-teal-700" />
-            <span>Test with Sample Citizen Profiles</span>
+            <span>{t('eligibility.testSampleProfiles')}</span>
           </div>
           <p className="text-xs text-slate-500">
-            Select a sample profile to instantly test form navigation, criteria validation, and the rule-matching engine:
+            {t('eligibility.testSampleSubtitle')}
           </p>
           <div className="flex flex-wrap items-center gap-2 pt-1">
             {SAMPLE_PROFILES.map((sample, idx) => (
@@ -320,7 +322,7 @@ export default function CheckEligibilityPage() {
               disabled={currentStep === 1}
               icon={ArrowLeft}
             >
-              Back
+              {t('common.back')}
             </Button>
 
             <div className="flex items-center gap-2">
@@ -332,7 +334,9 @@ export default function CheckEligibilityPage() {
                 icon={currentStep === 4 ? Sparkles : ArrowRight}
                 iconPosition="right"
               >
-                {currentStep === 4 ? 'Evaluate My Eligibility' : 'Continue'}
+                {currentStep === 4
+                  ? (language === 'hi' ? 'मेरी पात्रता की जांच करें' : 'Evaluate My Eligibility')
+                  : (language === 'hi' ? 'आगे बढ़ें' : 'Continue')}
               </Button>
             </div>
           </div>
@@ -356,7 +360,10 @@ export default function CheckEligibilityPage() {
       <div className="bg-slate-100/80 border border-slate-200 rounded-xl p-4 flex items-start gap-3 text-xs text-slate-600">
         <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
         <p>
-          <strong className="text-navy-900">Civic-Tech Transparency Notice:</strong> Sahayak AI provides preliminary criteria screening based on published central and state operational guidelines. Final entitlement determinations, biometric e-KYC, and disbursements occur exclusively via authenticated official government departments and designated portals.
+          <strong className="text-navy-900">{language === 'hi' ? 'नागरिक-तकनीकी पारदर्शिता सूचना:' : 'Civic-Tech Transparency Notice:'}</strong>{' '}
+          {language === 'hi'
+            ? 'सहायक AI प्रकाशित केंद्रीय और राज्य संचालन दिशानिर्देशों के आधार पर प्रारंभिक पात्रता जांच प्रदान करता है। अंतिम पात्रता निर्धारण, बायोमेट्रिक ई-केवाईसी और डीबीटी हस्तांतरण केवल आधिकारिक सरकारी विभागों और निर्दिष्ट पोर्टलों के माध्यम से होता है।'
+            : 'Sahayak AI provides preliminary criteria screening based on published central and state operational guidelines. Final entitlement determinations, biometric e-KYC, and disbursements occur exclusively via authenticated official government departments and designated portals.'}
         </p>
       </div>
     </div>

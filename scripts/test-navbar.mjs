@@ -22,7 +22,7 @@ if (hasMaxW7xl && hasVerticalCenter && hasStreamlinedHeight) {
 }
 
 // Test 2: Brand and Logo
-const hasCompactBrand = content.includes('Sahayak') && content.includes('Civic-Tech');
+const hasCompactBrand = (content.includes('brand.name') || content.includes('Sahayak')) && (content.includes('brand.badge') || content.includes('Civic-Tech'));
 const hasSubtitleResponsive = content.includes('hidden sm:block lg:hidden xl:block');
 const hasBrandNowrap = content.includes('whitespace-nowrap');
 if (hasCompactBrand && hasSubtitleResponsive && hasBrandNowrap) {
@@ -33,16 +33,16 @@ if (hasCompactBrand && hasSubtitleResponsive && hasBrandNowrap) {
 }
 
 // Test 3: Navigation Labels & No Text Wrapping
-const expectedLinks = [
-  'Home',
-  'Discover Schemes',
-  'Check Eligibility',
-  'AI Assistant',
-  'My Applications',
-  'About',
+const expectedKeysOrLinks = [
+  'nav.home',
+  'nav.discoverSchemes',
+  'nav.checkEligibility',
+  'nav.aiAssistant',
+  'nav.myApplications',
+  'nav.about',
 ];
 let linksFound = true;
-for (const l of expectedLinks) {
+for (const l of expectedKeysOrLinks) {
   if (!content.includes(l)) {
     linksFound = false;
     break;
@@ -57,8 +57,8 @@ if (linksFound && hasWhitespaceNowrap) {
 }
 
 // Test 4: Login and Sign Up Action Buttons
-const hasLoginBtn = content.includes('Log In');
-const hasSignUpBtn = content.includes('Sign Up');
+const hasLoginBtn = content.includes('nav.login') || content.includes('Log In');
+const hasSignUpBtn = content.includes('nav.signup') || content.includes('nav.signUp') || content.includes('Sign Up');
 const hasConsistentHeight = content.includes('h-9 inline-flex items-center');
 const hasPrimarySecondaryHierarchy = content.includes('bg-teal-600') && content.includes('hover:bg-slate-100');
 if (hasLoginBtn && hasSignUpBtn && hasConsistentHeight && hasPrimarySecondaryHierarchy) {
@@ -74,7 +74,7 @@ if (hasLoginBtn && hasSignUpBtn && hasConsistentHeight && hasPrimarySecondaryHie
 // Mobile (390px, 320px) -> unauthenticated top-bar buttons hidden (< sm), only brand + hamburger in top bar
 const hasLgDesktopNav = content.includes('hidden lg:flex');
 const hasMobileDrawer = content.includes('id="mobile-menu"');
-const hasMobileAuthDrawer = content.includes('Sign Up — Free Citizen Account');
+const hasMobileAuthDrawer = content.includes('nav.createAccount') || content.includes('nav.signUpFree') || content.includes('Sign Up — Free Citizen Account');
 const hasTabletTopBarAuth = content.includes('hidden sm:inline-flex items-center gap-2');
 if (hasLgDesktopNav && hasMobileDrawer && hasMobileAuthDrawer && hasTabletTopBarAuth) {
   console.log('✅ Test 5 Passed: Responsive breakpoints properly configured for 1440px, 1280px, 1024px, 768px, 390px, and 320px.');
@@ -96,3 +96,4 @@ if (hasEscapeHandler && hasAriaExpanded && hasAriaControls && hasLocationChangeC
 }
 
 console.log('\n🎉 ALL 6 NAVBAR TESTS PASSED SUCCESSFULLY!\n');
+

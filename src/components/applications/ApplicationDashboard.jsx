@@ -26,6 +26,7 @@ import {
   updateApplicationStatus,
   deleteApplicationRecord,
 } from '../../utils/applicationStorage';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function ApplicationDashboard({
   applications = [],
@@ -34,6 +35,7 @@ export default function ApplicationDashboard({
   onOpenEditModal,
   onNavigateToGuide,
 }) {
+  const { t, getStatusText, getCategoryText, language } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
 
@@ -105,11 +107,8 @@ export default function ApplicationDashboard({
   };
 
   const handleDelete = (schemeId, title) => {
-    if (
-      window.confirm(
-        `Are you sure you want to remove the application tracking record for "${title}"?`
-      )
-    ) {
+    const confirmMsg = t('applications.deleteConfirm', { title });
+    if (window.confirm(confirmMsg)) {
       deleteApplicationRecord(schemeId);
       if (onRefresh) onRefresh();
     }
@@ -141,7 +140,7 @@ export default function ApplicationDashboard({
                 selectedStatusFilter === item.label ? 'text-slate-300' : 'text-slate-500'
               }`}
             >
-              {item.label}
+              {getStatusText(item.label)}
             </span>
             <span
               className={`text-2xl sm:text-3xl font-extrabold mt-1.5 ${
@@ -160,10 +159,10 @@ export default function ApplicationDashboard({
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-amber-950 flex items-center gap-2">
               <Bell className="w-4 h-4 text-amber-600" />
-              <span>Upcoming & Actionable Reminders ({upcomingReminders.length})</span>
+              <span>{t('applications.upcomingReminders', { count: upcomingReminders.length })}</span>
             </h3>
             <span className="text-[11px] text-amber-800 font-medium hidden sm:inline">
-              Self-scheduled reminders to keep your civic applications moving
+              {t('applications.remindersSubtitle', 'Self-scheduled reminders to keep your civic applications moving')}
             </span>
           </div>
 
@@ -187,26 +186,26 @@ export default function ApplicationDashboard({
                           : 'bg-slate-100 text-slate-700'
                       }`}
                     >
-                      {rem.urgency === 'overdue' && 'Overdue: '}
-                      {rem.daysDiff === 0 && 'Due Today'}
-                      {rem.daysDiff === 1 && 'Due Tomorrow'}
-                      {rem.daysDiff > 1 && `In ${rem.daysDiff} days`}
-                      {rem.urgency === 'overdue' && `${Math.abs(rem.daysDiff)}d ago`}
+                      {rem.urgency === 'overdue' && t('applications.overdue', 'Overdue: ')}
+                      {rem.daysDiff === 0 && t('applications.dueToday', 'Due Today')}
+                      {rem.daysDiff === 1 && t('applications.dueTomorrow', 'Due Tomorrow')}
+                      {rem.daysDiff > 1 && t('applications.inDays', { days: rem.daysDiff })}
+                      {rem.urgency === 'overdue' && t('applications.daysAgo', { days: Math.abs(rem.daysDiff) })}
                     </span>
                   )}
                 </div>
 
                 <p className="text-xs text-slate-600 font-medium leading-relaxed">
-                  {rem.nextStepReminder || 'Next step review scheduled'}
+                  {rem.nextStepReminder || t('applications.nextStepScheduled', 'Next step review scheduled')}
                 </p>
 
                 <div className="pt-1 flex items-center justify-between text-[11px] text-slate-500">
-                  <span className="text-teal-700 font-medium">Status: {rem.status}</span>
+                  <span className="text-teal-700 font-medium">{t('applications.statusLabel', { status: getStatusText(rem.status) })}</span>
                   <button
                     onClick={() => onOpenEditModal(rem)}
                     className="text-navy-900 hover:text-teal-700 font-bold underline"
                   >
-                    Update Note
+                    {t('applications.updateNote', 'Update Note')}
                   </button>
                 </div>
               </div>
@@ -224,7 +223,7 @@ export default function ApplicationDashboard({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search tracked applications or notes..."
+            placeholder={t('applications.searchApplications', 'Search tracked applications or notes...')}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
@@ -238,10 +237,10 @@ export default function ApplicationDashboard({
               onChange={(e) => setSelectedStatusFilter(e.target.value)}
               className="px-3 py-2 rounded-xl border border-slate-300 bg-slate-50 text-xs font-semibold text-navy-900 focus:outline-none focus:ring-2 focus:ring-teal-500"
             >
-              <option value="All">All Statuses ({applications.length})</option>
+              <option value="All">{t('applications.allStatuses', { count: applications.length })}</option>
               {APPLICATION_STATUSES.map((st) => (
                 <option key={st} value={st}>
-                  {st} ({statusCounts[st] || 0})
+                  {getStatusText(st)} ({statusCounts[st] || 0})
                 </option>
               ))}
             </select>
@@ -252,7 +251,7 @@ export default function ApplicationDashboard({
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs shadow-sm transition-colors shrink-0"
           >
             <Plus className="w-4 h-4" />
-            <span>Track Application</span>
+            <span>{t('applications.trackApplication', 'Track Application')}</span>
           </button>
         </div>
       </div>
@@ -271,10 +270,10 @@ export default function ApplicationDashboard({
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 pb-3 border-b border-slate-100">
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant="teal">{app.schemeCategory}</Badge>
+                      <Badge variant="teal">{getCategoryText(app.schemeCategory)}</Badge>
                       <span className="text-[10px] bg-slate-100 text-slate-600 font-semibold px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1">
                         <ShieldCheck className="w-3 h-3 text-slate-400" />
-                        User Self-Tracked Record
+                        {t('applications.userSelfTracked', 'User Self-Tracked Record')}
                       </span>
                     </div>
                     <h3 className="text-base sm:text-lg font-bold text-navy-900 leading-snug">
@@ -284,7 +283,7 @@ export default function ApplicationDashboard({
 
                   {/* Inline Status Selector Dropdown */}
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-xs text-slate-500 font-medium">Status:</span>
+                    <span className="text-xs text-slate-500 font-medium">{t('applications.statusSelectLabel', 'Status')}:</span>
                     <select
                       value={app.status}
                       onChange={(e) => handleStatusChange(app.schemeId, e.target.value)}
@@ -292,7 +291,7 @@ export default function ApplicationDashboard({
                     >
                       {APPLICATION_STATUSES.map((st) => (
                         <option key={st} value={st}>
-                          {st}
+                          {getStatusText(st)}
                         </option>
                       ))}
                     </select>
@@ -305,16 +304,16 @@ export default function ApplicationDashboard({
                   <div className="space-y-2 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
                     <div className="flex items-center gap-1.5 text-slate-700 font-semibold">
                       <Calendar className="w-3.5 h-3.5 text-teal-600" />
-                      <span>Timeline Details:</span>
+                      <span>{t('applications.timelineDetails', 'Timeline Details:')}</span>
                     </div>
                     <div className="space-y-1 text-[11px]">
                       <div>
-                        <span className="text-slate-500">Application Date:</span>{' '}
-                        <strong className="text-navy-900">{app.appliedDate || 'Not set'}</strong>
+                        <span className="text-slate-500">{t('applications.applicationDate', 'Application Date:')}</span>{' '}
+                        <strong className="text-navy-900">{app.appliedDate || t('applications.notSet', 'Not set')}</strong>
                       </div>
                       {app.reminderDate && (
                         <div>
-                          <span className="text-slate-500">Reminder Target:</span>{' '}
+                          <span className="text-slate-500">{t('applications.reminderTarget', 'Reminder Target:')}</span>{' '}
                           <strong className="text-amber-800">{app.reminderDate}</strong>
                         </div>
                       )}
@@ -328,14 +327,14 @@ export default function ApplicationDashboard({
                         <div className="mb-2 p-2 bg-amber-50 rounded-lg border border-amber-200 text-amber-900 text-xs flex items-start gap-1.5">
                           <Bell className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
                           <span>
-                            <strong>Next Step:</strong> {app.nextStepReminder}
+                            <strong>{t('applications.nextStep', 'Next Step:')}</strong> {app.nextStepReminder}
                           </span>
                         </div>
                       )}
                       <div>
-                        <span className="font-semibold text-slate-700">Personal Notes:</span>
+                        <span className="font-semibold text-slate-700">{t('applications.personalNotes', 'Personal Notes:')}</span>
                         <p className="text-slate-600 mt-0.5 leading-relaxed italic">
-                          {app.personalNotes ? `"${app.personalNotes}"` : 'No notes entered yet.'}
+                          {app.personalNotes ? `"${app.personalNotes}"` : t('applications.noNotesEntered', 'No notes entered yet.')}
                         </p>
                       </div>
                     </div>
@@ -345,7 +344,10 @@ export default function ApplicationDashboard({
                       <div className="pt-2 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-teal-800 font-medium">
                         <span className="flex items-center gap-1">
                           <FileCheck2 className="w-3.5 h-3.5 text-teal-600" />
-                          Document Readiness: {app.checklistProgress.completed} of {app.checklistProgress.total} documents ready
+                          {t('applications.documentReadiness', {
+                            completed: app.checklistProgress.completed,
+                            total: app.checklistProgress.total,
+                          })}
                         </span>
                         <span className="font-bold">
                           {Math.round((app.checklistProgress.completed / app.checklistProgress.total) * 100)}%
@@ -364,7 +366,7 @@ export default function ApplicationDashboard({
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-900 text-xs font-bold transition-colors border border-teal-200"
                     >
                       <Layers className="w-3.5 h-3.5 text-teal-700" />
-                      <span>Prepare Documents & Guide</span>
+                      <span>{t('applications.prepareDocsGuide', 'Prepare Documents & Guide')}</span>
                     </button>
 
                     {/* Edit Record Notes Modal */}
@@ -373,7 +375,7 @@ export default function ApplicationDashboard({
                       className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 text-xs font-semibold transition-colors border border-slate-200"
                     >
                       <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                      <span>Edit Notes</span>
+                      <span>{t('applications.editNotes', 'Edit Notes')}</span>
                     </button>
                   </div>
 
@@ -385,7 +387,7 @@ export default function ApplicationDashboard({
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs font-semibold text-teal-700 hover:text-teal-900 underline"
                     >
-                      <span>Official Portal</span>
+                      <span>{t('common.officialPortal', 'Official Portal')}</span>
                       <ExternalLink className="w-3 h-3" />
                     </a>
 
@@ -393,8 +395,8 @@ export default function ApplicationDashboard({
                     <button
                       onClick={() => handleDelete(app.schemeId, app.schemeTitle)}
                       className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                      title="Delete application record"
-                      aria-label="Delete application record"
+                      title={t('applications.deleteRecord', 'Delete application record')}
+                      aria-label={t('applications.deleteRecord', 'Delete application record')}
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -408,13 +410,13 @@ export default function ApplicationDashboard({
             <FileText className="w-12 h-12 text-slate-300 mx-auto" />
             <h3 className="font-bold text-navy-900 text-lg">
               {searchQuery || selectedStatusFilter !== 'All'
-                ? 'No matching application records'
-                : 'No applications tracked yet'}
+                ? t('applications.noMatchingRecords', 'No matching application records')
+                : t('applications.noRecordsTitle', 'No applications tracked yet')}
             </h3>
             <p className="text-xs text-slate-500 leading-relaxed">
               {searchQuery || selectedStatusFilter !== 'All'
-                ? 'Try adjusting your search query or status filter.'
-                : 'Track schemes you are applying for, set next-step reminders, and organize your document progress.'}
+                ? t('applications.tryAdjustingFilter', 'Try adjusting your search query or status filter.')
+                : t('applications.noRecordsSubtitle', 'Track schemes you are applying for, set next-step reminders, and organize your document progress.')}
             </p>
             {searchQuery || selectedStatusFilter !== 'All' ? (
               <button
@@ -424,7 +426,7 @@ export default function ApplicationDashboard({
                 }}
                 className="px-4 py-2 rounded-xl bg-navy-800 text-white text-xs font-bold"
               >
-                Clear Filters
+                {t('applications.clearFilters', 'Clear Filters')}
               </button>
             ) : (
               <button
@@ -432,7 +434,7 @@ export default function ApplicationDashboard({
                 className="px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold inline-flex items-center gap-1.5 shadow-sm"
               >
                 <Plus className="w-4 h-4" />
-                <span>Track Your First Scheme</span>
+                <span>{t('applications.trackFirstScheme', 'Track Your First Scheme')}</span>
               </button>
             )}
           </div>

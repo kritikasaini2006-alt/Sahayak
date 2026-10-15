@@ -10,10 +10,30 @@ import {
 } from 'lucide-react';
 import Badge from '../components/common/Badge';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { useTranslation } from '../context/LanguageContext';
 
 export default function AboutPage() {
-  useDocumentTitle('About & Mission');
-  const faqs = [
+  const { t, language } = useTranslation();
+  useDocumentTitle(t('about.pageTitle'));
+
+  const faqs = language === 'hi' ? [
+    {
+      q: 'क्या सहायक AI भारत सरकार का आधिकारिक पोर्टल है?',
+      a: 'नहीं। सहायक AI एक स्वतंत्र, गैर-सरकारी नागरिक-तकनीकी (Civic-Tech) पहल है। हम भारत सरकार या किसी भी राज्य सरकार से संबद्ध या अधिकृत नहीं हैं। हमारा मंच सार्वजनिक रूप से उपलब्ध नीतियों और नियमों को सरल भाषा में नागरिकों तक पहुँचाता है।',
+    },
+    {
+      q: 'क्या मैं सहायक AI पर सीधे योजना के लिए आवेदन जमा कर सकता हूँ?',
+      a: 'नहीं। पूर्ण पारदर्शिता सुनिश्चित करने और किसी भी धोखाधड़ी को रोकने के लिए, आवेदन केवल आधिकारिक सरकारी पोर्टलों (जैसे pmkisan.gov.in, pmjay.gov.in) या अधिकृत जन सेवा केंद्रों (CSCs) और जिला कार्यालयों के माध्यम से ही जमा किए जाने चाहिए।',
+    },
+    {
+      q: 'क्या सहायक AI योजनाओं की जानकारी के लिए कोई शुल्क लेता है?',
+      a: 'कभी नहीं। सहायक AI पूरी तरह से निःशुल्क है। हम कोई शुल्क नहीं लेते, न ही कोई सशुल्क सदस्यता मांगते हैं।',
+    },
+    {
+      q: 'योजनाओं का डेटा कहाँ से आता है?',
+      a: 'सभी योजना पात्रता शर्तें, वित्तीय लाभ और दस्तावेज़ चेकलिस्ट आधिकारिक सार्वजनिक स्रोतों, भारत के राष्ट्रीय पोर्टल (india.gov.in), myScheme (myscheme.gov.in), और मंत्रालयों के आधिकारिक राजपत्रों से लिए गए हैं।',
+    },
+  ] : [
     {
       q: 'Is Sahayak AI an official portal of the Government of India?',
       a: 'No. Sahayak AI is an independent, non-governmental civic-tech initiative. We are not affiliated with, authorized by, or endorsed by the Government of India or any state government. Our platform synthesizes publicly available policy guidelines to help citizens understand and locate benefits.',
@@ -37,14 +57,14 @@ export default function AboutPage() {
       {/* Page Header */}
       <div className="border-b border-slate-200 pb-5 space-y-2 text-center sm:text-left">
         <div className="flex items-center justify-center sm:justify-start gap-2">
-          <Badge variant="teal">Civic Technology Initiative</Badge>
-          <span className="text-xs text-slate-500 font-medium">Open Welfare Access</span>
+          <Badge variant="teal">{t('about.badge')}</Badge>
+          <span className="text-xs text-slate-500 font-medium">{t('about.openAccess')}</span>
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold text-navy-900 tracking-tight">
-          About Sahayak AI
+          {t('about.pageTitle')}
         </h1>
         <p className="text-slate-600 text-sm sm:text-base max-w-3xl leading-relaxed">
-          Bridging the gap between India's vast public welfare programs and the citizens who need them most through transparent, accessible technology.
+          {t('about.pageSubtitle')}
         </p>
       </div>
 
@@ -52,10 +72,10 @@ export default function AboutPage() {
       <div className="bg-amber-50/90 border border-amber-200 rounded-2xl p-5 sm:p-6 space-y-2.5">
         <div className="flex items-center gap-2 text-amber-900 font-bold text-base">
           <ShieldAlert className="w-5 h-5 text-amber-700 shrink-0" />
-          <span>Official Transparency & Non-Affiliation Notice</span>
+          <span>{t('about.noticeTitle')}</span>
         </div>
         <p className="text-xs md:text-sm text-amber-950/90 leading-relaxed">
-          Sahayak AI is an educational and technological demonstration project. It is <strong>NOT</strong> an official government agency, portal, or representative. We do not claim any partnership with the Government of India or any state government. Official scheme regulations, beneficiary selections, and DBT disbursements remain the exclusive purview of the respective administrative ministries.
+          {t('about.noticeText')}
         </p>
       </div>
 
@@ -65,9 +85,9 @@ export default function AboutPage() {
           <div className="w-10 h-10 rounded-xl bg-navy-50 text-navy-900 flex items-center justify-center">
             <Target className="w-5 h-5" />
           </div>
-          <h2 className="text-lg sm:text-xl font-bold text-navy-900">The Challenge</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-navy-900">{t('about.challengeTitle')}</h2>
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-            India runs hundreds of central and state welfare initiatives allocating billions of rupees. However, marginalized households, rural families, and informal laborers frequently miss out due to complex jargon, fragmented portals, lack of document clarity, or reliance on unauthorized middlemen.
+            {t('about.challengeText')}
           </p>
         </div>
 
@@ -75,44 +95,44 @@ export default function AboutPage() {
           <div className="w-10 h-10 rounded-xl bg-teal-50 text-teal-800 flex items-center justify-center">
             <Sparkles className="w-5 h-5" />
           </div>
-          <h2 className="text-lg sm:text-xl font-bold text-navy-900">Our Civic Mission</h2>
+          <h2 className="text-lg sm:text-xl font-bold text-navy-900">{t('about.missionTitle')}</h2>
           <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-            Sahayak AI reimagines welfare discovery. We translate multi-page government gazettes into clear eligibility questions, document readiness checklists, and conversational guidance, empowering citizens to apply with confidence on official platforms.
+            {t('about.missionText')}
           </p>
         </div>
       </div>
 
       {/* Core Principles */}
       <div className="space-y-6">
-        <h2 className="text-xl font-bold text-navy-900">Our Core Principles</h2>
+        <h2 className="text-xl font-bold text-navy-900">{t('about.principlesTitle')}</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-2">
             <div className="text-teal-600 font-bold text-sm flex items-center gap-1.5">
               <CheckCircle className="w-4 h-4" />
-              Grounded in Fact
+              {t('about.p1Title')}
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Every scheme rule and criterion is sourced directly from publicly accessible government notifications and gazettes.
+              {t('about.p1Desc')}
             </p>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-2">
             <div className="text-teal-600 font-bold text-sm flex items-center gap-1.5">
               <Users className="w-4 h-4" />
-              Zero Middlemen
+              {t('about.p2Title')}
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Direct guidance pointing to official government offices, Common Service Centres (CSCs), and authenticated `.gov.in` sites.
+              {t('about.p2Desc')}
             </p>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-slate-200 space-y-2">
             <div className="text-teal-600 font-bold text-sm flex items-center gap-1.5">
               <HeartHandshake className="w-4 h-4" />
-              Citizen Privacy
+              {t('about.p3Title')}
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">
-              Preliminary screening requires no account or sensitive personal data storage.
+              {t('about.p3Desc')}
             </p>
           </div>
         </div>
@@ -122,7 +142,7 @@ export default function AboutPage() {
       <div className="space-y-6">
         <h2 className="text-xl font-bold text-navy-900 flex items-center gap-2">
           <HelpCircle className="w-5 h-5 text-teal-600" />
-          Frequently Asked Questions
+          {t('about.faqsTitle')}
         </h2>
 
         <div className="space-y-4">
@@ -137,22 +157,24 @@ export default function AboutPage() {
 
       {/* Official Directory References */}
       <div className="bg-slate-100 rounded-2xl p-6 space-y-3">
-        <h3 className="font-bold text-navy-900 text-sm">Key Official Government Portals for Reference</h3>
+        <h3 className="font-bold text-navy-900 text-sm">
+          {language === 'hi' ? 'महत्वपूर्ण आधिकारिक सरकारी पोर्टल संदर्भ' : 'Key Official Government Portals for Reference'}
+        </h3>
         <ul className="text-xs text-slate-600 space-y-2">
           <li>
-            • <strong>National Portal of India:</strong>{' '}
+            • <strong>{language === 'hi' ? 'भारत का राष्ट्रीय पोर्टल:' : 'National Portal of India:'}</strong>{' '}
             <a href="https://www.india.gov.in" target="_blank" rel="noopener noreferrer" className="text-teal-700 underline">
               india.gov.in
             </a>
           </li>
           <li>
-            • <strong>myScheme Central Welfare Portal:</strong>{' '}
+            • <strong>{language === 'hi' ? 'myScheme केंद्रीय कल्याण पोर्टल:' : 'myScheme Central Welfare Portal:'}</strong>{' '}
             <a href="https://www.myscheme.gov.in" target="_blank" rel="noopener noreferrer" className="text-teal-700 underline">
               myscheme.gov.in
             </a>
           </li>
           <li>
-            • <strong>Direct Benefit Transfer (DBT) Bharat:</strong>{' '}
+            • <strong>{language === 'hi' ? 'प्रत्यक्ष लाभ अंतरण (DBT) भारत:' : 'Direct Benefit Transfer (DBT) Bharat:'}</strong>{' '}
             <a href="https://dbtbharat.gov.in" target="_blank" rel="noopener noreferrer" className="text-teal-700 underline">
               dbtbharat.gov.in
             </a>

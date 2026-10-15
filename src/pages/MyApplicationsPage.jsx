@@ -45,9 +45,11 @@ import {
   safeJsonParse,
 } from '../utils/applicationStorage';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { useTranslation } from '../context/LanguageContext';
 
 export default function MyApplicationsPage() {
-  useDocumentTitle('My Applications & Saved Schemes');
+  const { t, language } = useTranslation();
+  useDocumentTitle(language === 'hi' ? 'मेरे आवेदन एवं सहेजी गई योजनाएं' : 'My Applications & Saved Schemes');
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
 
@@ -242,19 +244,19 @@ export default function MyApplicationsPage() {
       <div className="border-b border-slate-200 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-4 print:hidden">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant="teal">Citizen Workspace</Badge>
+            <Badge variant="teal">{t('applications.workspaceBadge')}</Badge>
             {user && (
               <span className="text-xs bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full font-medium border border-slate-200">
-                Account: {user.email}
+                {language === 'hi' ? 'खाता:' : 'Account:'} {user.email}
               </span>
             )}
-            <span className="text-xs text-slate-500 font-medium">Personal Readiness & Guidance Center</span>
+            <span className="text-xs text-slate-500 font-medium">{t('applications.personalReadiness')}</span>
           </div>
           <h1 className="text-2xl sm:text-4xl font-extrabold text-navy-900 tracking-tight">
-            My Applications & Saved Schemes
+            {t('applications.pageTitle')}
           </h1>
           <p className="text-slate-600 text-sm max-w-3xl leading-relaxed">
-            Manage your personal welfare application pipeline, keep track of saved schemes, prepare required documents, and set next-step reminders.
+            {t('applications.pageSubtitle')}
           </p>
         </div>
 
@@ -264,20 +266,20 @@ export default function MyApplicationsPage() {
           <button
             onClick={handleExport}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-semibold shadow-2xs hover:bg-slate-50 transition-colors"
-            title="Download workspace data as JSON"
+            title={t('applications.exportBackup')}
           >
             <Download className="w-3.5 h-3.5 text-teal-600" />
-            <span>Export JSON</span>
+            <span>{t('applications.exportBackup')}</span>
           </button>
 
           {/* Import JSON */}
           <button
             onClick={() => fileInputRef.current?.click()}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs font-semibold shadow-2xs hover:bg-slate-50 transition-colors"
-            title="Import workspace data from JSON file"
+            title={t('applications.importBackup')}
           >
             <Upload className="w-3.5 h-3.5 text-navy-600" />
-            <span>Import JSON</span>
+            <span>{t('applications.importBackup')}</span>
           </button>
           <input
             ref={fileInputRef}
@@ -291,10 +293,10 @@ export default function MyApplicationsPage() {
           <button
             onClick={handleClearAllData}
             className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 hover:border-rose-300 hover:bg-rose-50 text-slate-600 hover:text-rose-700 text-xs font-semibold shadow-2xs transition-colors"
-            title="Clear all workspace data"
+            title={t('applications.clearAllData')}
           >
             <Trash2 className="w-3.5 h-3.5" />
-            <span>Clear All</span>
+            <span>{t('schemes.clearAll')}</span>
           </button>
         </div>
       </div>
@@ -327,7 +329,10 @@ export default function MyApplicationsPage() {
       <div className="bg-slate-100 border border-slate-200/80 rounded-xl p-3.5 flex items-start gap-3 text-xs text-slate-600 print:hidden">
         <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
         <p>
-          <strong className="text-navy-900">User Self-Managed Tracking:</strong> All application records, statuses, and notes in this dashboard are maintained entirely by you for your personal planning. Sahayak AI does not connect to internal government processing systems or infer official approval. Official applications must be completed on verified government portals.
+          <strong className="text-navy-900">{language === 'hi' ? 'नागरिक स्व-प्रबंधित ट्रैकिंग:' : 'User Self-Managed Tracking:'}</strong>{' '}
+          {language === 'hi'
+            ? 'इस डैशबोर्ड में सभी आवेदन रिकॉर्ड, स्थितियां और नोट्स पूरी तरह से आपकी व्यक्तिगत योजना के लिए आपके द्वारा प्रबंधित हैं। सहायक AI सरकारी आंतरिक प्रणालियों से जुड़ा नहीं है। आधिकारिक आवेदन सत्यापित सरकारी पोर्टलों पर ही किए जाने चाहिए।'
+            : 'All application records, statuses, and notes in this dashboard are maintained entirely by you for your personal planning. Sahayak AI does not connect to internal government processing systems or infer official approval. Official applications must be completed on verified government portals.'}
         </p>
       </div>
 
@@ -340,14 +345,14 @@ export default function MyApplicationsPage() {
             <div className="flex items-center gap-2.5">
               <span className="w-2 h-2 rounded-full bg-teal-600 shrink-0" />
               <span className="text-teal-900 font-medium">
-                Active Profile: <strong className="font-bold text-navy-900">{stored.age} yrs</strong> • {stored.occupation?.replace('_', ' ')} • {stored.state} ({stored.areaType})
+                {t('schemes.connectedProfile')} <strong className="font-bold text-navy-900">{stored.age} yrs</strong> • {stored.occupation?.replace('_', ' ')} • {stored.state} ({stored.areaType})
               </span>
             </div>
             <Link
               to="/eligibility"
               className="text-teal-700 hover:text-teal-900 font-bold underline shrink-0"
             >
-              Check Scheme Eligibility →
+              {language === 'hi' ? 'योजना पात्रता जांचें →' : 'Check Scheme Eligibility →'}
             </Link>
           </div>
         );
@@ -365,7 +370,7 @@ export default function MyApplicationsPage() {
           }`}
         >
           <FolderCheck className="w-4 h-4" />
-          <span>My Applications ({applications.length})</span>
+          <span>{t('applications.tabApplications')} ({applications.length})</span>
         </button>
 
         {/* Tab 2: Saved Schemes */}
@@ -378,7 +383,7 @@ export default function MyApplicationsPage() {
           }`}
         >
           <Bookmark className="w-4 h-4" />
-          <span>Saved Schemes ({savedIds.length})</span>
+          <span>{t('applications.tabSaved')} ({savedIds.length})</span>
         </button>
 
         {/* Tab 3: Scheme Guidance & Checklist */}
@@ -391,7 +396,7 @@ export default function MyApplicationsPage() {
           }`}
         >
           <Layers className="w-4 h-4" />
-          <span>Scheme Checklist & Guide</span>
+          <span>{t('applications.tabGuide')}</span>
         </button>
 
         {/* Tab 4: General Document Wallet */}
@@ -404,7 +409,7 @@ export default function MyApplicationsPage() {
           }`}
         >
           <FileCheck2 className="w-4 h-4" />
-          <span>General Document Wallet ({readinessPercentage}%)</span>
+          <span>{t('applications.tabDocs')} ({readinessPercentage}%)</span>
         </button>
       </div>
 

@@ -16,6 +16,7 @@ import Badge from '../common/Badge';
 import Button from '../common/Button';
 import { MOCK_SCHEMES, SCHEME_CATEGORIES } from '../../data/mockSchemes';
 import { removeSavedSchemeId, isSchemeSaved } from '../../utils/applicationStorage';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function SavedSchemesList({
   savedIds = [],
@@ -24,6 +25,7 @@ export default function SavedSchemesList({
   onTrackScheme,
   onNavigateToGuide,
 }) {
+  const { t, getSchemeText, getCategoryText } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
 
@@ -38,14 +40,18 @@ export default function SavedSchemesList({
       const matchesCategory =
         selectedCategory === 'All Categories' || scheme.category === selectedCategory;
       const q = searchQuery.toLowerCase().trim();
+      const localizedTitle = getSchemeText(scheme, 'title') || scheme.title;
+      const localizedDesc = getSchemeText(scheme, 'shortDescription') || scheme.shortDescription;
       const matchesQuery =
         !q ||
         scheme.title.toLowerCase().includes(q) ||
+        localizedTitle.toLowerCase().includes(q) ||
         scheme.shortDescription.toLowerCase().includes(q) ||
+        localizedDesc.toLowerCase().includes(q) ||
         scheme.ministry.toLowerCase().includes(q);
       return matchesCategory && matchesQuery;
     });
-  }, [savedSchemes, searchQuery, selectedCategory]);
+  }, [savedSchemes, searchQuery, selectedCategory, getSchemeText]);
 
   const handleRemove = (schemeId) => {
     removeSavedSchemeId(schemeId);
@@ -63,7 +69,7 @@ export default function SavedSchemesList({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search saved schemes..."
+            placeholder={t('schemes.searchPlaceholder', 'Search saved schemes...')}
             className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
@@ -77,7 +83,7 @@ export default function SavedSchemesList({
           >
             {SCHEME_CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>
-                {cat}
+                {getCategoryText(cat)}
               </option>
             ))}
           </select>
@@ -87,7 +93,7 @@ export default function SavedSchemesList({
             className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 hover:border-teal-400 bg-white hover:bg-teal-50/50 text-navy-900 text-xs font-bold transition-colors shrink-0"
           >
             <Compass className="w-4 h-4 text-teal-600" />
-            <span>Discover More</span>
+            <span>{t('applications.discoverMore', 'Discover More')}</span>
           </Link>
         </div>
       </div>
@@ -95,93 +101,100 @@ export default function SavedSchemesList({
       {/* Saved Schemes Grid */}
       {filteredSchemes.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredSchemes.map((scheme) => (
-            <div
-              key={scheme.id}
-              className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4 flex flex-col justify-between hover:border-slate-300 transition-all group"
-            >
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <Badge variant="teal">{scheme.category}</Badge>
-                  <button
-                    onClick={() => handleRemove(scheme.id)}
-                    className="text-xs text-slate-400 hover:text-rose-600 transition-colors font-medium flex items-center gap-1 p-1 rounded hover:bg-rose-50"
-                    title="Remove from saved schemes"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Remove</span>
-                  </button>
+          {filteredSchemes.map((scheme) => {
+            const title = getSchemeText(scheme, 'title') || scheme.title;
+            const category = getCategoryText(scheme.category);
+            const desc = getSchemeText(scheme, 'shortDescription') || scheme.shortDescription;
+            const benefit = getSchemeText(scheme, 'financialBenefit') || scheme.financialBenefit;
+
+            return (
+              <div
+                key={scheme.id}
+                className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4 flex flex-col justify-between hover:border-slate-300 transition-all group"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <Badge variant="teal">{category}</Badge>
+                    <button
+                      onClick={() => handleRemove(scheme.id)}
+                      className="text-xs text-slate-400 hover:text-rose-600 transition-colors font-medium flex items-center gap-1 p-1 rounded hover:bg-rose-50"
+                      title={t('applications.removeFromSaved', 'Remove from saved schemes')}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{t('applications.remove', 'Remove')}</span>
+                    </button>
+                  </div>
+
+                  <h3 className="font-bold text-base text-navy-900 leading-snug group-hover:text-teal-900 transition-colors">
+                    {title}
+                  </h3>
+                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                    {desc}
+                  </p>
+
+                  <div className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                    <span className="font-semibold text-slate-700">{t('schemes.primaryBenefit', 'Financial Benefit:')}</span>{' '}
+                    <span className="text-navy-900 font-bold block mt-0.5">{benefit}</span>
+                  </div>
                 </div>
 
-                <h3 className="font-bold text-base text-navy-900 leading-snug group-hover:text-teal-900 transition-colors">
-                  {scheme.title}
-                </h3>
-                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                  {scheme.shortDescription}
-                </p>
+                {/* Actions */}
+                <div className="pt-3 border-t border-slate-100 space-y-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    {/* Track Application Button */}
+                    <button
+                      onClick={() => onTrackScheme(scheme.id)}
+                      className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-navy-800 hover:bg-navy-900 text-white text-xs font-bold transition-colors shadow-2xs"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>{t('applications.trackStatus', 'Track Status')}</span>
+                    </button>
 
-                <div className="text-xs bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                  <span className="font-semibold text-slate-700">Financial Benefit:</span>{' '}
-                  <span className="text-navy-900 font-bold block mt-0.5">{scheme.financialBenefit}</span>
+                    {/* Prepare Guide Button */}
+                    <button
+                      onClick={() => onNavigateToGuide(scheme.id)}
+                      className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-900 text-xs font-bold transition-colors border border-teal-200/80"
+                    >
+                      <Layers className="w-3.5 h-3.5 text-teal-700" />
+                      <span>{t('applications.checklist', 'Checklist')}</span>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[11px] pt-1">
+                    <button
+                      onClick={() => onOpenDetails(scheme)}
+                      className="text-navy-900 hover:text-teal-700 font-bold underline"
+                    >
+                      {t('applications.viewFullDetails', 'View Full Details')}
+                    </button>
+
+                    <a
+                      href={scheme.officialPortal}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 font-semibold text-teal-700 hover:text-teal-900 underline"
+                    >
+                      {t('common.officialPortal', 'Official Portal')}
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
                 </div>
               </div>
-
-              {/* Actions */}
-              <div className="pt-3 border-t border-slate-100 space-y-2">
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Track Application Button */}
-                  <button
-                    onClick={() => onTrackScheme(scheme.id)}
-                    className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-navy-800 hover:bg-navy-900 text-white text-xs font-bold transition-colors shadow-2xs"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Track Status</span>
-                  </button>
-
-                  {/* Prepare Guide Button */}
-                  <button
-                    onClick={() => onNavigateToGuide(scheme.id)}
-                    className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-900 text-xs font-bold transition-colors border border-teal-200/80"
-                  >
-                    <Layers className="w-3.5 h-3.5 text-teal-700" />
-                    <span>Checklist</span>
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between text-[11px] pt-1">
-                  <button
-                    onClick={() => onOpenDetails(scheme)}
-                    className="text-navy-900 hover:text-teal-700 font-bold underline"
-                  >
-                    View Full Details
-                  </button>
-
-                  <a
-                    href={scheme.officialPortal}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 font-semibold text-teal-700 hover:text-teal-900 underline"
-                  >
-                    Official Portal
-                    <ExternalLink className="w-3 h-3" />
-                  </a>
-                </div>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-4 max-w-md mx-auto">
           <Bookmark className="w-12 h-12 text-slate-300 mx-auto" />
           <h3 className="font-bold text-navy-900 text-lg">
             {searchQuery || selectedCategory !== 'All Categories'
-              ? 'No matching saved schemes'
-              : 'No saved schemes yet'}
+              ? t('applications.noMatchingSaved', 'No matching saved schemes')
+              : t('applications.noSavedTitle', 'No saved schemes yet')}
           </h3>
           <p className="text-xs text-slate-500 leading-relaxed">
             {searchQuery || selectedCategory !== 'All Categories'
-              ? 'Try clearing your search query or changing category.'
-              : 'Bookmark schemes from the directory to track your application readiness and keep official portal links handy.'}
+              ? t('applications.tryClearingSearch', 'Try clearing your search query or changing category.')
+              : t('applications.noSavedSubtitle', 'Bookmark schemes from the directory to track your application readiness and keep official portal links handy.')}
           </p>
           {searchQuery || selectedCategory !== 'All Categories' ? (
             <button
@@ -191,12 +204,12 @@ export default function SavedSchemesList({
               }}
               className="px-4 py-2 rounded-xl bg-navy-800 text-white text-xs font-bold"
             >
-              Clear Filters
+              {t('applications.clearFilters', 'Clear Filters')}
             </button>
           ) : (
             <Link to="/schemes">
               <Button variant="teal" size="sm" icon={Compass}>
-                Explore Schemes Directory
+                {t('applications.exploreSchemesDir', 'Explore Schemes Directory')}
               </Button>
             </Link>
           )}

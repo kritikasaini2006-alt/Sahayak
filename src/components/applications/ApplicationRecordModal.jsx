@@ -15,6 +15,7 @@ import {
 } from '../../utils/applicationStorage';
 import { MOCK_SCHEMES } from '../../data/mockSchemes';
 import { loadSchemeChecklistProgress, SCHEME_GUIDANCE } from '../../data/schemeGuidance';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function ApplicationRecordModal({
   isOpen,
@@ -23,6 +24,7 @@ export default function ApplicationRecordModal({
   existingRecord = null,
   onSaveSuccess,
 }) {
+  const { t, getSchemeText, getCategoryText, getStatusText } = useTranslation();
   const [selectedSchemeId, setSelectedSchemeId] = useState(
     existingRecord?.schemeId || initialSchemeId || 'pm-kisan'
   );
@@ -69,7 +71,7 @@ export default function ApplicationRecordModal({
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!selectedSchemeId) {
-      setErrorMsg('Please select a government scheme to track.');
+      setErrorMsg(t('applications.selectGovtSchemeErr', 'Please select a government scheme to track.'));
       return;
     }
 
@@ -96,7 +98,7 @@ export default function ApplicationRecordModal({
       if (onSaveSuccess) onSaveSuccess(saved);
       onClose();
     } else {
-      setErrorMsg('Failed to save record. Please check your storage settings.');
+      setErrorMsg(t('applications.saveFailedErr', 'Failed to save record. Please check your storage settings.'));
     }
   };
 
@@ -112,20 +114,20 @@ export default function ApplicationRecordModal({
         <div className="bg-navy-900 text-white p-5 sm:p-6 flex items-start justify-between gap-4">
           <div className="space-y-1 max-w-lg">
             <span className="text-[10px] bg-teal-900/60 text-teal-200 border border-teal-500/40 font-semibold px-2 py-0.5 rounded tracking-wider uppercase">
-              Citizen Workspace Tracker
+              {t('applications.citizenWorkspaceTracker', 'Citizen Workspace Tracker')}
             </span>
             <h2 id="app-modal-title" className="text-lg sm:text-xl font-bold tracking-tight text-white">
-              {existingRecord ? 'Update Application Record' : 'Track New Scheme Application'}
+              {existingRecord ? t('applications.editModalTitle', 'Update Application Record') : t('applications.addModalTitle', 'Track New Scheme Application')}
             </h2>
             <p className="text-xs text-slate-300">
-              User-managed preparation tracker • Not an official government submission
+              {t('applications.notOfficialSubmission', 'User-managed preparation tracker • Not an official government submission')}
             </p>
           </div>
 
           <button
             onClick={onClose}
             className="p-2 rounded-xl bg-navy-800 hover:bg-navy-700 text-slate-300 hover:text-white transition-colors"
-            aria-label="Close modal"
+            aria-label={t('common.close', 'Close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -143,12 +145,12 @@ export default function ApplicationRecordModal({
           {/* Scheme Selection (Disabled if editing existing record) */}
           <div className="space-y-1.5">
             <label htmlFor="modal-scheme" className="text-xs font-bold text-navy-900 uppercase tracking-wider block">
-              Government Scheme *
+              {t('applications.govtSchemeReq', 'Government Scheme *')}
             </label>
             {existingRecord ? (
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 font-semibold text-navy-900 text-sm flex items-center justify-between">
-                <span>{currentScheme.title}</span>
-                <span className="text-xs text-teal-700 font-normal">{currentScheme.category}</span>
+                <span>{getSchemeText(currentScheme, 'title') || currentScheme.title}</span>
+                <span className="text-xs text-teal-700 font-normal">{getCategoryText(currentScheme.category)}</span>
               </div>
             ) : (
               <select
@@ -159,7 +161,7 @@ export default function ApplicationRecordModal({
               >
                 {MOCK_SCHEMES.map((s) => (
                   <option key={s.id} value={s.id}>
-                    {s.title} ({s.category})
+                    {getSchemeText(s, 'title') || s.title} ({getCategoryText(s.category)})
                   </option>
                 ))}
               </select>
@@ -169,7 +171,7 @@ export default function ApplicationRecordModal({
           {/* Status Selection */}
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-navy-900 uppercase tracking-wider block">
-              User-Controlled Application Status *
+              {t('applications.userControlledStatus', 'User-Controlled Application Status *')}
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {APPLICATION_STATUSES.map((st) => (
@@ -183,12 +185,12 @@ export default function ApplicationRecordModal({
                       : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
                   }`}
                 >
-                  {st}
+                  {getStatusText(st)}
                 </button>
               ))}
             </div>
             <p className="text-[11px] text-slate-500 italic">
-              Status is managed entirely by you to organize your personal readiness.
+              {t('applications.statusManagedByYou', 'Status is managed entirely by you to organize your personal readiness.')}
             </p>
           </div>
 
@@ -197,7 +199,7 @@ export default function ApplicationRecordModal({
             <div className="space-y-1.5">
               <label htmlFor="applied-date" className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-teal-600" />
-                <span>Application / Planned Date (Optional)</span>
+                <span>{t('applications.appPlannedDate', 'Application / Planned Date (Optional)')}</span>
               </label>
               <input
                 id="applied-date"
@@ -211,7 +213,7 @@ export default function ApplicationRecordModal({
             <div className="space-y-1.5">
               <label htmlFor="reminder-date" className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                 <Bell className="w-3.5 h-3.5 text-amber-600" />
-                <span>Next Step Due Date (Optional)</span>
+                <span>{t('applications.nextStepDueDate', 'Next Step Due Date (Optional)')}</span>
               </label>
               <input
                 id="reminder-date"
@@ -227,14 +229,14 @@ export default function ApplicationRecordModal({
           <div className="space-y-1.5">
             <label htmlFor="next-step" className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <Bell className="w-3.5 h-3.5 text-teal-600" />
-              <span>Next Action Step or Reminder (Optional)</span>
+              <span>{t('applications.nextActionStep', 'Next Action Step or Reminder (Optional)')}</span>
             </label>
             <input
               id="next-step"
               type="text"
               value={nextStepReminder}
               onChange={(e) => setNextStepReminder(e.target.value)}
-              placeholder="e.g. Visit local CSC for biometric e-KYC on Friday"
+              placeholder={t('applications.nextActionPlaceholder', 'e.g. Visit local CSC for biometric e-KYC on Friday')}
               maxLength={300}
               className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-slate-50 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
@@ -244,20 +246,20 @@ export default function ApplicationRecordModal({
           <div className="space-y-1.5">
             <label htmlFor="personal-notes" className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
               <FileText className="w-3.5 h-3.5 text-navy-600" />
-              <span>Personal Preparation Notes (Optional)</span>
+              <span>{t('applications.personalNotesLabel', 'Personal Preparation Notes (Optional)')}</span>
             </label>
             <textarea
               id="personal-notes"
               rows={3}
               value={personalNotes}
               onChange={(e) => setPersonalNotes(e.target.value)}
-              placeholder="e.g. Met Lekhpal for Khatauni stamp; bank passbook branch confirmed."
+              placeholder={t('applications.personalNotesPlaceholder', 'e.g. Met Lekhpal for Khatauni stamp; bank passbook branch confirmed.')}
               maxLength={1000}
               className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-slate-50 text-xs focus:outline-none focus:ring-2 focus:ring-teal-500 leading-relaxed"
             />
             <div className="flex items-center gap-1 text-[11px] text-slate-400">
               <ShieldCheck className="w-3.5 h-3.5 text-teal-600" />
-              <span>Notes are stored locally on your device. Never record passwords, bank PINs, or Aadhaar numbers.</span>
+              <span>{t('applications.notesPrivacyNotice', 'Notes are stored locally on your device. Never record passwords, bank PINs, or Aadhaar numbers.')}</span>
             </div>
           </div>
 
@@ -267,7 +269,7 @@ export default function ApplicationRecordModal({
               <div className="flex items-center gap-2">
                 <FileCheck2 className="w-4 h-4 text-teal-700" />
                 <span>
-                  Document Checklist Progress: <strong>{completedDocs} / {totalDocs} Prepared</strong>
+                  {t('applications.docChecklistProgress', { completed: completedDocs, total: totalDocs })}
                 </span>
               </div>
               <span className="font-bold text-teal-800">
@@ -283,13 +285,13 @@ export default function ApplicationRecordModal({
               onClick={onClose}
               className="px-4 py-2.5 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
             >
-              Cancel
+              {t('common.cancel', 'Cancel')}
             </button>
             <button
               type="submit"
               className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-sm transition-colors"
             >
-              {existingRecord ? 'Save Changes' : 'Create Application Record'}
+              {existingRecord ? t('applications.saveChanges', 'Save Changes') : t('applications.createRecord', 'Create Application Record')}
             </button>
           </div>
         </form>

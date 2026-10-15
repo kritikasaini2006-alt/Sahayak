@@ -16,11 +16,13 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { useTranslation } from '../context/LanguageContext';
 import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
 
 export default function SignUpPage() {
-  useDocumentTitle('Create Citizen Account');
+  const { t, language } = useTranslation();
+  useDocumentTitle(t('auth.signupTitle'));
   const { signUp, isConfigured, clearError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -94,10 +96,10 @@ export default function SignUpPage() {
             <span className="font-extrabold text-xl tracking-tight text-teal-300">स</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-navy-900 tracking-tight">
-            Create Your Account
+            {t('auth.signupTitle')}
           </h1>
           <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-            Save your scheme progress, manage application records, and get personalized citizen guidance.
+            {t('auth.signupSubtitle')}
           </p>
         </div>
 
@@ -107,10 +109,10 @@ export default function SignUpPage() {
           <div className="flex items-center justify-between text-xs pb-2.5 border-b border-slate-100">
             <div className="flex items-center gap-1.5 text-slate-500">
               <ShieldCheck className="w-4 h-4 text-teal-600" />
-              <span className="font-medium">Civic-Tech Security</span>
+              <span className="font-medium">{t('auth.securityBadge')}</span>
             </div>
             <Badge variant={isConfigured ? 'teal' : 'amber'}>
-              {isConfigured ? 'Supabase Auth' : 'Config Needed'}
+              {isConfigured ? 'Supabase Auth' : t('auth.configNeededTitle')}
             </Badge>
           </div>
 
@@ -119,9 +121,9 @@ export default function SignUpPage() {
             <div className="bg-amber-50/90 border border-amber-200 text-amber-900 text-xs rounded-xl p-3 flex items-start gap-2.5 animate-fadeIn">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div className="leading-relaxed space-y-1">
-                <p className="font-bold">Supabase Config Needed</p>
+                <p className="font-bold">{t('auth.configNeededTitle')}</p>
                 <p className="text-slate-600 text-[11px]">
-                  Add <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">VITE_SUPABASE_URL</code> and <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">VITE_SUPABASE_ANON_KEY</code> to your <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">.env.local</code> file (project root) or Vercel Environment Variables.
+                  {t('auth.configNeededDesc')}
                 </p>
               </div>
             </div>
@@ -141,10 +143,12 @@ export default function SignUpPage() {
               <div className="bg-teal-50 border border-teal-200 text-teal-900 rounded-xl p-4 text-xs sm:text-sm space-y-2">
                 <div className="flex items-center gap-2 font-bold text-teal-950">
                   <CheckCircle2 className="w-5 h-5 text-teal-600 shrink-0" />
-                  Account Created! Please Verify Your Email
+                  {language === 'hi' ? 'खाता बन गया! कृपया अपना ईमेल सत्यापित करें' : 'Account Created! Please Verify Your Email'}
                 </div>
                 <p className="text-teal-800 leading-relaxed">
-                  We have sent a confirmation link to <strong className="font-semibold">{email}</strong>. Please check your inbox and click the verification link to activate your account.
+                  {language === 'hi'
+                    ? `हमने ${email} पर एक सत्यापन लिंक भेजा है। कृपया अपने इनबॉक्स की जांच करें और अपने खाते को सक्रिय करने के लिए लिंक पर क्लिक करें।`
+                    : `We have sent a confirmation link to ${email}. Please check your inbox and click the verification link to activate your account.`}
                 </p>
               </div>
               <div className="pt-2 text-center">
@@ -152,7 +156,7 @@ export default function SignUpPage() {
                   to="/login"
                   className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-navy-800 hover:bg-navy-900 text-white rounded-xl text-xs font-semibold shadow-sm"
                 >
-                  Proceed to Sign In
+                  {t('auth.backToLogin')}
                 </Link>
               </div>
             </div>
@@ -162,7 +166,7 @@ export default function SignUpPage() {
               {/* Full Name */}
               <div>
                 <label htmlFor="signup-name" className="block text-xs font-semibold text-slate-700 mb-1">
-                  Full Name <span className="text-rose-500">*</span>
+                  {t('auth.fullNameLabel')} <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -175,7 +179,7 @@ export default function SignUpPage() {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     required
-                    placeholder="e.g. Ramesh Kumar"
+                    placeholder={t('auth.fullNamePlaceholder')}
                     className="w-full pl-9 pr-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                 </div>
@@ -184,7 +188,7 @@ export default function SignUpPage() {
               {/* Email */}
               <div>
                 <label htmlFor="signup-email" className="block text-xs font-semibold text-slate-700 mb-1">
-                  Email Address <span className="text-rose-500">*</span>
+                  {t('auth.emailLabel')} <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -197,7 +201,7 @@ export default function SignUpPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="name@example.com"
+                    placeholder={t('auth.emailPlaceholder')}
                     className="w-full pl-9 pr-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                 </div>
@@ -206,7 +210,7 @@ export default function SignUpPage() {
               {/* Password */}
               <div>
                 <label htmlFor="signup-password" className="block text-xs font-semibold text-slate-700 mb-1">
-                  Password <span className="text-rose-500">*</span>
+                  {t('auth.passwordLabel')} <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -219,7 +223,7 @@ export default function SignUpPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    placeholder="At least 6 characters"
+                    placeholder={t('auth.passwordPlaceholder')}
                     className="w-full pl-9 pr-10 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                   <button
@@ -236,7 +240,7 @@ export default function SignUpPage() {
               {/* Confirm Password */}
               <div>
                 <label htmlFor="signup-confirm-password" className="block text-xs font-semibold text-slate-700 mb-1">
-                  Confirm Password <span className="text-rose-500">*</span>
+                  {t('auth.confirmPasswordLabel')} <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -249,7 +253,7 @@ export default function SignUpPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    placeholder="Re-enter password"
+                    placeholder={t('auth.confirmPasswordPlaceholder')}
                     className="w-full pl-9 pr-10 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                   <button
@@ -273,15 +277,7 @@ export default function SignUpPage() {
                     className="mt-0.5 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                   />
                   <span className="leading-relaxed">
-                    I agree to the{' '}
-                    <Link to="/about" target="_blank" className="text-teal-700 font-semibold hover:underline">
-                      Terms of Service
-                    </Link>{' '}
-                    and acknowledge the{' '}
-                    <Link to="/about" target="_blank" className="text-teal-700 font-semibold hover:underline">
-                      Civic Privacy Policy
-                    </Link>
-                    .
+                    {t('auth.termsLabel')}
                   </span>
                 </label>
               </div>
@@ -295,11 +291,11 @@ export default function SignUpPage() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Creating Account...</span>
+                    <span>{language === 'hi' ? 'खाता बन रहा है...' : 'Creating Account...'}</span>
                   </>
                 ) : (
                   <>
-                    <span>Create Account</span>
+                    <span>{t('auth.signupBtn')}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -309,13 +305,13 @@ export default function SignUpPage() {
 
           {/* Switch to Sign In */}
           <div className="pt-3 border-t border-slate-100 text-center text-xs text-slate-500">
-            Already have an account?{' '}
+            {t('auth.alreadyHaveAccount')}{' '}
             <Link
               to="/login"
               state={{ from: location.state?.from }}
-              className="font-bold text-teal-700 hover:text-teal-900 hover:underline"
+              className="font-bold text-teal-700 hover:text-teal-900 hover:underline ml-1"
             >
-              Sign In
+              {t('auth.loginBtn')}
             </Link>
           </div>
         </div>
@@ -323,7 +319,7 @@ export default function SignUpPage() {
         {/* Trust & Privacy Notice */}
         <div className="text-center text-[11px] text-slate-500 space-y-1">
           <p>
-            🛡️ Zero-PII Policy: We never request or store Aadhaar numbers, OTPs, or document images.
+            {t('auth.zeroPiiPolicy')}
           </p>
         </div>
       </div>

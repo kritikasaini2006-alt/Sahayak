@@ -26,12 +26,14 @@ import {
   saveSchemeChecklistProgress,
   resetSchemeChecklistProgress,
 } from '../../data/schemeGuidance';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function SchemeGuidanceView({
   schemeId = 'pm-kisan',
   isSaved = false,
   onToggleSave = null,
 }) {
+  const { t, getSchemeText, language } = useTranslation();
   const guidance = SCHEME_GUIDANCE[schemeId] || SCHEME_GUIDANCE['pm-kisan'];
 
   // Checklist state for documents
@@ -76,11 +78,8 @@ export default function SchemeGuidanceView({
 
   // Reset checklist progress
   const handleResetProgress = () => {
-    if (
-      window.confirm(
-        `Are you sure you want to reset your checklist progress for ${guidance.title}?`
-      )
-    ) {
+    const confirmPrompt = t('guidance.resetConfirm', { title: guidance.title });
+    if (window.confirm(confirmPrompt)) {
       resetSchemeChecklistProgress(guidance.schemeId);
       resetSchemeChecklistProgress(`${guidance.schemeId}_review`);
       setDocProgress({});
@@ -118,6 +117,8 @@ export default function SchemeGuidanceView({
       ? Math.round((completedReviewCount / totalReviewItems) * 100)
       : 0;
 
+  const schemeTitle = getSchemeText(guidance, 'title') || guidance.title;
+
   return (
     <div className="space-y-8 animate-fadeIn">
       {/* Print-Only Header (Visible only when user uses browser print / PDF export) */}
@@ -125,20 +126,19 @@ export default function SchemeGuidanceView({
         <div className="flex justify-between items-start">
           <div>
             <h1 className="text-2xl font-black text-slate-900">
-              Sahayak AI — Citizen Application & Document Guidance
+              {t('guidance.printHeaderTitle', 'Sahayak AI — Citizen Application & Document Guidance')}
             </h1>
             <p className="text-sm text-slate-600 mt-1">
-              Independent Civic Guidance • Verified Government Welfare Scheme Checklist
+              {t('guidance.printHeaderSubtitle', 'Independent Civic Guidance • Verified Government Welfare Scheme Checklist')}
             </p>
           </div>
           <div className="text-right text-xs text-slate-500">
-            <p>Printed on: {new Date().toLocaleDateString('en-IN')}</p>
-            <p>Official Portal: {guidance.portalName}</p>
+            <p>{t('guidance.printedOn', { date: new Date().toLocaleDateString(language === 'hi' ? 'hi-IN' : 'en-IN') })}</p>
+            <p>{t('guidance.officialPortalLabel', { portal: guidance.portalName })}</p>
           </div>
         </div>
         <div className="mt-3 p-2 bg-slate-100 rounded text-xs text-slate-700">
-          <strong>Important Notice:</strong> Sahayak AI is an educational preparation tool.
-          Official applications must be submitted directly on official government portals ({guidance.portalName}) or authorized Common Service Centres (CSCs).
+          {t('guidance.printNotice', { portal: guidance.portalName })}
         </div>
       </div>
 
@@ -150,20 +150,20 @@ export default function SchemeGuidanceView({
               <Badge variant="teal">{guidance.ministry}</Badge>
               <span className="text-[11px] bg-slate-100 text-slate-700 font-semibold px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1">
                 <Clock className="w-3 h-3 text-slate-500" />
-                Verified: {guidance.lastVerifiedDate}
+                {t('guidance.verifiedDate', { date: guidance.lastVerifiedDate })}
               </span>
               <span className="text-[11px] bg-emerald-50 text-emerald-800 font-semibold px-2 py-0.5 rounded border border-emerald-200 flex items-center gap-1">
                 <ShieldCheck className="w-3 h-3 text-emerald-600" />
-                Gazette Sourced
+                {t('guidance.gazetteSourced', 'Gazette Sourced')}
               </span>
             </div>
 
             <h2 className="text-xl sm:text-3xl font-extrabold text-navy-900 tracking-tight leading-snug">
-              {guidance.title}
+              {schemeTitle}
             </h2>
 
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-              <strong>Official Source:</strong> {guidance.officialSource}
+              <strong>{t('guidance.officialSourceLabel', 'Official Source:')}</strong> {guidance.officialSource}
             </p>
           </div>
 
@@ -177,11 +177,11 @@ export default function SchemeGuidanceView({
                     ? 'bg-teal-50 border-teal-300 text-teal-800'
                     : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
                 }`}
-                title={isSaved ? 'Remove from Saved' : 'Save Scheme'}
+                title={isSaved ? t('guidance.removeFromSavedBtn', 'Remove from Saved') : t('guidance.saveSchemeBtn', 'Save Scheme')}
               >
                 <Bookmark className={`w-4 h-4 ${isSaved ? 'fill-current' : ''}`} />
                 <span className="hidden sm:inline">
-                  {isSaved ? 'Saved' : 'Save'}
+                  {isSaved ? t('guidance.saved', 'Saved') : t('common.save', 'Save')}
                 </span>
               </button>
             )}
@@ -189,19 +189,19 @@ export default function SchemeGuidanceView({
             <button
               onClick={handlePrint}
               className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
-              title="Print or Save PDF Checklist"
+              title={t('guidance.printChecklist', 'Print / Save PDF Checklist')}
             >
               <Printer className="w-4 h-4 text-slate-600" />
-              <span>Print / PDF</span>
+              <span>{t('guidance.printPdf', 'Print / PDF')}</span>
             </button>
 
             <button
               onClick={handleResetProgress}
               className="p-2.5 rounded-xl border border-slate-200 bg-white hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-              title="Reset checklist progress"
+              title={t('guidance.resetChecklist', 'Reset checklist progress')}
             >
               <RotateCcw className="w-4 h-4" />
-              <span className="hidden sm:inline">Reset</span>
+              <span className="hidden sm:inline">{t('guidance.resetBtn', 'Reset')}</span>
             </button>
 
             <a
@@ -221,21 +221,10 @@ export default function SchemeGuidanceView({
           <ShieldCheck className="w-4 h-4 text-teal-600 shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <span className="font-bold text-navy-900 block">
-              Independent Civic Guidance & Data Safety Guarantee:
+              {t('guidance.safetyGuaranteeTitle', 'Independent Civic Guidance & Data Safety Guarantee:')}
             </span>
             <p className="leading-relaxed">
-              Sahayak AI does <strong>not</strong> collect Aadhaar numbers, bank account numbers, passwords, or document images.
-              Checklist progress is stored locally on your device.
-              Actual application submission and biometric authentication must be performed on the official government portal (
-              <a
-                href={guidance.officialPortal}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-teal-700 underline font-medium"
-              >
-                {guidance.portalName}
-              </a>
-              ) or your nearest authorized Common Service Centre (CSC).
+              {t('guidance.safetyGuaranteeText', { portal: guidance.portalName })}
             </p>
           </div>
         </div>
@@ -245,7 +234,7 @@ export default function SchemeGuidanceView({
           <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <div className="space-y-0.5">
             <span className="font-bold text-amber-950 block">
-              State-Specific Rules & Revenue Variation:
+              {t('guidance.stateVarianceTitle', 'State-Specific Rules & Revenue Variation:')}
             </span>
             <p className="leading-relaxed text-amber-900/90">
               {guidance.stateVarianceNote}
@@ -257,7 +246,7 @@ export default function SchemeGuidanceView({
         <div className="space-y-2 pt-2">
           <h3 className="text-xs font-bold text-navy-900 uppercase tracking-wider flex items-center gap-1.5">
             <Sparkles className="w-4 h-4 text-teal-600" />
-            Essential Prerequisites Before Applying
+            {t('guidance.essentialPrereqs', 'Essential Prerequisites Before Applying')}
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             {guidance.prerequisites.map((prereq, i) => (
@@ -280,14 +269,14 @@ export default function SchemeGuidanceView({
             <div className="flex items-center gap-2">
               <h3 className="text-lg sm:text-xl font-bold text-navy-900 flex items-center gap-2">
                 <FileCheck2 className="w-5 h-5 text-teal-600" />
-                1. Required Documents Checklist
+                {t('guidance.docsChecklistNum', '1. Required Documents Checklist')}
               </h3>
               <Badge variant="teal">
-                {completedDocsCount}/{totalDocs} Ready
+                {t('guidance.docsReadyBadge', { completed: completedDocsCount, total: totalDocs })}
               </Badge>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Mark documents you have organized. Click any document to expand official procurement guidelines.
+              {t('guidance.docsChecklistDesc', 'Mark documents you have organized. Click any document to expand official procurement guidelines.')}
             </p>
           </div>
 
@@ -295,7 +284,7 @@ export default function SchemeGuidanceView({
           <div className="flex items-center gap-4">
             <div className="flex flex-col items-end">
               <div className="flex items-center gap-2 text-xs font-bold text-navy-900">
-                <span>{docPercentage}% Prepared</span>
+                <span>{t('guidance.preparedPercent', { percent: docPercentage })}</span>
               </div>
               <div className="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden mt-1 border border-slate-200">
                 <div
@@ -315,7 +304,7 @@ export default function SchemeGuidanceView({
                     : 'text-slate-600 hover:text-navy-900'
                 }`}
               >
-                All ({totalDocs})
+                {t('guidance.allFilter', { total: totalDocs })}
               </button>
               <button
                 onClick={() => setDocFilter('mandatory')}
@@ -325,7 +314,7 @@ export default function SchemeGuidanceView({
                     : 'text-slate-600 hover:text-navy-900'
                 }`}
               >
-                Mandatory
+                {t('guidance.mandatoryFilter', 'Mandatory')}
               </button>
               <button
                 onClick={() => setDocFilter('conditional')}
@@ -335,7 +324,7 @@ export default function SchemeGuidanceView({
                     : 'text-slate-600 hover:text-navy-900'
                 }`}
               >
-                Conditional
+                {t('guidance.conditionalFilter', 'Conditional')}
               </button>
             </div>
           </div>
@@ -393,24 +382,24 @@ export default function SchemeGuidanceView({
                               : 'bg-amber-100 text-amber-800 border border-amber-200'
                           }`}
                         >
-                          {doc.requirementType}
+                          {doc.requirementType === 'Mandatory' ? t('guidance.requiredBadge', 'Mandatory') : t('guidance.conditionalBadge', 'Conditional')}
                         </span>
 
                         <span className="text-[11px] text-slate-500 font-medium">
-                          Issuing Authority: {doc.issuingAuthority}
+                          {t('guidance.issuingAuthority', 'Issuing Authority:')} {doc.issuingAuthority}
                         </span>
                       </div>
 
                       {/* Purpose */}
                       <p className="text-xs text-slate-600 leading-relaxed">
-                        <strong className="text-slate-800 font-semibold">Purpose:</strong>{' '}
+                        <strong className="text-slate-800 font-semibold">{t('guidance.documentPurpose', 'Purpose:')}</strong>{' '}
                         {doc.purpose}
                       </p>
 
                       {/* Condition if applicable */}
                       {doc.condition && (
                         <p className="text-xs text-amber-800 bg-amber-50/80 p-2 rounded border border-amber-200/60 leading-relaxed">
-                          <strong>When needed:</strong> {doc.condition}
+                          <strong>{t('guidance.whenNeeded', 'When needed:')}</strong> {doc.condition}
                         </p>
                       )}
 
@@ -418,13 +407,13 @@ export default function SchemeGuidanceView({
                       <div className="mt-2 pt-2 border-t border-slate-100 text-xs text-slate-600 space-y-1">
                         <div>
                           <strong className="text-teal-800 font-semibold">
-                            How to Obtain / Verify:
+                            {t('guidance.howToObtainLabel', 'How to Obtain / Verify:')}
                           </strong>{' '}
                           {doc.howToObtain}
                         </div>
                         {doc.commonMistakes && (
                           <div className="text-[11px] text-slate-500 italic">
-                            ⚠️ Tip to prevent rejection: {doc.commonMistakes}
+                            {t('guidance.tipToPreventRejection', { tip: doc.commonMistakes })}
                           </div>
                         )}
                       </div>
@@ -442,10 +431,10 @@ export default function SchemeGuidanceView({
         <div className="pb-4 border-b border-slate-200">
           <h3 className="text-lg sm:text-xl font-bold text-navy-900 flex items-center gap-2">
             <Layers className="w-5 h-5 text-teal-600" />
-            2. Step-by-Step Application Walkthrough
+            {t('guidance.stepsWalkthrough', '2. Step-by-Step Application Walkthrough')}
           </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Follow this verified chronological sequence to file your application on official government portals.
+            {t('guidance.stepsWalkthroughDesc', 'Follow this verified chronological sequence to file your application on official government portals.')}
           </p>
         </div>
 
@@ -466,7 +455,7 @@ export default function SchemeGuidanceView({
                     {step.title}
                   </h4>
                   <span className="text-[10px] bg-slate-200/70 text-slate-700 font-bold px-2 py-0.5 rounded">
-                    Mode: {step.mode}
+                    {t('guidance.mode', 'Mode:')} {step.mode}
                   </span>
                 </div>
 
@@ -478,7 +467,7 @@ export default function SchemeGuidanceView({
                   <div className="mt-1 bg-white border border-teal-200 text-teal-900 p-2 rounded-lg text-[11px] leading-relaxed flex items-start gap-1.5">
                     <Info className="w-3.5 h-3.5 text-teal-600 shrink-0 mt-0.5" />
                     <span>
-                      <strong>Civic Pro-Tip:</strong> {step.tip}
+                      <strong>{t('guidance.civicProTip', 'Civic Pro-Tip:')}</strong> {step.tip}
                     </span>
                   </div>
                 )}
@@ -495,20 +484,20 @@ export default function SchemeGuidanceView({
             <div className="flex items-center gap-2">
               <h3 className="text-lg sm:text-xl font-bold text-navy-900 flex items-center gap-2">
                 <CheckSquare className="w-5 h-5 text-teal-600" />
-                3. Final Pre-Submission Review Checklist
+                {t('guidance.reviewChecklistNum', '3. Final Pre-Submission Review Checklist')}
               </h3>
               <Badge variant="teal">
-                {completedReviewCount}/{totalReviewItems} Verified
+                {t('guidance.reviewVerifiedBadge', { completed: completedReviewCount, total: totalReviewItems })}
               </Badge>
             </div>
             <p className="text-xs text-slate-500 mt-1">
-              Verify these common error causes before clicking final submit on the official portal.
+              {t('guidance.reviewChecklistDesc', 'Verify these common error causes before clicking final submit on the official portal.')}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-navy-900">
-              {reviewPercentage}% Complete
+              {t('guidance.completePercent', { percent: reviewPercentage })}
             </span>
             <div className="w-24 h-2 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
               <div
@@ -554,13 +543,13 @@ export default function SchemeGuidanceView({
       <div className="bg-gradient-to-r from-navy-900 via-navy-850 to-navy-900 rounded-2xl text-white p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-md print:hidden">
         <div className="space-y-2 text-center md:text-left">
           <Badge variant="teal" className="bg-teal-800/80 text-teal-200 border-teal-600/40">
-            Official Portal Application Ready
+            {t('guidance.portalAppReady', 'Official Portal Application Ready')}
           </Badge>
           <h3 className="text-lg sm:text-2xl font-bold tracking-tight">
-            Ready to file your official application?
+            {t('guidance.readyToSubmitTitle', 'Ready to file your official application?')}
           </h3>
           <p className="text-xs sm:text-sm text-slate-300 max-w-xl leading-relaxed">
-            Ensure your document photocopies and Aadhaar OTP phone are with you, then visit the authorized government portal to submit.
+            {t('guidance.readyToSubmitDesc', 'Ensure your document photocopies and Aadhaar OTP phone are with you, then visit the authorized government portal to submit.')}
           </p>
         </div>
 
@@ -570,7 +559,7 @@ export default function SchemeGuidanceView({
           rel="noopener noreferrer"
           className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-navy-950 font-extrabold text-sm shadow-md transition-all shrink-0"
         >
-          <span>Launch Official {guidance.portalName}</span>
+          <span>{t('guidance.launchOfficialPortal', { portal: guidance.portalName })}</span>
           <ExternalLink className="w-4 h-4" />
         </a>
       </div>

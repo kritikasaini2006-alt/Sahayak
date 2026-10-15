@@ -15,6 +15,7 @@ import {
   SCHEME_TYPES,
 } from '../../data/mockSchemes';
 import { INDIAN_STATES_AND_UTS } from '../../data/statesAndDistricts';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function SchemeFilterSidebar({
   selectedCategory,
@@ -34,6 +35,8 @@ export default function SchemeFilterSidebar({
   isMobileOpen,
   onCloseMobile,
 }) {
+  const { t, getCategoryText, getBeneficiaryText, getSchemeTypeText, isHindi } = useTranslation();
+
   const content = (
     <div className="space-y-6">
       {/* Header and Reset */}
@@ -41,7 +44,7 @@ export default function SchemeFilterSidebar({
         <div className="flex items-center gap-2">
           <Filter className="w-4 h-4 text-teal-600" />
           <h3 className="text-xs font-bold text-navy-900 uppercase tracking-wider">
-            Filters {activeFilterCount > 0 && `(${activeFilterCount})`}
+            {t('schemes.filterTitle')} {activeFilterCount > 0 && `(${activeFilterCount})`}
           </h3>
         </div>
 
@@ -51,12 +54,12 @@ export default function SchemeFilterSidebar({
             className="text-xs text-teal-700 hover:text-teal-900 font-semibold flex items-center gap-1 hover:underline focus:outline-none"
           >
             <RefreshCw className="w-3 h-3" />
-            <span>Reset All</span>
+            <span>{t('schemes.clearAll')}</span>
           </button>
         )}
       </div>
 
-      {/* Profile Eligibility Toggle (Phase 2 Link) */}
+      {/* Profile Eligibility Toggle */}
       {hasActiveProfile && (
         <div className="p-3 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-xl space-y-2">
           <label className="flex items-start gap-2.5 cursor-pointer">
@@ -69,10 +72,12 @@ export default function SchemeFilterSidebar({
             <div>
               <span className="text-xs font-bold text-teal-950 flex items-center gap-1">
                 <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                Eligible for My Profile
+                {t('schemes.filterByProfile')}
               </span>
               <span className="text-[11px] text-teal-900/80 block mt-0.5 leading-tight">
-                Show only schemes matching your saved citizen profile.
+                {isHindi
+                  ? 'केवल वही योजनाएं देखें जो आपकी नागरिक प्रोफ़ाइल से मेल खाती हैं।'
+                  : 'Show only schemes matching your saved citizen profile.'}
               </span>
             </div>
           </label>
@@ -83,7 +88,7 @@ export default function SchemeFilterSidebar({
       <div className="space-y-2">
         <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
           <Layers className="w-3.5 h-3.5 text-slate-400" />
-          Welfare Category
+          {t('schemes.categoryFilter')}
         </label>
         <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
           {SCHEME_CATEGORIES.map((cat) => (
@@ -96,7 +101,7 @@ export default function SchemeFilterSidebar({
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span className="truncate">{cat}</span>
+              <span className="truncate">{getCategoryText(cat)}</span>
               {selectedCategory === cat && <Check className="w-3.5 h-3.5 shrink-0" />}
             </button>
           ))}
@@ -107,7 +112,7 @@ export default function SchemeFilterSidebar({
       <div className="space-y-2 pt-2 border-t border-slate-100">
         <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
           <Users className="w-3.5 h-3.5 text-slate-400" />
-          Target Beneficiary
+          {t('schemes.beneficiaryFilter')}
         </label>
         <div className="space-y-1 max-h-44 overflow-y-auto pr-1">
           {BENEFICIARY_TYPES.map((b) => (
@@ -120,7 +125,7 @@ export default function SchemeFilterSidebar({
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
-              <span className="truncate">{b}</span>
+              <span className="truncate">{getBeneficiaryText(b)}</span>
               {selectedBeneficiary === b && <Check className="w-3.5 h-3.5 shrink-0" />}
             </button>
           ))}
@@ -131,7 +136,7 @@ export default function SchemeFilterSidebar({
       <div className="space-y-2 pt-2 border-t border-slate-100">
         <label htmlFor="state-filter-select" className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
           <MapPin className="w-3.5 h-3.5 text-slate-400" />
-          State / UT Filter
+          {t('schemes.stateFilter')}
         </label>
         <select
           id="state-filter-select"
@@ -139,7 +144,7 @@ export default function SchemeFilterSidebar({
           onChange={(e) => onSelectState(e.target.value)}
           className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
         >
-          <option value="All India">All India / Any State</option>
+          <option value="All India">{isHindi ? 'अखिल भारतीय (All India) / कोई भी राज्य' : 'All India / Any State'}</option>
           {INDIAN_STATES_AND_UTS.map((st) => (
             <option key={st} value={st}>
               {st}
@@ -151,7 +156,7 @@ export default function SchemeFilterSidebar({
       {/* Scheme Type Filter */}
       <div className="space-y-2 pt-2 border-t border-slate-100">
         <label htmlFor="scheme-type-select" className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-          Scheme Administrative Type
+          {t('schemes.schemeTypeFilter')}
         </label>
         <select
           id="scheme-type-select"
@@ -161,7 +166,7 @@ export default function SchemeFilterSidebar({
         >
           {SCHEME_TYPES.map((type) => (
             <option key={type} value={type}>
-              {type}
+              {getSchemeTypeText(type)}
             </option>
           ))}
         </select>
@@ -185,7 +190,7 @@ export default function SchemeFilterSidebar({
         >
           <div className="w-full max-w-xs bg-white h-full p-5 shadow-2xl overflow-y-auto space-y-4 animate-slideLeft">
             <div className="flex items-center justify-between pb-3 border-b border-slate-200">
-              <span className="font-bold text-sm text-navy-900">Filter Schemes</span>
+              <span className="font-bold text-sm text-navy-900">{t('schemes.filterTitle')}</span>
               <button
                 onClick={onCloseMobile}
                 className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
@@ -202,7 +207,7 @@ export default function SchemeFilterSidebar({
                 onClick={onCloseMobile}
                 className="w-full py-2.5 bg-teal-600 text-white rounded-xl font-bold text-xs shadow-sm hover:bg-teal-700 transition-colors"
               >
-                Apply Filters ({totalMatching} Schemes)
+                {isHindi ? `फ़िल्टर लागू करें (${totalMatching} योजनाएं)` : `Apply Filters (${totalMatching} Schemes)`}
               </button>
             </div>
           </div>
@@ -211,4 +216,3 @@ export default function SchemeFilterSidebar({
     </>
   );
 }
-

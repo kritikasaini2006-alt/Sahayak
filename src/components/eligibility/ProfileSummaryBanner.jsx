@@ -1,8 +1,10 @@
 import React from 'react';
 import { UserCheck, Edit2, Trash2, ArrowRight } from 'lucide-react';
 import Button from '../common/Button';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function ProfileSummaryBanner({ profile, onEdit, onClear, onEvaluate }) {
+  const { t } = useTranslation();
   if (!profile || !profile.age || !profile.state) return null;
 
   return (
@@ -14,17 +16,17 @@ export default function ProfileSummaryBanner({ profile, onEdit, onClear, onEvalu
         <div className="space-y-0.5">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-teal-300 uppercase tracking-wider">
-              Stored Citizen Profile
+              {t('eligibility.storedCitizenProfile', 'Stored Citizen Profile')}
             </span>
             <span className="text-[10px] bg-white/10 text-slate-300 px-1.5 py-0.5 rounded">
-              Local Browser
+              {t('eligibility.localBrowser', 'Local Browser')}
             </span>
           </div>
           <p className="text-sm font-semibold text-white">
-            {profile.age} yrs • {profile.occupation?.replace('_', ' ')} • {profile.state} ({profile.areaType})
+            {profile.age} {t('common.yrs', 'yrs')} • {profile.occupation?.replace('_', ' ')} • {profile.state} ({profile.areaType})
           </p>
           <p className="text-xs text-slate-300">
-            Household Annual Income: ₹{Number(profile.annualIncome || 0).toLocaleString('en-IN')}
+            {t('eligibility.householdAnnualIncome', { amount: Number(profile.annualIncome || 0).toLocaleString('en-IN') })}
           </p>
         </div>
       </div>
@@ -39,7 +41,7 @@ export default function ProfileSummaryBanner({ profile, onEdit, onClear, onEvalu
             iconPosition="right"
             className="flex-1 md:flex-none font-semibold"
           >
-            Check Eligibility
+            {t('nav.checkEligibility', 'Check Eligibility')}
           </Button>
         )}
         <Button
@@ -49,13 +51,13 @@ export default function ProfileSummaryBanner({ profile, onEdit, onClear, onEvalu
           icon={Edit2}
           className="bg-white/10 text-white border-white/20 hover:bg-white/20"
         >
-          Edit
+          {t('common.edit', 'Edit')}
         </Button>
         <button
           onClick={onClear}
-          title="Clear stored profile data"
+          title={t('eligibility.resetProfile', 'Clear Stored Profile')}
           className="p-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-white/10 transition-colors"
-          aria-label="Clear profile data"
+          aria-label={t('eligibility.resetProfile', 'Clear Stored Profile')}
         >
           <Trash2 className="w-4 h-4" />
         </button>

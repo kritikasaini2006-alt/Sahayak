@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { INDIAN_STATES_AND_UTS } from '../../data/statesAndDistricts';
 import { HelpCircle, AlertCircle, MapPin, Calendar, User } from 'lucide-react';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function DemographicsStep({ formData, updateField, errors }) {
+  const { t, language } = useTranslation();
   const [showAgeTooltip, setShowAgeTooltip] = useState(false);
   const [showAreaTooltip, setShowAreaTooltip] = useState(false);
 
@@ -10,9 +12,13 @@ export default function DemographicsStep({ formData, updateField, errors }) {
     <div className="space-y-6 animate-fadeIn">
       {/* Intro Header */}
       <div>
-        <h2 className="text-lg font-bold text-navy-900">Demographics & State Residency</h2>
+        <h2 className="text-lg font-bold text-navy-900">
+          {language === 'hi' ? 'जनसांख्यिकी एवं राज्य निवास' : 'Demographics & State Residency'}
+        </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Basic demographic details ensure we evaluate schemes applicable to your age and geographical jurisdiction.
+          {language === 'hi'
+            ? 'बुनियादी जनसांख्यिकीय विवरण यह सुनिश्चित करते हैं कि हम आपकी आयु और राज्य के लिए लागू योजनाओं की पहचान करें।'
+            : 'Basic demographic details ensure we evaluate schemes applicable to your age and geographical jurisdiction.'}
         </p>
       </div>
 
@@ -22,7 +28,7 @@ export default function DemographicsStep({ formData, updateField, errors }) {
           <div className="flex items-center justify-between">
             <label htmlFor="citizen-age" className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
               <Calendar className="w-3.5 h-3.5 text-slate-400" />
-              Applicant Age <span className="text-red-500">*</span>
+              {language === 'hi' ? 'आवेदक की आयु' : 'Applicant Age'} <span className="text-red-500">*</span>
             </label>
             <button
               type="button"
@@ -31,13 +37,15 @@ export default function DemographicsStep({ formData, updateField, errors }) {
               aria-expanded={showAgeTooltip}
             >
               <HelpCircle className="w-3.5 h-3.5" />
-              <span>Why ask?</span>
+              <span>{language === 'hi' ? 'क्यों पूछा गया?' : 'Why ask?'}</span>
             </button>
           </div>
 
           {showAgeTooltip && (
             <div className="p-2.5 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-900 animate-fadeIn">
-              Schemes have distinct age criteria (e.g., senior pensions at 60+, girl child savings under 10, adult credit at 18+).
+              {language === 'hi'
+                ? 'विभिन्न योजनाओं के लिए आयु सीमा तय होती है (जैसे 60+ के लिए वृद्धावस्था पेंशन, 10 वर्ष से कम कन्या के लिए सुकन्या, 18+ के लिए ऋण आदि)।'
+                : 'Schemes have distinct age criteria (e.g., senior pensions at 60+, girl child savings under 10, adult credit at 18+).'}
             </div>
           )}
 
@@ -47,7 +55,7 @@ export default function DemographicsStep({ formData, updateField, errors }) {
               type="number"
               min="1"
               max="120"
-              placeholder="e.g. 35"
+              placeholder={language === 'hi' ? 'उदा. 35' : 'e.g. 35'}
               value={formData.age}
               onChange={(e) => updateField('age', e.target.value)}
               className={`w-full px-3.5 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 bg-slate-50/50 ${
@@ -59,7 +67,7 @@ export default function DemographicsStep({ formData, updateField, errors }) {
               aria-describedby={errors.age ? 'age-error' : undefined}
             />
             <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-slate-400 font-medium">
-              Years
+              {language === 'hi' ? 'वर्ष' : 'Years'}
             </span>
           </div>
 
@@ -75,14 +83,14 @@ export default function DemographicsStep({ formData, updateField, errors }) {
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
             <User className="w-3.5 h-3.5 text-slate-400" />
-            Gender (Optional)
+            {language === 'hi' ? 'लिंग (वैकल्पिक)' : 'Gender (Optional)'}
           </label>
 
           <div className="grid grid-cols-3 gap-2">
             {[
-              { id: 'female', label: 'Female' },
-              { id: 'male', label: 'Male' },
-              { id: 'transgender', label: 'Transgender' },
+              { id: 'female', label: language === 'hi' ? 'महिला' : 'Female' },
+              { id: 'male', label: language === 'hi' ? 'पुरुष' : 'Male' },
+              { id: 'transgender', label: language === 'hi' ? 'ट्रांसजेंडर' : 'Transgender' },
             ].map((item) => (
               <button
                 key={item.id}
@@ -99,7 +107,9 @@ export default function DemographicsStep({ formData, updateField, errors }) {
             ))}
           </div>
           <p className="text-[11px] text-slate-400">
-            Selected for schemes prioritizing women or vulnerable genders (e.g. PM Ujjwala).
+            {language === 'hi'
+              ? 'विशेष रूप से महिलाओं अथवा कमजोर वर्गों को प्राथमिकता देने वाली योजनाओं के लिए (जैसे पीएम उज्ज्वला)।'
+              : 'Selected for schemes prioritizing women or vulnerable genders (e.g. PM Ujjwala).'}
           </p>
         </div>
       </div>
@@ -109,7 +119,7 @@ export default function DemographicsStep({ formData, updateField, errors }) {
         <div className="space-y-1.5">
           <label htmlFor="citizen-state" className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
             <MapPin className="w-3.5 h-3.5 text-slate-400" />
-            State / Union Territory <span className="text-red-500">*</span>
+            {language === 'hi' ? 'राज्य / केंद्र शासित प्रदेश' : 'State / Union Territory'} <span className="text-red-500">*</span>
           </label>
 
           <select
@@ -124,7 +134,7 @@ export default function DemographicsStep({ formData, updateField, errors }) {
             aria-invalid={!!errors.state}
             aria-describedby={errors.state ? 'state-error' : undefined}
           >
-            <option value="">-- Select Your State / UT --</option>
+            <option value="">{language === 'hi' ? '-- अपना राज्य / केंद्र शासित प्रदेश चुनें --' : '-- Select Your State / UT --'}</option>
             {INDIAN_STATES_AND_UTS.map((st) => (
               <option key={st} value={st}>
                 {st}
@@ -144,7 +154,7 @@ export default function DemographicsStep({ formData, updateField, errors }) {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-              Area of Residence <span className="text-red-500">*</span>
+              {language === 'hi' ? 'निवास का क्षेत्र' : 'Area of Residence'} <span className="text-red-500">*</span>
             </label>
             <button
               type="button"
@@ -153,20 +163,30 @@ export default function DemographicsStep({ formData, updateField, errors }) {
               aria-expanded={showAreaTooltip}
             >
               <HelpCircle className="w-3.5 h-3.5" />
-              <span>Why ask?</span>
+              <span>{language === 'hi' ? 'क्यों पूछा गया?' : 'Why ask?'}</span>
             </button>
           </div>
 
           {showAreaTooltip && (
             <div className="p-2.5 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-900 animate-fadeIn">
-              Schemes like PMAY-Gramin specifically fund rural houses, while others operate via municipal urban local bodies.
+              {language === 'hi'
+                ? 'पीएमएवाई-ग्रामीण जैसी योजनाएं विशेष रूप से ग्रामीण घरों को निधि देती हैं, जबकि अन्य नगर निकायों द्वारा संचालित होती हैं।'
+                : 'Schemes like PMAY-Gramin specifically fund rural houses, while others operate via municipal urban local bodies.'}
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-3">
             {[
-              { id: 'rural', label: 'Rural (Gram Panchayat)', desc: 'Village or countryside' },
-              { id: 'urban', label: 'Urban (Municipality)', desc: 'Town, city, or metro' },
+              {
+                id: 'rural',
+                label: language === 'hi' ? 'ग्रामीण (ग्राम पंचायत)' : 'Rural (Gram Panchayat)',
+                desc: language === 'hi' ? 'गाँव अथवा देहात' : 'Village or countryside',
+              },
+              {
+                id: 'urban',
+                label: language === 'hi' ? 'शहरी (नगर पालिका/निगम)' : 'Urban (Municipality)',
+                desc: language === 'hi' ? 'कस्बा, शहर अथवा महानगर' : 'Town, city, or metro',
+              },
             ].map((area) => (
               <button
                 key={area.id}

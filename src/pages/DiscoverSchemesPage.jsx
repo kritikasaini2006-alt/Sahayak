@@ -16,6 +16,8 @@ import {
   ChevronRight,
 } from 'lucide-react';
 import { MOCK_SCHEMES, SCHEME_CATEGORIES } from '../data/mockSchemes';
+import { SCHEME_TRANSLATIONS } from '../data/schemeTranslations';
+import { useTranslation } from '../context/LanguageContext';
 import SchemeCard from '../components/common/SchemeCard';
 import SchemeDetailModal from '../components/schemes/SchemeDetailModal';
 import SchemeFilterSidebar from '../components/schemes/SchemeFilterSidebar';
@@ -26,7 +28,8 @@ import { getSavedSchemeIds, toggleSaveSchemeId } from '../utils/applicationStora
 import useDocumentTitle from '../hooks/useDocumentTitle';
 
 export default function DiscoverSchemesPage() {
-  useDocumentTitle('Discover Welfare Schemes');
+  const { t, getCategoryText } = useTranslation();
+  useDocumentTitle(t('schemes.pageTitle'));
   const [searchParams, setSearchParams] = useSearchParams();
 
   // URL Query Parameters Initial States
@@ -136,16 +139,18 @@ export default function DiscoverSchemesPage() {
       // 1. Search Query
       const q = searchQuery.toLowerCase().trim();
       if (q) {
-        const matchesTitle = scheme.title.toLowerCase().includes(q);
-        const matchesDesc = scheme.shortDescription.toLowerCase().includes(q);
-        const matchesMinistry = scheme.ministry.toLowerCase().includes(q);
-        const matchesBenefit = scheme.financialBenefit.toLowerCase().includes(q);
+        const trans = SCHEME_TRANSLATIONS[scheme.id];
+        const matchesTitle = scheme.title.toLowerCase().includes(q) || (trans && trans.title.toLowerCase().includes(q));
+        const matchesDesc = scheme.shortDescription.toLowerCase().includes(q) || (trans && trans.shortDescription.toLowerCase().includes(q));
+        const matchesMinistry = scheme.ministry.toLowerCase().includes(q) || (trans && trans.ministry.toLowerCase().includes(q));
+        const matchesBenefit = scheme.financialBenefit.toLowerCase().includes(q) || (trans && trans.financialBenefit.toLowerCase().includes(q));
         const matchesTags = scheme.tags && scheme.tags.some((t) => t.toLowerCase().includes(q));
+        const matchesKeywords = trans && trans.keywords && trans.keywords.some((kw) => kw.toLowerCase().includes(q));
         const matchesBeneficiary =
           (scheme.beneficiaryType && scheme.beneficiaryType.toLowerCase().includes(q)) ||
           (scheme.targetBeneficiaries && scheme.targetBeneficiaries.some((b) => b.toLowerCase().includes(q)));
 
-        if (!matchesTitle && !matchesDesc && !matchesMinistry && !matchesBenefit && !matchesTags && !matchesBeneficiary) {
+        if (!matchesTitle && !matchesDesc && !matchesMinistry && !matchesBenefit && !matchesTags && !matchesKeywords && !matchesBeneficiary) {
           return false;
         }
       }
@@ -230,14 +235,14 @@ export default function DiscoverSchemesPage() {
       {/* Header Banner */}
       <div className="border-b border-slate-200 pb-4 space-y-2">
         <div className="flex items-center gap-2">
-          <Badge variant="teal">Directory</Badge>
-          <span className="text-xs text-slate-500 font-medium">Public Domain Welfare Schemes</span>
+          <Badge variant="teal">{t('schemes.directoryBadge')}</Badge>
+          <span className="text-xs text-slate-500 font-medium">{t('schemes.publicDomain')}</span>
         </div>
         <h1 className="text-2xl sm:text-4xl font-extrabold text-navy-900 tracking-tight">
-          Discover Central & State Welfare Schemes
+          {t('schemes.pageTitle')}
         </h1>
         <p className="text-slate-600 text-sm max-w-3xl leading-relaxed">
-          Search and filter verified government welfare initiatives across farming, health, housing, micro-loans, and pensions. Detailed with official rules, document checklists, and authenticated application links.
+          {t('schemes.pageSubtitle')}
         </p>
 
         {/* Active Profile Context Banner (If Profile Exists) */}
@@ -246,7 +251,8 @@ export default function DiscoverSchemesPage() {
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-teal-700 shrink-0" />
               <span className="text-teal-950">
-                Connected Profile: <strong>{citizenProfile.age} yrs</strong>, {citizenProfile.occupation?.replace('_', ' ')}, {citizenProfile.state} ({citizenProfile.areaType})
+                {t('schemes.connectedProfile')}{' '}
+                <strong>{citizenProfile.age} yrs</strong>, {citizenProfile.occupation?.replace('_', ' ')}, {citizenProfile.state} ({citizenProfile.areaType})
               </span>
             </div>
 
@@ -259,10 +265,10 @@ export default function DiscoverSchemesPage() {
                     : 'bg-white text-teal-800 border border-teal-300 hover:bg-teal-100'
                 }`}
               >
-                {onlyEligible ? 'Showing Only My Matches' : 'Filter by My Profile'}
+                {onlyEligible ? t('schemes.showingOnlyMatches') : t('schemes.filterByProfile')}
               </button>
               <Link to="/eligibility" className="text-teal-700 hover:text-teal-900 underline font-medium">
-                Edit Profile
+                {t('schemes.editProfile')}
               </Link>
             </div>
           </div>
@@ -279,7 +285,7 @@ export default function DiscoverSchemesPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search schemes by name, ministry, target beneficiary, or keyword..."
+              placeholder={t('schemes.searchPlaceholder')}
               className="w-full pl-11 pr-10 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-slate-50/50"
             />
             {searchQuery && (
@@ -296,17 +302,17 @@ export default function DiscoverSchemesPage() {
           {/* Sort Dropdown */}
           <div className="flex items-center gap-2">
             <div className="relative shrink-0">
-              <label htmlFor="sort-select" className="sr-only">Sort Schemes</label>
+              <label htmlFor="sort-select" className="sr-only">{t('schemes.sortBy')}</label>
               <select
                 id="sort-select"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className="px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
               >
-                <option value="relevance">Sort: Most Relevant</option>
-                <option value="name_asc">Sort: Name (A to Z)</option>
-                <option value="name_desc">Sort: Name (Z to A)</option>
-                {citizenProfile && <option value="eligibility">Sort: My Eligibility Match</option>}
+                <option value="relevance">{t('schemes.sortRelevance')}</option>
+                <option value="name_asc">{t('schemes.sortNameAsc')}</option>
+                <option value="name_desc">{t('schemes.sortNameDesc')}</option>
+                {citizenProfile && <option value="eligibility">{t('schemes.sortEligibility')}</option>}
               </select>
             </div>
 
@@ -317,7 +323,7 @@ export default function DiscoverSchemesPage() {
               aria-label="Open filter menu"
             >
               <SlidersHorizontal className="w-4 h-4 text-teal-600" />
-              <span>Filters</span>
+              <span>{t('schemes.filterTitle')}</span>
               {activeFilterCount > 0 && (
                 <span className="w-5 h-5 rounded-full bg-navy-800 text-white flex items-center justify-center text-[10px] ml-1">
                   {activeFilterCount}
@@ -334,35 +340,35 @@ export default function DiscoverSchemesPage() {
 
             {selectedCategory !== 'All Categories' && (
               <span className="inline-flex items-center gap-1 bg-navy-50 text-navy-800 border border-navy-200 px-2 py-0.5 rounded-md text-[11px]">
-                Category: {selectedCategory}
+                {getCategoryText(selectedCategory)}
                 <button onClick={() => setSelectedCategory('All Categories')} className="text-slate-400 hover:text-navy-900">✕</button>
               </span>
             )}
 
             {selectedBeneficiary !== 'All Beneficiaries' && (
               <span className="inline-flex items-center gap-1 bg-navy-50 text-navy-800 border border-navy-200 px-2 py-0.5 rounded-md text-[11px]">
-                Beneficiary: {selectedBeneficiary}
+                {selectedBeneficiary}
                 <button onClick={() => setSelectedBeneficiary('All Beneficiaries')} className="text-slate-400 hover:text-navy-900">✕</button>
               </span>
             )}
 
             {selectedState !== 'All India' && (
               <span className="inline-flex items-center gap-1 bg-navy-50 text-navy-800 border border-navy-200 px-2 py-0.5 rounded-md text-[11px]">
-                State: {selectedState}
+                {selectedState}
                 <button onClick={() => setSelectedState('All India')} className="text-slate-400 hover:text-navy-900">✕</button>
               </span>
             )}
 
             {selectedSchemeType !== 'All Scheme Types' && (
               <span className="inline-flex items-center gap-1 bg-navy-50 text-navy-800 border border-navy-200 px-2 py-0.5 rounded-md text-[11px]">
-                Type: {selectedSchemeType}
+                {selectedSchemeType}
                 <button onClick={() => setSelectedSchemeType('All Scheme Types')} className="text-slate-400 hover:text-navy-900">✕</button>
               </span>
             )}
 
             {onlyEligible && (
               <span className="inline-flex items-center gap-1 bg-teal-100 text-teal-800 border border-teal-300 px-2 py-0.5 rounded-md text-[11px] font-bold">
-                My Matches Only
+                {t('schemes.showingOnlyMatches')}
                 <button onClick={() => setOnlyEligible(false)} className="text-teal-900 hover:text-teal-950">✕</button>
               </span>
             )}
@@ -371,7 +377,7 @@ export default function DiscoverSchemesPage() {
               onClick={handleResetFilters}
               className="text-[11px] font-bold text-red-600 hover:text-red-800 underline ml-2"
             >
-              Clear All
+              {t('schemes.clearAll')}
             </button>
           </div>
         )}
@@ -404,15 +410,15 @@ export default function DiscoverSchemesPage() {
           {/* Results Summary Bar */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-500">
             <div>
-              Showing <span className="font-bold text-navy-900">{filteredAndSortedSchemes.length}</span> verified welfare initiatives
+              {t('schemes.showingCount', { count: filteredAndSortedSchemes.length })}
               {selectedCategory !== 'All Categories' && (
-                <span> in <strong className="text-teal-700">{selectedCategory}</strong></span>
+                <span> {t('schemes.inCategory', { category: getCategoryText(selectedCategory) })}</span>
               )}
             </div>
 
             <div className="flex items-center gap-2 text-[11px]">
               <ShieldCheck className="w-3.5 h-3.5 text-teal-600 shrink-0" />
-              <span>Grounded in official Central & State Government gazettes</span>
+              <span>{t('schemes.groundedNote')}</span>
             </div>
           </div>
 
@@ -442,9 +448,9 @@ export default function DiscoverSchemesPage() {
               <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
                 <BookOpen className="w-7 h-7" />
               </div>
-              <h3 className="text-lg font-bold text-navy-900">No schemes found matching your criteria</h3>
+              <h3 className="text-lg font-bold text-navy-900">{t('schemes.emptyTitle')}</h3>
               <p className="text-xs text-slate-500 leading-relaxed max-w-sm mx-auto">
-                We couldn't find any government schemes matching your search or active filter combination. Try clearing your filters or testing with broader terms.
+                {t('schemes.emptySubtitle')}
               </p>
               <div className="pt-2">
                 <Button
@@ -453,7 +459,7 @@ export default function DiscoverSchemesPage() {
                   onClick={handleResetFilters}
                   icon={RefreshCw}
                 >
-                  Reset All Filters
+                  {t('schemes.resetFilters')}
                 </Button>
               </div>
             </div>

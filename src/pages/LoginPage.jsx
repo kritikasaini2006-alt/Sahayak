@@ -15,11 +15,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import useDocumentTitle from '../hooks/useDocumentTitle';
+import { useTranslation } from '../context/LanguageContext';
 import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
 
 export default function LoginPage() {
-  useDocumentTitle('Sign In');
+  const { t, language } = useTranslation();
   const { login, resetPassword, isConfigured, clearError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,6 +36,7 @@ export default function LoginPage() {
 
   // Forgot password sub-state
   const [isForgotMode, setIsForgotMode] = useState(false);
+  useDocumentTitle(isForgotMode ? t('auth.forgotTitle') : t('auth.loginTitle'));
   const [resetSent, setResetSent] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
 
@@ -91,12 +93,10 @@ export default function LoginPage() {
             <span className="font-extrabold text-xl tracking-tight text-teal-300">स</span>
           </div>
           <h1 className="text-xl sm:text-2xl font-extrabold text-navy-900 tracking-tight">
-            {isForgotMode ? 'Reset Your Password' : 'Sign In to Sahayak AI'}
+            {isForgotMode ? t('auth.forgotTitle') : t('auth.loginTitle')}
           </h1>
           <p className="text-xs text-slate-500 max-w-sm mx-auto leading-relaxed">
-            {isForgotMode
-              ? 'Enter your registered email address and we will send password reset instructions.'
-              : 'Access your saved schemes, eligibility records, and application checklists.'}
+            {isForgotMode ? t('auth.forgotSubtitle') : t('auth.loginSubtitle')}
           </p>
         </div>
 
@@ -105,7 +105,8 @@ export default function LoginPage() {
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 flex items-start gap-2">
             <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div className="leading-relaxed">
-              <span className="font-semibold">Sign In Required:</span> Please log in to view your applications workspace.
+              <span className="font-semibold">{language === 'hi' ? 'लॉग इन आवश्यक:' : 'Sign In Required:'}</span>{' '}
+              {language === 'hi' ? 'कृपया अपने आवेदन डैशबोर्ड तक पहुँचने के लिए लॉग इन करें।' : 'Please log in to view your applications workspace.'}
             </div>
           </div>
         )}
@@ -116,10 +117,10 @@ export default function LoginPage() {
           <div className="flex items-center justify-between text-xs pb-3 border-b border-slate-100">
             <div className="flex items-center gap-1.5 text-slate-500">
               <ShieldCheck className="w-4 h-4 text-teal-600" />
-              <span className="font-medium">Civic-Tech Security</span>
+              <span className="font-medium">{t('auth.securityBadge')}</span>
             </div>
             <Badge variant={isConfigured ? 'teal' : 'amber'}>
-              {isConfigured ? 'Supabase Auth' : 'Config Needed'}
+              {isConfigured ? 'Supabase Auth' : t('auth.configNeededTitle')}
             </Badge>
           </div>
 
@@ -128,9 +129,9 @@ export default function LoginPage() {
             <div className="bg-amber-50/90 border border-amber-200 text-amber-900 text-xs rounded-xl p-3 flex items-start gap-2.5 animate-fadeIn">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div className="leading-relaxed space-y-1">
-                <p className="font-bold">Supabase Config Needed</p>
+                <p className="font-bold">{t('auth.configNeededTitle')}</p>
                 <p className="text-slate-600 text-[11px]">
-                  Add <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">VITE_SUPABASE_URL</code> and <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">VITE_SUPABASE_ANON_KEY</code> to your <code className="bg-amber-100 px-1 py-0.5 rounded font-mono text-[10px]">.env.local</code> file (project root) or Vercel Environment Variables.
+                  {t('auth.configNeededDesc')}
                 </p>
               </div>
             </div>
@@ -149,10 +150,12 @@ export default function LoginPage() {
             <div className="bg-teal-50 border border-teal-200 text-teal-800 rounded-xl p-4 text-xs space-y-2">
               <div className="flex items-center gap-2 font-bold text-teal-900">
                 <CheckCircle2 className="w-4 h-4 text-teal-600" />
-                Password Reset Instructions Sent
+                {language === 'hi' ? 'पासवर्ड रीसेट लिंक भेज दिया गया है' : 'Password Reset Instructions Sent'}
               </div>
               <p className="text-teal-700 leading-relaxed">
-                If an account exists with <strong className="font-semibold">{email}</strong>, you will receive an email with instructions to securely reset your password.
+                {language === 'hi'
+                  ? `यदि ${email} से संबद्ध खाता मौजूद है, तो आपको पासवर्ड रीसेट करने के निर्देश प्राप्त होंगे।`
+                  : `If an account exists with ${email}, you will receive an email with instructions to securely reset your password.`}
               </p>
               <button
                 type="button"
@@ -162,7 +165,7 @@ export default function LoginPage() {
                 }}
                 className="mt-2 inline-block font-semibold text-teal-900 hover:underline"
               >
-                Return to Sign In
+                {t('auth.backToLogin')}
               </button>
             </div>
           ) : isForgotMode ? (
@@ -170,7 +173,7 @@ export default function LoginPage() {
             <form onSubmit={handleForgotPassword} className="space-y-3.5">
               <div>
                 <label htmlFor="reset-email" className="block text-xs font-semibold text-slate-700 mb-1">
-                  Registered Email Address <span className="text-rose-500">*</span>
+                  {t('auth.emailLabel')} <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -183,7 +186,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="name@example.com"
+                    placeholder={t('auth.emailPlaceholder')}
                     className="w-full pl-9 pr-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                 </div>
@@ -195,7 +198,7 @@ export default function LoginPage() {
                   onClick={() => setIsForgotMode(false)}
                   className="text-xs font-semibold text-slate-500 hover:text-navy-900"
                 >
-                  Back to Sign In
+                  {t('auth.backToLogin')}
                 </button>
                 <Button
                   type="submit"
@@ -204,7 +207,7 @@ export default function LoginPage() {
                   disabled={resetLoading}
                   icon={resetLoading ? Loader2 : KeyRound}
                 >
-                  {resetLoading ? 'Sending...' : 'Send Reset Link'}
+                  {resetLoading ? t('common.loading') : t('auth.sendResetBtn')}
                 </Button>
               </div>
             </form>
@@ -214,7 +217,7 @@ export default function LoginPage() {
               {/* Email */}
               <div>
                 <label htmlFor="login-email" className="block text-xs font-semibold text-slate-700 mb-1">
-                  Email Address <span className="text-rose-500">*</span>
+                  {t('auth.emailLabel')} <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
@@ -227,7 +230,7 @@ export default function LoginPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    placeholder="name@example.com"
+                    placeholder={t('auth.emailPlaceholder')}
                     className="w-full pl-9 pr-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition-all"
                   />
                 </div>
@@ -237,7 +240,7 @@ export default function LoginPage() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label htmlFor="login-password" className="block text-xs font-semibold text-slate-700">
-                    Password <span className="text-rose-500">*</span>
+                    {t('auth.passwordLabel')} <span className="text-rose-500">*</span>
                   </label>
                   <button
                     type="button"
@@ -247,7 +250,7 @@ export default function LoginPage() {
                     }}
                     className="text-xs font-medium text-teal-700 hover:text-teal-900 hover:underline"
                   >
-                    Forgot password?
+                    {t('auth.forgotPasswordPrompt')}
                   </button>
                 </div>
                 <div className="relative">
@@ -284,11 +287,11 @@ export default function LoginPage() {
                 {loading ? (
                   <>
                     <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Signing in...</span>
+                    <span>{language === 'hi' ? 'लॉग इन हो रहा है...' : 'Signing in...'}</span>
                   </>
                 ) : (
                   <>
-                    <span>Sign In</span>
+                    <span>{t('auth.loginBtn')}</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -298,20 +301,20 @@ export default function LoginPage() {
 
           {/* Switch to Sign Up */}
           <div className="pt-3 border-t border-slate-100 text-center text-xs text-slate-500">
-            Don't have an account yet?{' '}
+            {t('auth.dontHaveAccount')}{' '}
             <Link
               to="/signup"
               state={{ from: location.state?.from }}
               className="font-bold text-teal-700 hover:text-teal-900 hover:underline ml-1"
             >
-              Sign Up for Free
+              {t('auth.signupBtn')}
             </Link>
           </div>
         </div>
 
         {/* Security / Privacy reassurance banner */}
         <div className="text-center text-[11px] text-slate-400 space-y-0.5">
-          <p>🔒 Sahayak AI never requests your Aadhaar number, OTP, or bank passwords.</p>
+          <p>{t('auth.zeroPiiPolicy')}</p>
         </div>
       </div>
     </div>

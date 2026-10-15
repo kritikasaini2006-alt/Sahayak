@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { OCCUPATION_OPTIONS } from '../../data/statesAndDistricts';
 import { Briefcase, IndianRupee, HelpCircle, AlertCircle, Wrench, Wheat } from 'lucide-react';
+import { useTranslation } from '../../context/LanguageContext';
 
 export default function LivelihoodStep({ formData, updateField, errors }) {
+  const { t, language } = useTranslation();
   const [showIncomeTooltip, setShowIncomeTooltip] = useState(false);
 
   const selectedOccupation = OCCUPATION_OPTIONS.find((o) => o.id === formData.occupation);
@@ -19,9 +21,13 @@ export default function LivelihoodStep({ formData, updateField, errors }) {
     <div className="space-y-6 animate-fadeIn">
       {/* Step Header */}
       <div>
-        <h2 className="text-lg font-bold text-navy-900">Livelihood, Occupation & Income</h2>
+        <h2 className="text-lg font-bold text-navy-900">
+          {language === 'hi' ? 'आजीविका, व्यवसाय एवं वार्षिक आय' : 'Livelihood, Occupation & Income'}
+        </h2>
         <p className="text-xs text-slate-500 mt-0.5">
-          Welfare programs are closely aligned with your source of livelihood, family profession, and economic capacity.
+          {language === 'hi'
+            ? 'कल्याणकारी कार्यक्रम आपकी आजीविका के स्रोत, पारिवारिक पेशे और आर्थिक क्षमता पर आधारित होते हैं।'
+            : 'Welfare programs are closely aligned with your source of livelihood, family profession, and economic capacity.'}
         </p>
       </div>
 
@@ -29,7 +35,7 @@ export default function LivelihoodStep({ formData, updateField, errors }) {
       <div className="space-y-2">
         <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
           <Briefcase className="w-3.5 h-3.5 text-slate-400" />
-          Primary Livelihood / Occupation <span className="text-red-500">*</span>
+          {language === 'hi' ? 'मुख्य आजीविका / व्यवसाय' : 'Primary Livelihood / Occupation'} <span className="text-red-500">*</span>
         </label>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[290px] overflow-y-auto pr-1">
@@ -80,16 +86,30 @@ export default function LivelihoodStep({ formData, updateField, errors }) {
         <div className="p-4 bg-amber-50/60 border border-amber-200/80 rounded-xl space-y-2 animate-fadeIn">
           <label className="text-xs font-bold text-amber-950 uppercase tracking-wider flex items-center gap-1.5">
             <Wheat className="w-4 h-4 text-amber-700" />
-            Agricultural Landholding Category (Crucial for PM-KISAN)
+            {language === 'hi' ? 'कृषि भूमि की श्रेणी (पीएम-किसान हेतु आवश्यक)' : 'Agricultural Landholding Category (Crucial for PM-KISAN)'}
           </label>
           <p className="text-xs text-amber-900/80">
-            PM-KISAN prioritizes small & marginal farmers holding cultivable land in their names.
+            {language === 'hi'
+              ? 'पीएम-किसान छोटे एवं सीमांत किसानों को प्राथमिकता देता है जिनके नाम पर कृषि योग्य भूमि है।'
+              : 'PM-KISAN prioritizes small & marginal farmers holding cultivable land in their names.'}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
             {[
-              { id: 'small_marginal', title: 'Small / Marginal', desc: '< 2 Hectares (< 5 Acres)' },
-              { id: 'large', title: 'Large Landholding', desc: '> 2 Hectares' },
-              { id: 'landless_tenant', title: 'Landless / Tenant', desc: 'Leased or sharecropped land' },
+              {
+                id: 'small_marginal',
+                title: language === 'hi' ? 'लघु / सीमांत किसान' : 'Small / Marginal',
+                desc: language === 'hi' ? '< 2 हेक्टेयर (< 5 एकड़)' : '< 2 Hectares (< 5 Acres)',
+              },
+              {
+                id: 'large',
+                title: language === 'hi' ? 'बड़ा भूस्वामी' : 'Large Landholding',
+                desc: language === 'hi' ? '> 2 हेक्टेयर' : '> 2 Hectares',
+              },
+              {
+                id: 'landless_tenant',
+                title: language === 'hi' ? 'भूमिहीन / पट्टेदार' : 'Landless / Tenant',
+                desc: language === 'hi' ? 'बटाईदार या किराए की भूमि' : 'Leased or sharecropped land',
+              },
             ].map((lh) => (
               <button
                 key={lh.id}
@@ -114,17 +134,19 @@ export default function LivelihoodStep({ formData, updateField, errors }) {
         <div className="p-4 bg-teal-50/60 border border-teal-200 rounded-xl space-y-2 animate-fadeIn">
           <label className="text-xs font-bold text-teal-950 uppercase tracking-wider flex items-center gap-1.5">
             <Wrench className="w-4 h-4 text-teal-700" />
-            Specific Traditional Trade (Crucial for PM Vishwakarma)
+            {language === 'hi' ? 'पारंपरिक शिल्प / व्यवसाय (पीएम विश्वकर्मा हेतु)' : 'Specific Traditional Trade (Crucial for PM Vishwakarma)'}
           </label>
           <p className="text-xs text-teal-900/80">
-            PM Vishwakarma provides ₹15,000 toolkit grants and collateral-free credit for 18 designated trade categories.
+            {language === 'hi'
+              ? 'पीएम विश्वकर्मा 18 निर्दिष्ट पारंपरिक व्यवसायों के लिए ₹15,000 टूलकिट अनुदान और बिना गारंटी ऋण प्रदान करता है।'
+              : 'PM Vishwakarma provides ₹15,000 toolkit grants and collateral-free credit for 18 designated trade categories.'}
           </p>
           <select
             value={formData.artisanTrade}
             onChange={(e) => updateField('artisanTrade', e.target.value)}
             className="w-full px-3 py-2 rounded-lg border border-teal-300 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-teal-500 font-medium"
           >
-            <option value="">-- Select Your Specific Craft / Trade --</option>
+            <option value="">{language === 'hi' ? '-- अपना विशिष्ट शिल्प / व्यवसाय चुनें --' : '-- Select Your Specific Craft / Trade --'}</option>
             {selectedOccupation.subcategories.map((sub) => (
               <option key={sub} value={sub}>
                 {sub}
@@ -139,7 +161,7 @@ export default function LivelihoodStep({ formData, updateField, errors }) {
         <div className="flex items-center justify-between">
           <label htmlFor="annual-income" className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
             <IndianRupee className="w-3.5 h-3.5 text-slate-400" />
-            Annual Household Income <span className="text-red-500">*</span>
+            {language === 'hi' ? 'वार्षिक पारिवारिक आय' : 'Annual Household Income'} <span className="text-red-500">*</span>
           </label>
           <button
             type="button"
@@ -148,13 +170,15 @@ export default function LivelihoodStep({ formData, updateField, errors }) {
             aria-expanded={showIncomeTooltip}
           >
             <HelpCircle className="w-3.5 h-3.5" />
-            <span>Why ask?</span>
+            <span>{language === 'hi' ? 'क्यों पूछा गया?' : 'Why ask?'}</span>
           </button>
         </div>
 
         {showIncomeTooltip && (
           <div className="p-2.5 bg-teal-50 border border-teal-200 rounded-lg text-xs text-teal-900 animate-fadeIn">
-            Welfare schemes use household income caps to determine subsidy eligibility, loan brackets, and poverty exclusions.
+            {language === 'hi'
+              ? 'कल्याणकारी योजनाएं सब्सिडी पात्रता और आय सीमा निर्धारित करने के लिए पारिवारिक आय का उपयोग करती हैं।'
+              : 'Welfare schemes use household income caps to determine subsidy eligibility, loan brackets, and poverty exclusions.'}
           </div>
         )}
 
@@ -167,7 +191,7 @@ export default function LivelihoodStep({ formData, updateField, errors }) {
             type="number"
             min="0"
             step="5000"
-            placeholder="e.g. 120000"
+            placeholder={language === 'hi' ? 'उदा. 120000' : 'e.g. 120000'}
             value={formData.annualIncome}
             onChange={(e) => updateField('annualIncome', e.target.value)}
             className={`w-full pl-8 pr-4 py-2.5 rounded-lg border text-sm focus:outline-none focus:ring-2 bg-slate-50/50 ${
@@ -182,7 +206,7 @@ export default function LivelihoodStep({ formData, updateField, errors }) {
 
         {/* Quick Income Chips */}
         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-          <span className="text-[11px] text-slate-400">Quick select:</span>
+          <span className="text-[11px] text-slate-400">{language === 'hi' ? 'त्वरित चयन:' : 'Quick select:'}</span>
           {quickIncomePresets.map((preset) => (
             <button
               key={preset.value}

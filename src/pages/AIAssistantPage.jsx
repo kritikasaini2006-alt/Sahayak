@@ -26,18 +26,12 @@ import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../data/translations';
 import { loadCitizenProfile } from '../utils/eligibilityEngine';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from '../context/LanguageContext';
 
 export default function AIAssistantPage() {
-  useDocumentTitle('AI Assistant');
+  const { language, changeLanguage } = useTranslation();
+  useDocumentTitle(language === 'hi' ? 'नागरिक AI सहायक' : 'AI Assistant');
   const { user } = useAuth();
-  // Language state (defaults to English or saved preference)
-  const [language, setLanguage] = useState(() => {
-    try {
-      return localStorage.getItem('sahayak_lang') || 'en';
-    } catch {
-      return 'en';
-    }
-  });
 
   const t = TRANSLATIONS[language] || TRANSLATIONS.en;
 
@@ -78,28 +72,25 @@ export default function AIAssistantPage() {
     }
   }, [user]);
 
-  // Save language preference and update welcome if only welcome message exists
-  const handleLanguageChange = (newLang) => {
-    setLanguage(newLang);
-    try {
-      localStorage.setItem('sahayak_lang', newLang);
-    } catch (e) {
-      console.warn('Unable to store language preference:', e);
-    }
-
-    // If chat only contains the initial welcome message, translate it
+  // Sync welcome message if language changes and chat has only the welcome message
+  useEffect(() => {
     if (messages.length === 1 && messages[0].id === 'welcome') {
       setMessages([
         {
           id: 'welcome',
           sender: 'assistant',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: TRANSLATIONS[newLang]?.welcomeMessage || TRANSLATIONS.en.welcomeMessage,
+          text: TRANSLATIONS[language]?.welcomeMessage || TRANSLATIONS.en.welcomeMessage,
           sources: ['india.gov.in', 'myscheme.gov.in'],
           isDemoMode: false,
         },
       ]);
     }
+  }, [language]);
+
+  // Save language preference via global context
+  const handleLanguageChange = (newLang) => {
+    changeLanguage(newLang);
   };
 
   // Scroll to bottom whenever messages or typing state changes
