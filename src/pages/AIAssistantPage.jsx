@@ -71,12 +71,27 @@ export default function AIAssistantPage() {
   const [isRetryingMic, setIsRetryingMic] = useState(false);
 
   // References
-  const messagesEndRef = useRef(null);
+  const latestAIMessageRef = useRef(null);
+  const latestUserMessageRef = useRef(null);
+  const chatContainerRef = useRef(null);
+  const lastScrolledMessageIdRef = useRef(null);
+  const lastScrolledUserMessageIdRef = useRef(null);
   const recognitionRef = useRef(null);
   const inputRef = useRef(null);
   const micButtonRef = useRef(null);
   const permStatusRef = useRef(null);
   const speechErrorTimeoutRef = useRef(null);
+
+  // Identify latest assistant and user messages for scrolling refs
+  const latestAssistantMessage = [...messages].reverse().find(
+    (m) => m.sender === 'assistant' && m.id !== 'welcome'
+  );
+  const latestAssistantMessageId = latestAssistantMessage?.id;
+
+  const latestUserMessage = [...messages].reverse().find(
+    (m) => m.sender === 'user'
+  );
+  const latestUserMessageId = latestUserMessage?.id;
 
   // Load citizen profile on mount or user change
   useEffect(() => {
@@ -117,10 +132,54 @@ export default function AIAssistantPage() {
     changeLanguage(newLang);
   };
 
-  // Scroll to bottom whenever messages or typing state changes
+  // Auto-scroll to the START of the new AI message (not to the bottom of the conversation)
+  // Positions the beginning of the AI response near the top of the visible chat area with a small comfortable top margin.
+  // Keeps the AI message heading and first line visible so the user can start reading immediately.
+  // If tokens stream progressively, does not repeatedly force-scroll to the bottom.
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isTyping]);
+    if (latestAssistantMessageId && lastScrolledMessageIdRef.current !== latestAssistantMessageId) {
+      lastScrolledMessageIdRef.current = latestAssistantMessageId;
+
+      const scrollToStart = () => {
+        if (latestAIMessageRef.current) {
+          latestAIMessageRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        }
+      };
+
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        const frameId = window.requestAnimationFrame(scrollToStart);
+        return () => window.cancelAnimationFrame(frameId);
+      } else {
+        scrollToStart();
+      }
+    }
+  }, [latestAssistantMessageId, messages]);
+
+  // When a user submits a prompt, bring the user's message into view
+  useEffect(() => {
+    if (latestUserMessageId && lastScrolledUserMessageIdRef.current !== latestUserMessageId) {
+      lastScrolledUserMessageIdRef.current = latestUserMessageId;
+
+      const scrollToUserMsg = () => {
+        if (latestUserMessageRef.current) {
+          latestUserMessageRef.current.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+          });
+        }
+      };
+
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        const frameId = window.requestAnimationFrame(scrollToUserMsg);
+        return () => window.cancelAnimationFrame(frameId);
+      } else {
+        scrollToUserMsg();
+      }
+    }
+  }, [latestUserMessageId]);
 
   // Clean up any ongoing TTS / STT / MediaRecorder on unmount
   useEffect(() => {
@@ -651,6 +710,8 @@ export default function AIAssistantPage() {
         window.speechSynthesis.cancel();
       }
       setSpeakingId(null);
+      lastScrolledMessageIdRef.current = null;
+      lastScrolledUserMessageIdRef.current = null;
       setMessages([
         {
           id: 'welcome',
@@ -821,14 +882,25 @@ export default function AIAssistantPage() {
       {/* Chat Thread Container */}
       <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm mt-3.5 flex flex-col overflow-hidden min-h-[440px]">
         {/* Messages List */}
-        <div className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4">
-          {messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`flex items-start gap-3 ${
-                msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
-              }`}
-            >
+        <div
+          ref={chatContainerRef}
+          className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4"
+        >
+          {messages.map((msg) => {
+            const isLatestAssistant = msg.id === latestAssistantMessageId;
+            const isLatestUser = msg.id === latestUserMessageId;
+
+            return (
+              <div
+                key={msg.id}
+                ref={isLatestAssistant ? latestAIMessageRef : (isLatestUser ? latestUserMessageRef : null)}
+                data-message-id={msg.id}
+                data-sender={msg.sender}
+                className={`flex items-start gap-3 scroll-mt-4 ${
+                  msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'
+                }`}
+                style={isLatestAssistant ? { scrollMarginTop: '16px' } : undefined}
+              >
               {/* Avatar */}
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
@@ -1170,7 +1242,8 @@ export default function AIAssistantPage() {
                 )}
               </div>
             </div>
-          ))}
+          );
+        })}
 
           {/* Typing indicator */}
           {isTyping && (
@@ -1188,8 +1261,6 @@ export default function AIAssistantPage() {
               </div>
             </div>
           )}
-
-          <div ref={messagesEndRef} />
         </div>
 
         {/* Suggestion Chips */}

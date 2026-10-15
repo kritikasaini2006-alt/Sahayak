@@ -252,8 +252,87 @@ async function runGuidedAssistantTests() {
     failures++;
   }
 
+  // Test 11: Auto-Scroll - Removal of bottom sentinel & bottom-scroll override
+  try {
+    const assistantPagePath = path.resolve(__dirname, '../src/pages/AIAssistantPage.jsx');
+    const pageContent = fs.readFileSync(assistantPagePath, 'utf8');
+
+    const hasBottomSentinel = pageContent.includes('messagesEndRef');
+    const hasScrollToBottomOnDone = pageContent.includes('messagesEndRef.current?.scrollIntoView');
+    const hasScrollTopScrollHeight = pageContent.includes('scrollTop = scrollHeight') || pageContent.includes('scrollTop = container.scrollHeight');
+
+    if (!hasBottomSentinel && !hasScrollToBottomOnDone && !hasScrollTopScrollHeight) {
+      console.log('✅ Test 11 Passed: Bottom sentinel and scroll-to-bottom overrides cleanly removed.');
+    } else {
+      console.error('❌ Test 11 Failed: Found bottom sentinel or scroll-to-bottom logic in AIAssistantPage.jsx');
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 11 Exception:', err);
+    failures++;
+  }
+
+  // Test 12: Stable reference for newly created AI message & comfortable top margin styling
+  try {
+    const assistantPagePath = path.resolve(__dirname, '../src/pages/AIAssistantPage.jsx');
+    const pageContent = fs.readFileSync(assistantPagePath, 'utf8');
+
+    const hasAIMessageRef = pageContent.includes('latestAIMessageRef = useRef');
+    const hasRefAttachedToMessage = pageContent.includes('ref={isLatestAssistant ? latestAIMessageRef :');
+    const hasScrollMarginTop = pageContent.includes("scrollMarginTop: '16px'") && pageContent.includes('scroll-mt-4');
+
+    if (hasAIMessageRef && hasRefAttachedToMessage && hasScrollMarginTop) {
+      console.log('✅ Test 12 Passed: Stable React ref attached to AI message with 16px comfortable top margin.');
+    } else {
+      console.error('❌ Test 12 Failed: AI message ref or top margin styling missing.');
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 12 Exception:', err);
+    failures++;
+  }
+
+  // Test 13: Auto-scroll targets the START of the new AI message with block: 'start'
+  try {
+    const assistantPagePath = path.resolve(__dirname, '../src/pages/AIAssistantPage.jsx');
+    const pageContent = fs.readFileSync(assistantPagePath, 'utf8');
+
+    const hasScrollToStart = pageContent.includes("block: 'start'") && pageContent.includes('latestAIMessageRef.current.scrollIntoView');
+    const hasRequestAnimationFrame = pageContent.includes('requestAnimationFrame');
+
+    if (hasScrollToStart && hasRequestAnimationFrame) {
+      console.log('✅ Test 13 Passed: Auto-scroll correctly targets START of AI message with block: "start".');
+    } else {
+      console.error('❌ Test 13 Failed: Auto-scroll start alignment or animation frame missing.');
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 13 Exception:', err);
+    failures++;
+  }
+
+  // Test 14: Progressive streaming / token updates stability
+  try {
+    const assistantPagePath = path.resolve(__dirname, '../src/pages/AIAssistantPage.jsx');
+    const pageContent = fs.readFileSync(assistantPagePath, 'utf8');
+
+    const tracksScrolledMessageId = pageContent.includes('lastScrolledMessageIdRef.current !== latestAssistantMessageId');
+    const resetsOnClear = pageContent.includes('lastScrolledMessageIdRef.current = null');
+    const notTriggeredByIsTyping = !pageContent.includes('[latestAssistantMessageId, isTyping]') && !pageContent.includes('[messages, isTyping]');
+
+    if (tracksScrolledMessageId && resetsOnClear && notTriggeredByIsTyping) {
+      console.log('✅ Test 14 Passed: Progressive token updates and isTyping toggles do not force-scroll; view stays stable at message start.');
+    } else {
+      console.error('❌ Test 14 Failed: Progressive streaming stability check failed.');
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 14 Exception:', err);
+    failures++;
+  }
+
   if (failures === 0) {
-    console.log('\n🎉 ALL 10 GUIDED ASSISTANT TESTS PASSED SUCCESSFULLY!\n');
+    console.log('\n🎉 ALL 14 GUIDED ASSISTANT & CHAT SCROLLING TESTS PASSED SUCCESSFULLY!\n');
   } else {
     console.error(`\n🚨 ${failures} GUIDED ASSISTANT TESTS FAILED.\n`);
     process.exit(1);
