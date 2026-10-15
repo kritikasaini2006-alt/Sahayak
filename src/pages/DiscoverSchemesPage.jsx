@@ -422,17 +422,17 @@ export default function DiscoverSchemesPage() {
             </div>
           </div>
 
-          {/* Loading, Cards View, or Empty State Container */}
-          <div className="flex-1 flex flex-col min-h-[460px] sm:min-h-[540px]">
-            {isLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5 animate-pulse">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-64 bg-slate-100 rounded-xl border border-slate-200" />
-                ))}
-              </div>
-            ) : filteredAndSortedSchemes.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {filteredAndSortedSchemes.map((scheme) => (
+          {/* Loading or Results Grid (Cards or Empty State) */}
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full animate-pulse">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-64 bg-slate-100 rounded-xl border border-slate-200" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full">
+              {filteredAndSortedSchemes.length > 0 ? (
+                filteredAndSortedSchemes.map((scheme) => (
                   <SchemeCard
                     key={scheme.id}
                     scheme={scheme}
@@ -441,35 +441,35 @@ export default function DiscoverSchemesPage() {
                     onViewDetails={(s) => setSelectedSchemeForModal(s)}
                     eligibilityStatus={citizenProfile ? eligibilityMap.get(scheme.id)?.status : undefined}
                   />
-                ))}
-              </div>
-            ) : (
-              /* Empty State: Stretched across available results area with vertical and horizontal centering */
-              <div className="flex-1 w-full h-full min-h-[400px] sm:min-h-[480px] bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
-                <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
-                  <BookOpen className="w-8 h-8" />
+                ))
+              ) : (
+                /* Empty State: Spans full width of the results grid with centered content and matching card dimensions */
+                <div className="col-span-1 md:col-span-2 w-full min-h-[350px] sm:min-h-[370px] bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
+                  <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
+                    <BookOpen className="w-8 h-8" />
+                  </div>
+                  <div className="space-y-1.5 max-w-md mx-auto">
+                    <h3 className="text-lg sm:text-xl font-bold text-navy-900">
+                      {t('schemes.emptyTitle')}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                      {t('schemes.emptySubtitle')}
+                    </p>
+                  </div>
+                  <div className="pt-2">
+                    <Button
+                      variant="teal"
+                      size="sm"
+                      onClick={handleResetFilters}
+                      icon={RefreshCw}
+                    >
+                      {t('schemes.resetFilters')}
+                    </Button>
+                  </div>
                 </div>
-                <div className="space-y-1.5 max-w-md mx-auto">
-                  <h3 className="text-lg sm:text-xl font-bold text-navy-900">
-                    {t('schemes.emptyTitle')}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
-                    {t('schemes.emptySubtitle')}
-                  </p>
-                </div>
-                <div className="pt-2">
-                  <Button
-                    variant="teal"
-                    size="sm"
-                    onClick={handleResetFilters}
-                    icon={RefreshCw}
-                  >
-                    {t('schemes.resetFilters')}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

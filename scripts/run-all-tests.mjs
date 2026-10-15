@@ -9,6 +9,7 @@ const testSuites = [
   { name: 'Navbar UI/UX & Responsive Breakpoints', path: 'scripts/test-navbar.mjs' },
   { name: 'Bilingual System & i18n Dictionary Parity', path: 'scripts/test-i18n.mjs' },
   { name: 'Microphone Interaction & Permission Guidance Modal', path: 'scripts/test-microphone.mjs' },
+  { name: 'Discover Schemes Layout & Empty-State Stability', path: 'scripts/test-schemes-layout.mjs' },
 ];
 
 console.log('====================================================');
