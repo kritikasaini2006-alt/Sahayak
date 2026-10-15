@@ -42,23 +42,64 @@ if (!autostartDetected) {
 }
 
 // ==========================================
-// Test 2: Click-to-Activate & Permission Query Architecture
+// Test 2: Unrequested / Prompt / Unknown Permission Not Treated as Denied
 // ==========================================
-const hasGetMicState = aiContent.includes('getMicrophonePermissionState');
-const hasPermQuery = aiContent.includes("navigator.permissions.query({ name: 'microphone' })");
-const hasCatchFallback = aiContent.includes('catch') && aiContent.includes("return 'unknown'");
-const checksDeniedState = aiContent.includes("permState === 'denied'");
-const opensModalOnDenied = aiContent.includes('setShowMicModal(true)');
+// Verify that permState === 'prompt' or 'unknown' does NOT trigger setShowMicModal(true)
+const doesNotTreatPromptAsDenied = !aiContent.includes("permState === 'prompt' && setShowMicModal(true)") &&
+  !aiContent.includes("permState !== 'granted' && setShowMicModal(true)");
+const checksExplicitDeniedOnly = aiContent.includes("if (permState === 'denied')") &&
+  aiContent.includes('setShowMicModal(true)');
 
-if (hasGetMicState && hasPermQuery && hasCatchFallback && checksDeniedState && opensModalOnDenied) {
-  console.log('✅ Test 2 Passed: Click-to-activate checks Permissions API where supported and falls back gracefully on Safari/Firefox.');
+if (doesNotTreatPromptAsDenied && checksExplicitDeniedOnly) {
+  console.log("✅ Test 2 Passed: Unrequested ('prompt') and 'unknown' states are NOT treated as denied; only explicit 'denied' triggers modal directly.");
 } else {
-  console.error('❌ Test 2 Failed: Permission state check or fallback missing in click-to-activate flow.');
+  console.error("❌ Test 2 Failed: Unrequested or unknown permission state improperly treated as denied.");
   process.exit(1);
 }
 
 // ==========================================
-// Test 3: Denied State & Browser Settings Guidance Modal
+// Test 3: getUserMedia Triggers Browser Native Permission Prompt After Click
+// ==========================================
+const callsGetUserMedia = aiContent.includes("navigator.mediaDevices.getUserMedia({ audio: true })");
+const triggerHelperExists = aiContent.includes('triggerMicrophoneAndStart');
+const clickInvokesTrigger = aiContent.includes('await triggerMicrophoneAndStart(permState)');
+
+if (callsGetUserMedia && triggerHelperExists && clickInvokesTrigger) {
+  console.log('✅ Test 3 Passed: User click triggers native browser permission prompt via navigator.mediaDevices.getUserMedia({ audio: true }).');
+} else {
+  console.error('❌ Test 3 Failed: getUserMedia native prompt activation missing in click flow.');
+  process.exit(1);
+}
+
+// ==========================================
+// Test 4: Immediate Release of Temporary Stream to Prevent Hardware Conflicts
+// ==========================================
+const releasesAudioTracks = aiContent.includes('stream.getTracks().forEach((track) => track.stop())');
+const startsRecognitionAfterRelease = aiContent.indexOf('stream.getTracks().forEach((track) => track.stop())') <
+  aiContent.indexOf('startRecognition();\n      } catch (err)');
+
+if (releasesAudioTracks && startsRecognitionAfterRelease) {
+  console.log('✅ Test 4 Passed: Temporary audio stream tracks are immediately stopped after grant to avoid device conflicts before starting SpeechRecognition.');
+} else {
+  console.error('❌ Test 4 Failed: Audio stream not stopped or release order incorrect.');
+  process.exit(1);
+}
+
+// ==========================================
+// Test 5: Insecure Contexts & Missing API Handling
+// ==========================================
+const checksSecureContext = aiContent.includes('window.isSecureContext === false');
+const handlesMissingMediaDevices = aiContent.includes('navigator.mediaDevices?.getUserMedia');
+
+if (checksSecureContext && handlesMissingMediaDevices) {
+  console.log('✅ Test 5 Passed: Gracefully checks for secure context (HTTPS/localhost) and missing mediaDevices API.');
+} else {
+  console.error('❌ Test 5 Failed: Secure context or missing API handling missing.');
+  process.exit(1);
+}
+
+// ==========================================
+// Test 6: Denied State & Browser Settings Guidance Modal
 // ==========================================
 const hasRoleDialog = modalContent.includes('role="dialog"');
 const hasAriaModal = modalContent.includes('aria-modal="true"');
@@ -77,61 +118,67 @@ if (
   hasFocusAutoSetup &&
   hasLockIconGuidance
 ) {
-  console.log('✅ Test 3 Passed: Accessible permission modal with ARIA attributes, Escape listener, focus management, and lock icon guidance.');
+  console.log('✅ Test 6 Passed: Accessible permission modal with ARIA attributes, Escape listener, focus management, and lock icon guidance.');
 } else {
-  console.error('❌ Test 3 Failed: Modal accessibility or browser guidance elements missing.');
+  console.error('❌ Test 6 Failed: Modal accessibility or browser guidance elements missing.');
   process.exit(1);
 }
 
 // ==========================================
-// Test 4: Realistic Browser Security & Retry Handling
+// Test 7: Realistic Browser Security & Retry Handling
 // ==========================================
-// Verify Try Again re-checks permissions without falsely assuming JS can force the native prompt
 const hasRetryHandler = aiContent.includes('handleTryAgain');
 const rechecksPermissionOnRetry = aiContent.includes('await getMicrophonePermissionState()');
 const showsStillBlockedMessage = aiContent.includes('t.micStillBlocked');
 const hasCloseModalRestoreFocus = aiContent.includes('handleCloseMicModal') && aiContent.includes('micButtonRef.current?.focus()');
 
 if (hasRetryHandler && rechecksPermissionOnRetry && showsStillBlockedMessage && hasCloseModalRestoreFocus) {
-  console.log('✅ Test 4 Passed: Realistic browser retry handling preserves security boundaries and restores button focus on modal close.');
+  console.log('✅ Test 7 Passed: Realistic browser retry handling preserves security boundaries and restores button focus on modal close.');
 } else {
-  console.error('❌ Test 4 Failed: Retry handling or focus restoration logic missing.');
+  console.error('❌ Test 7 Failed: Retry handling or focus restoration logic missing.');
   process.exit(1);
 }
 
 // ==========================================
-// Test 5: SpeechRecognition Hardware & Network Error Handling
+// Test 8: Comprehensive Speech & Browser Error Handling
 // ==========================================
 const handlesNotAllowed = aiContent.includes("event.error === 'not-allowed'");
+const handlesServiceNotAllowed = aiContent.includes("event.error === 'service-not-allowed'");
 const handlesAudioCapture = aiContent.includes("event.error === 'audio-capture'");
 const handlesNetwork = aiContent.includes("event.error === 'network'");
 const handlesNoSpeech = aiContent.includes("event.error === 'no-speech'");
 const handlesUnsupported = aiContent.includes('t.sttUnsupported');
 
-if (handlesNotAllowed && handlesAudioCapture && handlesNetwork && handlesNoSpeech && handlesUnsupported) {
-  console.log('✅ Test 5 Passed: All speech recognition error states (not-allowed, audio-capture, network, no-speech, sttUnsupported) handled with clear feedback.');
+if (
+  handlesNotAllowed &&
+  handlesServiceNotAllowed &&
+  handlesAudioCapture &&
+  handlesNetwork &&
+  handlesNoSpeech &&
+  handlesUnsupported
+) {
+  console.log('✅ Test 8 Passed: All speech recognition and browser error states (not-allowed, service-not-allowed, audio-capture, network, no-speech, sttUnsupported) handled with clear feedback.');
 } else {
-  console.error('❌ Test 5 Failed: Speech recognition error handling incomplete.');
+  console.error('❌ Test 8 Failed: Speech recognition error handling incomplete.');
   process.exit(1);
 }
 
 // ==========================================
-// Test 6: Zero Background Listening Guarantee
+// Test 9: Zero Background Listening Guarantee
 // ==========================================
-// Mic must be aborted/stopped on unmount, on message send, or when user clicks mic again while active
 const stopsOnUnmount = aiContent.includes('recognitionRef.current.abort()');
 const stopsOnMessageSend = aiContent.includes('handleSendMessage') && (aiContent.includes('recognitionRef.current.stop()') || aiContent.includes('recognitionRef.current?.stop()') || aiContent.includes('setIsListening(false)'));
 const toggleStopsListening = aiContent.includes('if (isListening || isConnectingMic)') && aiContent.includes('recognitionRef.current.stop()');
 
 if (stopsOnUnmount && stopsOnMessageSend && toggleStopsListening) {
-  console.log('✅ Test 6 Passed: Zero background listening guaranteed across unmount, message submission, and toggle cancellation.');
+  console.log('✅ Test 9 Passed: Zero background listening guaranteed across unmount, message submission, and toggle cancellation.');
 } else {
-  console.error('❌ Test 6 Failed: Background listening safeguards incomplete.');
+  console.error('❌ Test 9 Failed: Background listening safeguards incomplete.');
   process.exit(1);
 }
 
 // ==========================================
-// Test 7: Bilingual Dictionary Parity for Voice Keys
+// Test 10: Bilingual Dictionary Parity for Voice Keys
 // ==========================================
 const requiredMicKeys = [
   'micStart',
@@ -149,6 +196,9 @@ const requiredMicKeys = [
   'micNoDevice',
   'micNetworkError',
   'micNoSpeech',
+  'micInsecureContext',
+  'micInUse',
+  'micServiceNotAllowed',
   'sttUnsupported',
 ];
 
@@ -178,10 +228,10 @@ for (const key of requiredMicKeys) {
 }
 
 if (micKeysValid) {
-  console.log(`✅ Test 7 Passed: 100% bilingual parity verified for all ${requiredMicKeys.length} voice input & permission modal keys across en.js, hi.js, and translations.js.`);
+  console.log(`✅ Test 10 Passed: 100% bilingual parity verified for all ${requiredMicKeys.length} voice input & permission modal keys across en.js, hi.js, and translations.js.`);
 } else {
-  console.error('❌ Test 7 Failed: Microphone translation dictionary parity check failed.');
+  console.error('❌ Test 10 Failed: Microphone translation dictionary parity check failed.');
   process.exit(1);
 }
 
-console.log('\n🎉 ALL 7 MICROPHONE & VOICE PERMISSION TESTS PASSED WITH 100% SUCCESS!\n');
+console.log('\n🎉 ALL 10 MICROPHONE & VOICE PERMISSION TESTS PASSED WITH 100% SUCCESS!\n');

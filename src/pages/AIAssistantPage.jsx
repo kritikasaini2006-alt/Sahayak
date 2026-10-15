@@ -210,10 +210,16 @@ export default function AIAssistantPage() {
         setIsConnectingMic(false);
         setIsListening(false);
 
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-          // Native browser permission prompt denied or blocked in browser settings
+        if (event.error === 'not-allowed') {
+          // Native browser permission denied or revoked
           setShowMicModal(true);
           setSpeechError(null);
+        } else if (event.error === 'service-not-allowed') {
+          // Speech recognition service unavailable (e.g. Brave Google Services disabled)
+          showEphemeralSpeechError(
+            t.micServiceNotAllowed ||
+              'Speech recognition service is disabled in your browser settings (e.g. Brave Google Services).'
+          );
         } else if (event.error === 'audio-capture') {
           showEphemeralSpeechError(t.micNoDevice || 'No microphone detected on your device.');
         } else if (event.error === 'network') {
@@ -244,6 +250,53 @@ export default function AIAssistantPage() {
     }
   };
 
+  // Request microphone permission via native prompt where needed and start recognition
+  const triggerMicrophoneAndStart = async (permState) => {
+    // If already granted, start speech recognition directly
+    if (permState === 'granted') {
+      setIsConnectingMic(true);
+      startRecognition();
+      return;
+    }
+
+    // Permission is 'prompt' (e.g. Brave/Chrome default Ask) or 'unknown' (e.g. Safari/Firefox)
+    // Use getUserMedia to trigger the browser's native permission prompt
+    if (typeof navigator !== 'undefined' && navigator.mediaDevices?.getUserMedia) {
+      try {
+        setIsConnectingMic(true);
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        // CRITICAL: Immediately release temporary audio stream to prevent device conflicts with SpeechRecognition
+        stream.getTracks().forEach((track) => track.stop());
+
+        setShowMicModal(false);
+        setMicModalError(null);
+        startRecognition();
+      } catch (err) {
+        console.warn('getUserMedia permission error:', err);
+        setIsConnectingMic(false);
+
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          // Native permission was blocked or rejected by the user
+          setShowMicModal(true);
+          setMicModalError(null);
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          showEphemeralSpeechError(t.micNoDevice || 'No microphone detected on your device.');
+        } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+          showEphemeralSpeechError(t.micInUse || 'Microphone is already in use by another application.');
+        } else if (err.name === 'SecurityError') {
+          showEphemeralSpeechError(t.micInsecureContext || 'Microphone access is restricted by security policy.');
+        } else {
+          showEphemeralSpeechError(`Microphone error: ${err.message || err.name}`);
+        }
+      }
+    } else {
+      // Fallback if mediaDevices.getUserMedia is missing
+      setIsConnectingMic(true);
+      startRecognition();
+    }
+  };
+
   // Click-to-activate handler
   const handleToggleListening = async () => {
     const SpeechRecognition =
@@ -267,6 +320,14 @@ export default function AIAssistantPage() {
       return;
     }
 
+    // Microphone access requires a secure context (HTTPS or localhost)
+    if (typeof window !== 'undefined' && window.isSecureContext === false) {
+      showEphemeralSpeechError(
+        t.micInsecureContext || 'Microphone access requires a secure connection (HTTPS).'
+      );
+      return;
+    }
+
     // Check permission state where supported
     const permState = await getMicrophonePermissionState();
 
@@ -277,9 +338,8 @@ export default function AIAssistantPage() {
       return;
     }
 
-    // Permission is either 'granted', 'prompt', or 'unknown'
-    setIsConnectingMic(true);
-    startRecognition();
+    // Do NOT treat prompt or unknown as denied: trigger native prompt and start recognition
+    await triggerMicrophoneAndStart(permState);
   };
 
   // Try Again handler from permission modal
@@ -299,7 +359,8 @@ export default function AIAssistantPage() {
     }
 
     setIsRetryingMic(false);
-    startRecognition();
+    setShowMicModal(false);
+    await triggerMicrophoneAndStart(permState);
   };
 
   // Close modal and restore focus to microphone button
