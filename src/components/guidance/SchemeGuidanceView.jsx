@@ -33,8 +33,9 @@ export default function SchemeGuidanceView({
   isSaved = false,
   onToggleSave = null,
 }) {
-  const { t, getSchemeText, language } = useTranslation();
-  const guidance = SCHEME_GUIDANCE[schemeId] || SCHEME_GUIDANCE['pm-kisan'];
+  const { t, getSchemeText, getGuidanceData, language } = useTranslation();
+  const rawGuidance = SCHEME_GUIDANCE[schemeId] || SCHEME_GUIDANCE['pm-kisan'];
+  const guidance = getGuidanceData(rawGuidance);
 
   // Checklist state for documents
   const [docProgress, setDocProgress] = useState(() =>

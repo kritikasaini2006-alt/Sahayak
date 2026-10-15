@@ -22,7 +22,7 @@ export default function SchemeCard({
   eligibilityStatus,
 }) {
   const [expanded, setExpanded] = useState(false);
-  const { t, getSchemeText, getCategoryText, getSchemeTypeText } = useTranslation();
+  const { t, getSchemeText, getSchemeArray, getCategoryText, getSchemeTypeText } = useTranslation();
 
   const title = getSchemeText(scheme, 'title') || scheme.title;
   const description = getSchemeText(scheme, 'shortDescription') || scheme.shortDescription;
@@ -30,6 +30,13 @@ export default function SchemeCard({
   const ministry = getSchemeText(scheme, 'ministry') || scheme.ministry;
   const category = getCategoryText(scheme.category) || scheme.category;
   const schemeType = getSchemeTypeText(scheme.schemeType || scheme.level) || (scheme.schemeType || scheme.level);
+  const eligibilityCriteria = getSchemeArray(scheme, 'eligibilityCriteria').length > 0
+    ? getSchemeArray(scheme, 'eligibilityCriteria')
+    : scheme.eligibilityCriteria || [];
+  const documentsRequired = getSchemeArray(scheme, 'documentsRequired').length > 0
+    ? getSchemeArray(scheme, 'documentsRequired')
+    : scheme.documentsRequired || [];
+  const applicationMode = getSchemeText(scheme, 'applicationMode') || scheme.applicationMode || '';
 
   return (
     <article className="bg-white rounded-xl border border-slate-200/90 hover:border-teal-400 hover:shadow-civic-card transition-all duration-200 flex flex-col justify-between overflow-hidden group">
@@ -120,7 +127,7 @@ export default function SchemeCard({
                 {t('schemes.keyEligibility')}
               </h4>
               <ul className="space-y-1 pl-5 list-disc text-slate-600 text-xs">
-                {scheme.eligibilityCriteria.map((item, idx) => (
+                {eligibilityCriteria.map((item, idx) => (
                   <li key={idx}>{item}</li>
                 ))}
               </ul>
@@ -132,7 +139,7 @@ export default function SchemeCard({
                 {t('schemes.essentialDocuments')}
               </h4>
               <div className="flex flex-wrap gap-1.5">
-                {scheme.documentsRequired.map((doc, idx) => (
+                {documentsRequired.map((doc, idx) => (
                   <span
                     key={idx}
                     className="inline-block bg-slate-100 text-slate-700 text-[11px] font-medium px-2 py-0.5 rounded"
@@ -143,9 +150,11 @@ export default function SchemeCard({
               </div>
             </div>
 
-            <p className="text-xs text-slate-500 italic bg-amber-50/70 p-2 rounded border border-amber-100">
-              {t('schemes.applicationMode')} {scheme.applicationMode}
-            </p>
+            {applicationMode && (
+              <p className="text-xs text-slate-500 italic bg-amber-50/70 p-2 rounded border border-amber-100">
+                {t('schemes.applicationMode')} {applicationMode}
+              </p>
+            )}
 
             <div className="pt-1">
               <Link

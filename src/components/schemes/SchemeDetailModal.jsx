@@ -30,7 +30,15 @@ export default function SchemeDetailModal({
   onToggleSave,
   eligibilityEvaluation,
 }) {
-  const { t, language, getSchemeText, getCategoryText, getSchemeTypeText } = useTranslation();
+  const {
+    t,
+    language,
+    getSchemeText,
+    getSchemeArray,
+    getCategoryText,
+    getSchemeTypeText,
+    getEvaluationReasonText,
+  } = useTranslation();
   const modalRef = useRef(null);
 
   // Close on Escape key press
@@ -50,11 +58,30 @@ export default function SchemeDetailModal({
 
   if (!isOpen || !scheme) return null;
 
-  const displayTitle = getSchemeText(scheme.id, 'title', scheme.title);
-  const displayMinistry = getSchemeText(scheme.id, 'ministry', scheme.ministry);
+  const displayTitle = getSchemeText(scheme, 'title') || scheme.title;
+  const displayMinistry = getSchemeText(scheme, 'ministry') || scheme.ministry;
   const displayCategory = getCategoryText(scheme.category);
-  const displayBenefit = getSchemeText(scheme.id, 'financialBenefit', scheme.financialBenefit);
-  const displayPurpose = getSchemeText(scheme.id, 'shortDescription', scheme.purpose || scheme.shortDescription);
+  const displayBenefit = getSchemeText(scheme, 'financialBenefit') || scheme.financialBenefit;
+  const displayPurpose = getSchemeText(scheme, 'purpose') || getSchemeText(scheme, 'shortDescription') || scheme.purpose || scheme.shortDescription;
+  const displayBenefitDetails = getSchemeArray(scheme, 'benefitDetails').length > 0
+    ? getSchemeArray(scheme, 'benefitDetails')
+    : scheme.benefitDetails || [];
+  const displayEligibilityCriteria = getSchemeArray(scheme, 'eligibilityCriteria').length > 0
+    ? getSchemeArray(scheme, 'eligibilityCriteria')
+    : scheme.eligibilityCriteria || [];
+  const displayExclusions = getSchemeArray(scheme, 'exclusions').length > 0
+    ? getSchemeArray(scheme, 'exclusions')
+    : scheme.exclusions || [];
+  const displayDocumentsRequired = getSchemeArray(scheme, 'documentsRequired').length > 0
+    ? getSchemeArray(scheme, 'documentsRequired')
+    : scheme.documentsRequired || [];
+  const displayApplicationSteps = getSchemeArray(scheme, 'applicationSteps').length > 0
+    ? getSchemeArray(scheme, 'applicationSteps')
+    : scheme.applicationSteps || [];
+  const displayTargetBeneficiaries = getSchemeArray(scheme, 'targetBeneficiaries').length > 0
+    ? getSchemeArray(scheme, 'targetBeneficiaries').join(', ')
+    : (scheme.targetBeneficiaries ? scheme.targetBeneficiaries.join(', ') : scheme.beneficiaryType);
+  const displayBeneficiaryType = getSchemeText(scheme, 'beneficiaryType') || scheme.beneficiaryType;
 
   return (
     <div
@@ -145,26 +172,38 @@ export default function SchemeDetailModal({
               )}
               <div className="space-y-1 text-xs">
                 <span className="font-bold text-sm block">
-                  {eligibilityEvaluation.status === 'likely_eligible' && 'Your Profile is Likely Eligible for this scheme'}
-                  {eligibilityEvaluation.status === 'possibly_eligible' && 'Your Profile is Possibly Eligible (Verification Needed)'}
-                  {eligibilityEvaluation.status === 'not_eligible' && 'Your Profile may not qualify based on available data'}
+                  {eligibilityEvaluation.status === 'likely_eligible' &&
+                    (language === 'hi'
+                      ? 'आपकी प्रोफ़ाइल इस योजना के लिए पात्र प्रतीत होती है'
+                      : 'Your Profile is Likely Eligible for this scheme')}
+                  {eligibilityEvaluation.status === 'possibly_eligible' &&
+                    (language === 'hi'
+                      ? 'आपकी प्रोफ़ाइल संभवतः पात्र है (पुष्टि आवश्यक)'
+                      : 'Your Profile is Possibly Eligible (Verification Needed)')}
+                  {eligibilityEvaluation.status === 'not_eligible' &&
+                    (language === 'hi'
+                      ? 'उपलब्ध आंकड़ों के आधार पर आपकी प्रोफ़ाइल अपात्र हो सकती है'
+                      : 'Your Profile may not qualify based on available data')}
                 </span>
 
                 {eligibilityEvaluation.reasons.length > 0 && (
                   <p className="text-slate-700">
-                    <strong>Matching Criteria:</strong> {eligibilityEvaluation.reasons.join(', ')}
+                    <strong>{language === 'hi' ? 'मिलान मानदंड:' : 'Matching Criteria:'}</strong>{' '}
+                    {eligibilityEvaluation.reasons.map((r) => getEvaluationReasonText(r)).join(', ')}
                   </p>
                 )}
 
                 {eligibilityEvaluation.missing.length > 0 && (
                   <p className="text-amber-900">
-                    <strong>To confirm:</strong> {eligibilityEvaluation.missing.join(', ')}
+                    <strong>{language === 'hi' ? 'पुष्टि आवश्यक:' : 'To confirm:'}</strong>{' '}
+                    {eligibilityEvaluation.missing.map((m) => getEvaluationReasonText(m)).join(', ')}
                   </p>
                 )}
 
                 {eligibilityEvaluation.unmet.length > 0 && (
                   <p className="text-red-700">
-                    <strong>Disqualification reason:</strong> {eligibilityEvaluation.unmet.join(', ')}
+                    <strong>{language === 'hi' ? 'अपात्रता कारण:' : 'Disqualification reason:'}</strong>{' '}
+                    {eligibilityEvaluation.unmet.map((u) => getEvaluationReasonText(u)).join(', ')}
                   </p>
                 )}
               </div>
@@ -203,7 +242,7 @@ export default function SchemeDetailModal({
                   {language === 'hi' ? 'लक्षित लाभार्थी' : 'Intended Beneficiaries'}
                 </span>
                 <span className="font-bold text-navy-900">
-                  {scheme.targetBeneficiaries ? scheme.targetBeneficiaries.join(', ') : scheme.beneficiaryType}
+                  {displayTargetBeneficiaries}
                 </span>
               </div>
             </div>
@@ -221,9 +260,9 @@ export default function SchemeDetailModal({
                 {displayBenefit}
               </div>
 
-              {scheme.benefitDetails && scheme.benefitDetails.length > 0 && (
+              {displayBenefitDetails.length > 0 && (
                 <ul className="space-y-1 list-disc pl-5 text-xs text-slate-700">
-                  {scheme.benefitDetails.map((b, i) => (
+                  {displayBenefitDetails.map((b, i) => (
                     <li key={i}>{b}</li>
                   ))}
                 </ul>
@@ -238,21 +277,21 @@ export default function SchemeDetailModal({
               {language === 'hi' ? 'पात्रता की शर्तें' : 'Eligibility Criteria'}
             </h3>
             <ul className="space-y-1.5 list-disc pl-5 text-xs text-slate-600">
-              {scheme.eligibilityCriteria.map((c, i) => (
+              {displayEligibilityCriteria.map((c, i) => (
                 <li key={i}>{c}</li>
               ))}
             </ul>
           </div>
 
           {/* Exclusions (if any) */}
-          {scheme.exclusions && scheme.exclusions.length > 0 && (
+          {displayExclusions.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-xs font-bold text-red-900 uppercase tracking-wider flex items-center gap-1.5">
                 <XCircle className="w-4 h-4 text-red-600" />
                 {language === 'hi' ? 'अपात्रता एवं अपवाद' : 'Exclusions & Disqualifications'}
               </h3>
               <ul className="space-y-1 list-disc pl-5 text-xs text-red-800/90 bg-red-50/50 p-3 rounded-xl border border-red-100">
-                {scheme.exclusions.map((e, i) => (
+                {displayExclusions.map((e, i) => (
                   <li key={i}>{e}</li>
                 ))}
               </ul>
@@ -260,14 +299,14 @@ export default function SchemeDetailModal({
           )}
 
           {/* Required Documents Checklist */}
-          {scheme.documentsRequired && scheme.documentsRequired.length > 0 && (
+          {displayDocumentsRequired.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-xs font-bold text-navy-900 uppercase tracking-wider flex items-center gap-1.5">
                 <FileText className="w-4 h-4 text-navy-600" />
                 {t('schemes.essentialDocuments')}
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {scheme.documentsRequired.map((doc, idx) => (
+                {displayDocumentsRequired.map((doc, idx) => (
                   <div
                     key={idx}
                     className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 flex items-center gap-2"
@@ -281,14 +320,14 @@ export default function SchemeDetailModal({
           )}
 
           {/* Step-by-Step Application Instructions */}
-          {scheme.applicationSteps && scheme.applicationSteps.length > 0 && (
+          {displayApplicationSteps.length > 0 && (
             <div className="space-y-2">
               <h3 className="text-xs font-bold text-navy-900 uppercase tracking-wider flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-teal-600" />
                 {language === 'hi' ? 'आवेदन के आधिकारिक चरण' : 'Official Application Steps'}
               </h3>
               <div className="space-y-2">
-                {scheme.applicationSteps.map((step, idx) => (
+                {displayApplicationSteps.map((step, idx) => (
                   <div key={idx} className="flex items-start gap-3 text-xs text-slate-700 bg-slate-50/70 p-2.5 rounded-lg border border-slate-100">
                     <span className="w-5 h-5 rounded-full bg-navy-800 text-white font-bold flex items-center justify-center shrink-0 text-[10px]">
                       {idx + 1}

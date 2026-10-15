@@ -9,7 +9,10 @@ import {
   BENEFICIARY_TRANSLATIONS,
   SCHEME_TYPE_TRANSLATIONS,
   STATUS_TRANSLATIONS,
+  EVALUATION_TEXT_TRANSLATIONS,
 } from '../src/data/schemeTranslations.js';
+import { GUIDANCE_TRANSLATIONS } from '../src/data/schemeGuidanceTranslations.js';
+import { SCHEME_GUIDANCE } from '../src/data/schemeGuidance.js';
 import { MOCK_SCHEMES as mockSchemes } from '../src/data/mockSchemes.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -245,4 +248,173 @@ if (hasDevanagariFont && hasDevanagariInTailwind) {
   process.exit(1);
 }
 
-console.log('\n🎉 ALL 6 BILINGUAL & I18N TESTS PASSED WITH 100% SUCCESS!\n');
+// ==========================================
+// Test 7: Scheme Array Content Translations (Eligibility, Documents, Steps, Benefits)
+// ==========================================
+let arrayFieldsPassed = true;
+for (const scheme of mockSchemes) {
+  const trans = SCHEME_TRANSLATIONS[scheme.id];
+  if (!trans) {
+    console.error(`❌ Missing translation for scheme ${scheme.id}`);
+    arrayFieldsPassed = false;
+    continue;
+  }
+
+  const requiredArrays = ['eligibilityCriteria', 'documentsRequired', 'benefitDetails', 'applicationSteps'];
+  for (const field of requiredArrays) {
+    if (!Array.isArray(trans[field]) || trans[field].length === 0) {
+      console.error(`❌ Scheme ${scheme.id} is missing Hindi array '${field}'`);
+      arrayFieldsPassed = false;
+    } else {
+      // Check each element is a non-empty string
+      for (const item of trans[field]) {
+        if (!item || typeof item !== 'string' || item.trim() === '') {
+          console.error(`❌ Scheme ${scheme.id} field '${field}' has empty item`);
+          arrayFieldsPassed = false;
+        }
+      }
+    }
+  }
+
+  if (typeof trans.applicationMode !== 'string' || !trans.applicationMode.trim()) {
+    console.error(`❌ Scheme ${scheme.id} is missing Hindi applicationMode`);
+    arrayFieldsPassed = false;
+  }
+}
+
+if (arrayFieldsPassed) {
+  console.log('✅ Test 7 Passed: All 10 schemes have complete localized Hindi array fields (eligibility criteria, required documents, benefit details, application steps, application mode).');
+} else {
+  console.error('❌ Test 7 Failed: Scheme array content translation check failed.');
+  process.exit(1);
+}
+
+// ==========================================
+// Test 8: Guidance Translations (Documents, Steps, Prerequisites, Review Checklist)
+// ==========================================
+let guidanceTranslationsPassed = true;
+for (const scheme of mockSchemes) {
+  const gTrans = GUIDANCE_TRANSLATIONS[scheme.id];
+  const originalGuidance = SCHEME_GUIDANCE[scheme.id];
+
+  if (!gTrans) {
+    console.error(`❌ Missing GUIDANCE_TRANSLATIONS for scheme ${scheme.id}`);
+    guidanceTranslationsPassed = false;
+    continue;
+  }
+
+  if (!originalGuidance) {
+    console.error(`❌ Missing SCHEME_GUIDANCE for scheme ${scheme.id}`);
+    guidanceTranslationsPassed = false;
+    continue;
+  }
+
+  // Verify documents count & fields
+  if (!Array.isArray(gTrans.documents) || gTrans.documents.length !== originalGuidance.documents.length) {
+    console.error(`❌ GUIDANCE_TRANSLATIONS for ${scheme.id} documents count mismatch: expected ${originalGuidance.documents.length}, got ${gTrans.documents?.length}`);
+    guidanceTranslationsPassed = false;
+  } else {
+    for (const doc of gTrans.documents) {
+      if (!doc.id || !doc.name || !doc.purpose || !doc.howToObtain) {
+        console.error(`❌ GUIDANCE_TRANSLATIONS for ${scheme.id} document ${doc.id} missing required fields`);
+        guidanceTranslationsPassed = false;
+      }
+    }
+  }
+
+  // Verify steps count & fields
+  if (!Array.isArray(gTrans.steps) || gTrans.steps.length !== originalGuidance.steps.length) {
+    console.error(`❌ GUIDANCE_TRANSLATIONS for ${scheme.id} steps count mismatch: expected ${originalGuidance.steps.length}, got ${gTrans.steps?.length}`);
+    guidanceTranslationsPassed = false;
+  } else {
+    for (const step of gTrans.steps) {
+      if (!step.stepNumber || !step.title || !step.description) {
+        console.error(`❌ GUIDANCE_TRANSLATIONS for ${scheme.id} step ${step.stepNumber} missing required fields`);
+        guidanceTranslationsPassed = false;
+      }
+    }
+  }
+
+  // Verify prerequisites, reviewChecklist, and stateVarianceNote
+  if (!Array.isArray(gTrans.prerequisites) || gTrans.prerequisites.length === 0) {
+    console.error(`❌ Missing prerequisites for ${scheme.id}`);
+    guidanceTranslationsPassed = false;
+  }
+  if (!Array.isArray(gTrans.reviewChecklist) || gTrans.reviewChecklist.length === 0) {
+    console.error(`❌ Missing reviewChecklist for ${scheme.id}`);
+    guidanceTranslationsPassed = false;
+  }
+  if (!gTrans.stateVarianceNote || typeof gTrans.stateVarianceNote !== 'string') {
+    console.error(`❌ Missing stateVarianceNote for ${scheme.id}`);
+    guidanceTranslationsPassed = false;
+  }
+}
+
+if (guidanceTranslationsPassed) {
+  console.log('✅ Test 8 Passed: Full application guidance datasets (documents, procurement guides, steps, prerequisites, review checklists) verified across all 10 schemes.');
+} else {
+  console.error('❌ Test 8 Failed: Guidance translation test failed.');
+  process.exit(1);
+}
+
+// ==========================================
+// Test 9: Rule Evaluation Outcome Translations
+// ==========================================
+const sampleEvaluationStrings = [
+  'Primary occupation is agricultural farming.',
+  'Income tax payees are excluded under statutory PM-KISAN exclusion criteria.',
+  'Senior citizen (age 70+) universally eligible under expanded Ayushman Vay Vandana cover.',
+  'Living in kutcha house meets core housing deprivation criteria.',
+  'Family has a girl child under 10 years of age (core qualifying criterion).',
+  'Self-employed/micro-enterprise sector eligible for MUDRA credit facilities.',
+  'Engaged in recognized traditional artisan trade.',
+  'Meets senior citizen pension age requirement (60+ years).',
+  'Urban street vending / daily livelihood sector eligible.',
+  'Entry age within eligible range (18 to 40 years).',
+];
+
+let evaluationTranslationsPassed = true;
+for (const sample of sampleEvaluationStrings) {
+  const trans = EVALUATION_TEXT_TRANSLATIONS[sample];
+  if (!trans || typeof trans !== 'string' || trans.trim() === '') {
+    console.error(`❌ Missing evaluation text translation for: "${sample}"`);
+    evaluationTranslationsPassed = false;
+  }
+}
+
+if (evaluationTranslationsPassed) {
+  console.log(`✅ Test 9 Passed: Eligibility rule evaluation reasons and disqualification criteria translate to authentic Hindi.`);
+} else {
+  console.error('❌ Test 9 Failed: Missing evaluation translations.');
+  process.exit(1);
+}
+
+// ==========================================
+// Test 10: English Non-Regression & Pure Content Preservation
+// ==========================================
+let englishNonRegressionPassed = true;
+for (const scheme of mockSchemes) {
+  if (!scheme.title || !scheme.shortDescription || !scheme.financialBenefit || !Array.isArray(scheme.eligibilityCriteria) || !Array.isArray(scheme.documentsRequired)) {
+    console.error(`❌ Original scheme ${scheme.id} English fields were corrupted`);
+    englishNonRegressionPassed = false;
+  }
+  // Check URLs remain official gov / nic portals
+  const isOfficial =
+    scheme.officialPortal.includes('.gov.in') ||
+    scheme.officialPortal.includes('.nic.in') ||
+    scheme.officialPortal.includes('mudra.org.in') ||
+    scheme.officialPortal.includes('maandhan.in');
+  if (!isOfficial) {
+    console.error(`❌ Scheme ${scheme.id} portal URL invalid: ${scheme.officialPortal}`);
+    englishNonRegressionPassed = false;
+  }
+}
+
+if (englishNonRegressionPassed) {
+  console.log('✅ Test 10 Passed: English content and official government portal URLs preserved without regression.');
+} else {
+  console.error('❌ Test 10 Failed: English non-regression test failed.');
+  process.exit(1);
+}
+
+console.log('\n🎉 ALL 10 BILINGUAL & I18N TESTS PASSED WITH 100% SUCCESS!\n');

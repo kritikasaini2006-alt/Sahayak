@@ -7,7 +7,9 @@ import {
   BENEFICIARY_TRANSLATIONS,
   SCHEME_TYPE_TRANSLATIONS,
   STATUS_TRANSLATIONS,
+  EVALUATION_TEXT_TRANSLATIONS,
 } from '../data/schemeTranslations';
+import { GUIDANCE_TRANSLATIONS } from '../data/schemeGuidanceTranslations';
 
 const STORAGE_KEY = 'sahayak_language';
 const ALT_STORAGE_KEY = 'sahayak_lang';
@@ -106,15 +108,108 @@ export function LanguageProvider({ children }) {
   );
 
   /**
-   * Localizes a scheme's field (e.g. title, shortDescription, financialBenefit, ministry)
+   * Localizes a scheme's string field (e.g. title, shortDescription, financialBenefit, ministry, applicationMode)
+   * Supports passing scheme object or scheme ID string.
    */
   const getSchemeText = useCallback(
-    (scheme, field) => {
-      if (!scheme) return '';
-      if (language === 'hi' && SCHEME_TRANSLATIONS[scheme.id]?.[field]) {
-        return SCHEME_TRANSLATIONS[scheme.id][field];
+    (schemeOrId, field, fallback = '') => {
+      if (!schemeOrId) return fallback || '';
+      const schemeId = typeof schemeOrId === 'string' ? schemeOrId : schemeOrId?.id;
+      if (language === 'hi' && schemeId && SCHEME_TRANSLATIONS[schemeId]?.[field]) {
+        return SCHEME_TRANSLATIONS[schemeId][field];
       }
-      return scheme[field] || '';
+      if (typeof schemeOrId === 'object' && schemeOrId[field]) {
+        return schemeOrId[field];
+      }
+      return fallback || '';
+    },
+    [language]
+  );
+
+  /**
+   * Localizes a scheme's array field (e.g. eligibilityCriteria, documentsRequired, benefitDetails, exclusions, applicationSteps, targetBeneficiaries)
+   * Supports passing scheme object or scheme ID string.
+   */
+  const getSchemeArray = useCallback(
+    (schemeOrId, field) => {
+      if (!schemeOrId) return [];
+      const schemeId = typeof schemeOrId === 'string' ? schemeOrId : schemeOrId?.id;
+      if (language === 'hi' && schemeId && Array.isArray(SCHEME_TRANSLATIONS[schemeId]?.[field])) {
+        return SCHEME_TRANSLATIONS[schemeId][field];
+      }
+      if (typeof schemeOrId === 'object' && Array.isArray(schemeOrId[field])) {
+        return schemeOrId[field];
+      }
+      return [];
+    },
+    [language]
+  );
+
+  /**
+   * Localizes full application guidance dataset for a scheme
+   */
+  const getGuidanceData = useCallback(
+    (guidance) => {
+      if (!guidance) return guidance;
+      if (language !== 'hi') return guidance;
+
+      const schemeId = guidance.schemeId || guidance.id;
+      const gTrans = GUIDANCE_TRANSLATIONS[schemeId];
+      const sTrans = SCHEME_TRANSLATIONS[schemeId];
+
+      if (!gTrans && !sTrans) return guidance;
+
+      const localizedDocs = guidance.documents?.map((doc) => {
+        const docTrans = gTrans?.documents?.find((d) => d.id === doc.id);
+        if (!docTrans) return doc;
+        return {
+          ...doc,
+          name: docTrans.name || doc.name,
+          requirementType: docTrans.requirementType || doc.requirementType,
+          purpose: docTrans.purpose || doc.purpose,
+          issuingAuthority: docTrans.issuingAuthority || doc.issuingAuthority,
+          howToObtain: docTrans.howToObtain || doc.howToObtain,
+          commonMistakes: docTrans.commonMistakes || doc.commonMistakes,
+          condition: docTrans.condition !== undefined ? docTrans.condition : doc.condition,
+        };
+      }) || guidance.documents;
+
+      const localizedSteps = guidance.steps?.map((step) => {
+        const stepTrans = gTrans?.steps?.find((s) => s.stepNumber === step.stepNumber);
+        if (!stepTrans) return step;
+        return {
+          ...step,
+          title: stepTrans.title || step.title,
+          mode: stepTrans.mode || step.mode,
+          description: stepTrans.description || step.description,
+          tip: stepTrans.tip || step.tip,
+        };
+      }) || guidance.steps;
+
+      return {
+        ...guidance,
+        title: sTrans?.title || guidance.title,
+        ministry: sTrans?.ministry || guidance.ministry,
+        stateVarianceNote: gTrans?.stateVarianceNote || guidance.stateVarianceNote,
+        prerequisites: gTrans?.prerequisites || guidance.prerequisites,
+        documents: localizedDocs,
+        steps: localizedSteps,
+        reviewChecklist: gTrans?.reviewChecklist || guidance.reviewChecklist,
+      };
+    },
+    [language]
+  );
+
+  /**
+   * Translates eligibility evaluator criteria / reason strings
+   */
+  const getEvaluationReasonText = useCallback(
+    (reason) => {
+      if (!reason || typeof reason !== 'string') return '';
+      if (language === 'hi' && EVALUATION_TEXT_TRANSLATIONS[reason]) {
+        return EVALUATION_TEXT_TRANSLATIONS[reason];
+      }
+      return reason;
     },
     [language]
   );
@@ -179,6 +274,9 @@ export function LanguageProvider({ children }) {
       isHindi: language === 'hi',
       t,
       getSchemeText,
+      getSchemeArray,
+      getGuidanceData,
+      getEvaluationReasonText,
       getCategoryText,
       getBeneficiaryText,
       getSchemeTypeText,
@@ -190,6 +288,9 @@ export function LanguageProvider({ children }) {
       changeLanguage,
       t,
       getSchemeText,
+      getSchemeArray,
+      getGuidanceData,
+      getEvaluationReasonText,
       getCategoryText,
       getBeneficiaryText,
       getSchemeTypeText,
@@ -210,7 +311,10 @@ export function useTranslation() {
       setLanguage: () => {},
       isHindi: false,
       t: (key) => key,
-      getSchemeText: (s, f) => s?.[f] || '',
+      getSchemeText: (s, f, fb) => (typeof s === 'object' ? s?.[f] : '') || fb || '',
+      getSchemeArray: (s, f) => (typeof s === 'object' && Array.isArray(s?.[f]) ? s[f] : []),
+      getGuidanceData: (g) => g,
+      getEvaluationReasonText: (r) => r,
       getCategoryText: (c) => c || '',
       getBeneficiaryText: (b) => b || '',
       getSchemeTypeText: (s) => s || '',

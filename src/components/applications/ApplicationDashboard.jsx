@@ -35,7 +35,7 @@ export default function ApplicationDashboard({
   onOpenEditModal,
   onNavigateToGuide,
 }) {
-  const { t, getStatusText, getCategoryText, language } = useTranslation();
+  const { t, getSchemeText, getStatusText, getCategoryText, language } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('All');
 
@@ -91,15 +91,17 @@ export default function ApplicationDashboard({
       const matchesStatus =
         selectedStatusFilter === 'All' || app.status === selectedStatusFilter;
       const q = searchQuery.toLowerCase().trim();
+      const localizedTitle = getSchemeText(app.schemeId, 'title') || app.schemeTitle;
       const matchesSearch =
         !q ||
         app.schemeTitle.toLowerCase().includes(q) ||
+        localizedTitle.toLowerCase().includes(q) ||
         app.schemeCategory.toLowerCase().includes(q) ||
         (app.personalNotes && app.personalNotes.toLowerCase().includes(q)) ||
         (app.nextStepReminder && app.nextStepReminder.toLowerCase().includes(q));
       return matchesStatus && matchesSearch;
     });
-  }, [applications, searchQuery, selectedStatusFilter]);
+  }, [applications, searchQuery, selectedStatusFilter, getSchemeText]);
 
   const handleStatusChange = (schemeId, newStatus) => {
     updateApplicationStatus(schemeId, newStatus);
@@ -174,7 +176,7 @@ export default function ApplicationDashboard({
               >
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-bold text-navy-900 truncate max-w-[220px]">
-                    {rem.schemeTitle}
+                    {getSchemeText(rem.schemeId, 'title') || rem.schemeTitle}
                   </span>
                   {rem.reminderDate && (
                     <span
@@ -277,7 +279,7 @@ export default function ApplicationDashboard({
                       </span>
                     </div>
                     <h3 className="text-base sm:text-lg font-bold text-navy-900 leading-snug">
-                      {app.schemeTitle}
+                      {getSchemeText(app.schemeId, 'title') || app.schemeTitle}
                     </h3>
                   </div>
 

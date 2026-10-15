@@ -27,7 +27,7 @@ export default function EligibilityResults({
   onClearProfile,
   onRestartForm,
 }) {
-  const { t, getSchemeText, getCategoryText } = useTranslation();
+  const { t, getSchemeText, getSchemeArray, getEvaluationReasonText, getCategoryText } = useTranslation();
   const [activeFilter, setActiveFilter] = useState('all');
   const [expandedSchemeId, setExpandedSchemeId] = useState(null);
   const [savedSchemeIds, setSavedSchemeIds] = useState(() => {
@@ -299,7 +299,7 @@ export default function EligibilityResults({
                     </span>
                     <ul className="space-y-1 pl-5 list-disc text-xs text-slate-600">
                       {item.reasons.map((r, i) => (
-                        <li key={i}>{r}</li>
+                        <li key={i}>{getEvaluationReasonText(r)}</li>
                       ))}
                     </ul>
                   </div>
@@ -314,7 +314,7 @@ export default function EligibilityResults({
                     </span>
                     <ul className="space-y-0.5 pl-5 list-disc text-[11px]">
                       {item.missing.map((m, i) => (
-                        <li key={i}>{m}</li>
+                        <li key={i}>{getEvaluationReasonText(m)}</li>
                       ))}
                     </ul>
                   </div>
@@ -329,7 +329,7 @@ export default function EligibilityResults({
                     </span>
                     <ul className="space-y-0.5 pl-5 list-disc text-[11px]">
                       {item.unmet.map((u, i) => (
-                        <li key={i}>{u}</li>
+                        <li key={i}>{getEvaluationReasonText(u)}</li>
                       ))}
                     </ul>
                   </div>
@@ -342,16 +342,16 @@ export default function EligibilityResults({
                       <span className="font-bold text-navy-900 block mb-1">
                         {t('eligibility.applicationModeNextSteps', 'Application Mode & Next Steps:')}
                       </span>
-                      <p>{item.scheme.applicationMode || 'Online via designated official ministry portal.'}</p>
+                      <p>{getSchemeText(item.scheme, 'applicationMode') || item.scheme.applicationMode || 'Online via designated official ministry portal.'}</p>
                     </div>
 
-                    {item.scheme.documentsRequired && item.scheme.documentsRequired.length > 0 && (
+                    {getSchemeArray(item.scheme, 'documentsRequired').length > 0 && (
                       <div>
                         <span className="font-bold text-navy-900 block mb-1">
                           {t('eligibility.requiredDocuments', 'Required Documents:')}
                         </span>
                         <div className="flex flex-wrap gap-1.5">
-                          {item.scheme.documentsRequired.map((doc, idx) => (
+                          {getSchemeArray(item.scheme, 'documentsRequired').map((doc, idx) => (
                             <span
                               key={idx}
                               className="bg-slate-100 text-slate-700 font-medium px-2 py-0.5 rounded text-[11px]"

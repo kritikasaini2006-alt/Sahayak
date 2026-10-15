@@ -48,7 +48,7 @@ import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useTranslation } from '../context/LanguageContext';
 
 export default function MyApplicationsPage() {
-  const { t, language } = useTranslation();
+  const { t, getSchemeText, getCategoryText, language } = useTranslation();
   useDocumentTitle(language === 'hi' ? 'मेरे आवेदन एवं सहेजी गई योजनाएं' : 'My Applications & Saved Schemes');
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
@@ -452,10 +452,12 @@ export default function MyApplicationsPage() {
                   htmlFor="scheme-select"
                   className="text-xs font-bold text-navy-900 uppercase tracking-wider block"
                 >
-                  Select Government Scheme for Guidance:
+                  {language === 'hi' ? 'मार्गदर्शन हेतु सरकारी योजना चुनें:' : 'Select Government Scheme for Guidance:'}
                 </label>
                 <p className="text-xs text-slate-500">
-                  Choose any welfare initiative to view its verified document checklist, prerequisites, and application steps.
+                  {language === 'hi'
+                    ? 'सत्यापित दस्तावेज चेकलिस्ट, पूर्व-शर्तें और आधिकारिक आवेदन चरण देखने के लिए कोई भी योजना चुनें।'
+                    : 'Choose any welfare initiative to view its verified document checklist, prerequisites, and application steps.'}
                 </p>
               </div>
 
@@ -468,7 +470,7 @@ export default function MyApplicationsPage() {
               >
                 {MOCK_SCHEMES.map((scheme) => (
                   <option key={scheme.id} value={scheme.id}>
-                    {scheme.title} ({scheme.category})
+                    {getSchemeText(scheme, 'title') || scheme.title} ({getCategoryText(scheme.category)})
                   </option>
                 ))}
               </select>
@@ -477,7 +479,9 @@ export default function MyApplicationsPage() {
             {/* Quick Pills for Saved Schemes */}
             {savedIds.length > 0 && (
               <div className="pt-2 border-t border-slate-100 flex items-center gap-2 overflow-x-auto text-xs">
-                <span className="font-semibold text-slate-500 shrink-0">Your Saved Schemes:</span>
+                <span className="font-semibold text-slate-500 shrink-0">
+                  {language === 'hi' ? 'आपकी सहेजी गई योजनाएं:' : 'Your Saved Schemes:'}
+                </span>
                 {MOCK_SCHEMES.filter((s) => savedIds.includes(s.id)).map((s) => (
                   <button
                     key={s.id}
@@ -488,7 +492,7 @@ export default function MyApplicationsPage() {
                         : 'bg-white text-slate-700 border-slate-200 hover:border-teal-400'
                     }`}
                   >
-                    {s.title.split('(')[0].trim()}
+                    {(getSchemeText(s, 'title') || s.title).split('(')[0].trim()}
                   </button>
                 ))}
               </div>
@@ -515,16 +519,22 @@ export default function MyApplicationsPage() {
           {/* Progress Overview Card */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="space-y-1">
-              <h3 className="font-bold text-lg text-navy-900">General Document Readiness Score</h3>
+              <h3 className="font-bold text-lg text-navy-900">
+                {language === 'hi' ? 'सामान्य दस्तावेज तैयारी स्कोर' : 'General Document Readiness Score'}
+              </h3>
               <p className="text-xs text-slate-600 max-w-xl leading-relaxed">
-                Most central and state schemes require a standard set of identity and financial documents. Mark the documents you have readily available:
+                {language === 'hi'
+                  ? 'अधिकांश केंद्रीय और राज्य योजनाओं के लिए पहचान और वित्तीय दस्तावेजों के एक मानक सेट की आवश्यकता होती है। जो दस्तावेज आपके पास तैयार हैं, उन्हें चिह्नित करें:'
+                  : 'Most central and state schemes require a standard set of identity and financial documents. Mark the documents you have readily available:'}
               </p>
             </div>
 
             <div className="flex items-center gap-4 shrink-0">
               <div className="text-right">
                 <span className="text-3xl font-extrabold text-navy-900">{readinessPercentage}%</span>
-                <span className="block text-[11px] text-slate-500 font-medium">Ready to Apply</span>
+                <span className="block text-[11px] text-slate-500 font-medium">
+                  {language === 'hi' ? 'आवेदन हेतु तैयार' : 'Ready to Apply'}
+                </span>
               </div>
               <div className="w-28 h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200">
                 <div
@@ -540,39 +550,39 @@ export default function MyApplicationsPage() {
             {[
               {
                 id: 'aadhaar',
-                title: 'Aadhaar Card (Mobile Linked)',
-                desc: 'Needed for e-KYC and Direct Benefit Transfer (DBT) across all Central schemes.',
+                title: language === 'hi' ? 'आधार कार्ड (मोबाइल से लिंक)' : 'Aadhaar Card (Mobile Linked)',
+                desc: language === 'hi' ? 'सभी केंद्रीय योजनाओं में ई-केवाईसी और प्रत्यक्ष लाभ अंतरण (DBT) के लिए अनिवार्य।' : 'Needed for e-KYC and Direct Benefit Transfer (DBT) across all Central schemes.',
                 authority: 'UIDAI',
               },
               {
                 id: 'bankPassbook',
-                title: 'Bank Passbook / Cancelled Cheque',
-                desc: 'Active account linked with Aadhaar NPCI mapper for monetary transfers.',
-                authority: 'Scheduled Bank',
+                title: language === 'hi' ? 'बैंक पासबुक / रद्द चेक' : 'Bank Passbook / Cancelled Cheque',
+                desc: language === 'hi' ? 'वित्तीय लाभ अंतरण हेतु आधार एनपीसीआई मैपर से जुड़ा सक्रिय खाता।' : 'Active account linked with Aadhaar NPCI mapper for monetary transfers.',
+                authority: language === 'hi' ? 'अनुसूचित बैंक' : 'Scheduled Bank',
               },
               {
                 id: 'rationCard',
-                title: 'Ration Card (PHH / AAY)',
-                desc: 'Proof of family composition and socio-economic category (Ayushman Bharat, PMAY).',
-                authority: 'Food & Civil Supplies',
+                title: language === 'hi' ? 'राशन कार्ड (PHH / AAY)' : 'Ration Card (PHH / AAY)',
+                desc: language === 'hi' ? 'पारिवारिक संरचना और सामाजिक-आर्थिक श्रेणी का प्रमाण (आयुष्मान भारत, पीएमएवाई)।' : 'Proof of family composition and socio-economic category (Ayushman Bharat, PMAY).',
+                authority: language === 'hi' ? 'खाद्य एवं नागरिक आपूर्ति विभाग' : 'Food & Civil Supplies',
               },
               {
                 id: 'incomeCert',
-                title: 'Income Certificate',
-                desc: 'Issued by Tehsildar / Revenue Department within 1 year for means-tested subsidies.',
-                authority: 'State Revenue Dept',
+                title: language === 'hi' ? 'आय प्रमाण पत्र' : 'Income Certificate',
+                desc: language === 'hi' ? 'आय आधारित योजनाओं के लिए तहसीलदार / राजस्व विभाग द्वारा 1 वर्ष के भीतर जारी।' : 'Issued by Tehsildar / Revenue Department within 1 year for means-tested subsidies.',
+                authority: language === 'hi' ? 'राज्य राजस्व विभाग' : 'State Revenue Dept',
               },
               {
                 id: 'domicileCert',
-                title: 'Domicile / Residence Certificate',
-                desc: 'Proof of permanent residency in the respective state for state-quota schemes.',
-                authority: 'Tehsil / e-District',
+                title: language === 'hi' ? 'मूल निवास / अधिवास प्रमाण पत्र' : 'Domicile / Residence Certificate',
+                desc: language === 'hi' ? 'राज्य कोटा योजनाओं के लिए संबंधित राज्य में स्थायी निवास का आधिकारिक प्रमाण।' : 'Proof of permanent residency in the respective state for state-quota schemes.',
+                authority: language === 'hi' ? 'तहसील / ई-डिस्ट्रिक्ट' : 'Tehsil / e-District',
               },
               {
                 id: 'casteCert',
-                title: 'Caste Certificate (SC/ST/OBC)',
-                desc: 'Required for specific affirmative social welfare quotas and special grants.',
-                authority: 'District Magistrate / SDM',
+                title: language === 'hi' ? 'जाति प्रमाण पत्र (SC/ST/OBC)' : 'Caste Certificate (SC/ST/OBC)',
+                desc: language === 'hi' ? 'विशिष्ट सामाजिक कल्याण कोटा और विशेष सरकारी अनुदानों के लिए आवश्यक।' : 'Required for specific affirmative social welfare quotas and special grants.',
+                authority: language === 'hi' ? 'जिला मजिस्ट्रेट / एसडीएम' : 'District Magistrate / SDM',
               },
             ].map((doc) => {
               const isChecked = documentStatus[doc.id];
@@ -603,7 +613,7 @@ export default function MyApplicationsPage() {
                     <h4 className="text-sm font-bold text-navy-900">{doc.title}</h4>
                     <p className="text-xs text-slate-500 leading-relaxed">{doc.desc}</p>
                     <span className="text-[10px] text-teal-700 font-semibold block pt-1">
-                      Issuer: {doc.authority}
+                      {language === 'hi' ? 'जारीकर्ता:' : 'Issuer:'} {doc.authority}
                     </span>
                   </div>
                 </div>
