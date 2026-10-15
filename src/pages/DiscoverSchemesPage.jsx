@@ -443,20 +443,20 @@ export default function DiscoverSchemesPage() {
                   />
                 ))
               ) : (
-                /* Empty State: Spans full width of the results grid with centered content and matching card dimensions */
-                <div className="col-span-1 md:col-span-2 w-full min-h-[350px] sm:min-h-[370px] bg-white rounded-2xl border border-slate-200 p-8 sm:p-12 text-center flex flex-col items-center justify-center space-y-4 shadow-sm">
-                  <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
-                    <BookOpen className="w-8 h-8" />
+                /* Empty State: Occupies exactly one card slot (first column) with matching card styling and dimensions */
+                <div className="w-full min-h-[340px] sm:min-h-[360px] bg-white rounded-2xl border border-slate-200 p-6 sm:p-8 text-center flex flex-col items-center justify-center space-y-3.5 shadow-sm">
+                  <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
+                    <BookOpen className="w-7 h-7" />
                   </div>
-                  <div className="space-y-1.5 max-w-md mx-auto">
-                    <h3 className="text-lg sm:text-xl font-bold text-navy-900">
+                  <div className="space-y-1.5">
+                    <h3 className="text-base sm:text-lg font-bold text-navy-900 leading-snug">
                       {t('schemes.emptyTitle')}
                     </h3>
-                    <p className="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                    <p className="text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
                       {t('schemes.emptySubtitle')}
                     </p>
                   </div>
-                  <div className="pt-2">
+                  <div className="pt-1.5">
                     <Button
                       variant="teal"
                       size="sm"

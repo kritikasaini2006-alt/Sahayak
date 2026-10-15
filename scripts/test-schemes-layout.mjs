@@ -26,24 +26,24 @@ if (hasParentFlex && hasSidebarComponent && hasResultsContainer) {
 }
 
 // -------------------------------------------------------------
-// Test 2: Grid Structure Preservation Across States
+// Test 2: Grid Structure Preservation & Single Card Slot Empty State
 // -------------------------------------------------------------
 // The results grid must preserve 'grid grid-cols-1 md:grid-cols-2 gap-5 w-full' in all states
 const hasUnifiedGrid = content.includes('className="grid grid-cols-1 md:grid-cols-2 gap-5 w-full"');
 const hasSchemeCardsMapping = content.includes('filteredAndSortedSchemes.map((scheme)');
-const hasEmptyStateColSpan = content.includes('col-span-1 md:col-span-2 w-full');
+const hasNoColSpan = !content.includes('col-span-2') && !content.includes('md:col-span-2') && !content.includes('col-span-full');
 
-if (hasUnifiedGrid && hasSchemeCardsMapping && hasEmptyStateColSpan) {
-  console.log('✅ Test 2 Passed: Grid layout preserved across populated and empty states (col-span-1 md:col-span-2).');
+if (hasUnifiedGrid && hasSchemeCardsMapping && hasNoColSpan) {
+  console.log('✅ Test 2 Passed: Unified 2-column grid preserved; empty state occupies exactly 1 card slot (first column) without col-span-2.');
 } else {
-  console.error('❌ Test 2 Failed: Grid structure not preserved when results array is empty.');
+  console.error('❌ Test 2 Failed: Grid structure issue or empty state spans both columns.');
   process.exit(1);
 }
 
 // -------------------------------------------------------------
-// Test 3: Empty State Dimensions, Centering, and Styling
+// Test 3: Empty State Single-Card Slot Dimensions, Centering, and Styling
 // -------------------------------------------------------------
-const hasMatchingHeight = content.includes('min-h-[350px]') || content.includes('min-h-[360px]') || content.includes('min-h-[370px]');
+const hasMatchingHeight = content.includes('min-h-[340px]') || content.includes('min-h-[350px]') || content.includes('min-h-[360px]');
 const hasCenteredFlex = content.includes('flex flex-col') && content.includes('items-center') && content.includes('justify-center') && content.includes('text-center');
 const hasConsistentStyling = content.includes('bg-white rounded-2xl border border-slate-200') && content.includes('shadow-sm');
 const hasEmptyStateElements = content.includes("t('schemes.emptyTitle')") &&
@@ -52,7 +52,7 @@ const hasEmptyStateElements = content.includes("t('schemes.emptyTitle')") &&
   content.includes('BookOpen');
 
 if (hasMatchingHeight && hasCenteredFlex && hasConsistentStyling && hasEmptyStateElements) {
-  console.log('✅ Test 3 Passed: Empty state matches 1-scheme reference card dimensions with full vertical/horizontal centering.');
+  console.log('✅ Test 3 Passed: Empty state matches normal scheme card slot dimensions with full vertical/horizontal centering.');
 } else {
   console.error('❌ Test 3 Failed: Empty state dimensions, centering, or design classes missing.');
   process.exit(1);
@@ -97,7 +97,7 @@ if (singleResult.length === 1) {
 // Case 3: ZERO schemes found
 const zeroResults = filterSchemes(MOCK_SCHEMES, { query: 'non_existent_query_xyz123' });
 if (zeroResults.length === 0) {
-  console.log('✅ Test 4c Passed (Zero Schemes): Found 0 schemes, activates col-span-1 md:col-span-2 empty state with identical grid footprint.');
+  console.log('✅ Test 4c Passed (Zero Schemes): Found 0 schemes, renders single empty-state card in first column slot with second slot empty.');
 } else {
   console.error(`❌ Test 4c Failed: Expected 0 schemes, got ${zeroResults.length}.`);
   process.exit(1);
