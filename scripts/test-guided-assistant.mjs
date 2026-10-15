@@ -292,7 +292,7 @@ async function runGuidedAssistantTests() {
     failures++;
   }
 
-  // Test 13: Auto-scroll targets the START of the new AI message strictly inside the chat container
+  // Test 13: Auto-scroll targets the START of the new AI message strictly inside the chat container with footer preserved
   try {
     const assistantPagePath = path.resolve(__dirname, '../src/pages/AIAssistantPage.jsx');
     const pageContent = fs.readFileSync(assistantPagePath, 'utf8');
@@ -305,18 +305,20 @@ async function runGuidedAssistantTests() {
     const scrollsContainerOnly = pageContent.includes('container.scrollTo({') &&
       pageContent.includes('top: targetScrollTop') &&
       pageContent.includes("behavior: 'smooth'");
-    const doesNotScrollWindow = !pageContent.includes('latestAIMessageRef.current.scrollIntoView') &&
+    const doesNotScrollWindow = !pageContent.includes('scrollIntoView') &&
       !pageContent.includes('window.scrollTo');
-    const hasBoundedContainerLayout = pageContent.includes('min-h-0') &&
+    const hasBoundedContainerLayout = pageContent.includes('h-[calc(100dvh-200px)]') &&
       pageContent.includes('pb-8') &&
-      pageContent.includes('relative flex-1');
-    const appLayoutBounded = appLayoutContent.includes("isAssistantPage ? 'h-screen overflow-hidden' : 'min-h-screen'") &&
-      appLayoutContent.includes('!isAssistantPage && <Footer />');
+      pageContent.includes('relative flex-1 min-h-0') &&
+      pageContent.includes('overflow-y-auto');
+    const preservesFooterInLayout = appLayoutContent.includes('<Footer />') &&
+      !appLayoutContent.includes('!isAssistantPage') &&
+      !appLayoutContent.includes('overflow-hidden');
 
-    if (calculatesRelativePosition && scrollsContainerOnly && doesNotScrollWindow && hasBoundedContainerLayout && appLayoutBounded) {
-      console.log('✅ Test 13 Passed: Chat container exclusively scrolled to start of AI response; document/footer never scrolled.');
+    if (calculatesRelativePosition && scrollsContainerOnly && doesNotScrollWindow && hasBoundedContainerLayout && preservesFooterInLayout) {
+      console.log('✅ Test 13 Passed: Chat container exclusively scrolled to start of AI response; footer preserved in normal document layout.');
     } else {
-      console.error('❌ Test 13 Failed: Container-only scroll calculation or bounded layout check failed.');
+      console.error('❌ Test 13 Failed: Container-only scroll calculation, bounded layout, or footer preservation check failed.');
       failures++;
     }
   } catch (err) {

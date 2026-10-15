@@ -181,7 +181,9 @@ export default function AIAssistantPage() {
       };
 
       if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        const frameId = window.requestAnimationFrame(scrollToAIMessageStart);
+        const frameId = window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(scrollToAIMessageStart);
+        });
         return () => window.cancelAnimationFrame(frameId);
       } else {
         scrollToAIMessageStart();
@@ -227,7 +229,7 @@ export default function AIAssistantPage() {
     }
   }, [latestUserMessageId]);
 
-  // Development-only diagnostics tracking container & window scroll positions
+  // Development-only diagnostics tracking container scroll position
   useEffect(() => {
     if (typeof window === 'undefined' || !(process.env.NODE_ENV !== 'production' || import.meta.env?.DEV)) {
       return;
@@ -242,26 +244,14 @@ export default function AIAssistantPage() {
       });
     };
 
-    const handleWindowScroll = () => {
-      if (window.scrollY > 0) {
-        console.warn('[Sahayak Diagnostic: Document/Window Scroll Detected on Chat Page!]', {
-          scrollY: window.scrollY,
-          innerHeight: window.innerHeight,
-          scrollHeight: document.documentElement.scrollHeight,
-        });
-      }
-    };
-
     if (container) {
       container.addEventListener('scroll', handleContainerScroll, { passive: true });
     }
-    window.addEventListener('scroll', handleWindowScroll, { passive: true });
 
     return () => {
       if (container) {
         container.removeEventListener('scroll', handleContainerScroll);
       }
-      window.removeEventListener('scroll', handleWindowScroll);
     };
   }, []);
 
@@ -880,7 +870,7 @@ export default function AIAssistantPage() {
   };
 
   return (
-    <div className="py-2.5 sm:py-3.5 flex-1 min-h-0 flex flex-col max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 w-full overflow-hidden">
+    <div className="py-4 sm:py-6 flex-1 flex flex-col max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
       {/* Header bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3.5 border-b border-slate-200 gap-3">
         <div className="flex items-center gap-3">
@@ -964,7 +954,7 @@ export default function AIAssistantPage() {
       </div>
 
       {/* Chat Thread Container */}
-      <div className="flex-1 min-h-0 bg-white border border-slate-200 rounded-2xl shadow-sm mt-2.5 flex flex-col overflow-hidden">
+      <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm mt-3.5 flex flex-col overflow-hidden h-[calc(100dvh-200px)] min-h-[520px] max-h-[860px]">
         {/* Messages List */}
         <div
           ref={chatContainerRef}
