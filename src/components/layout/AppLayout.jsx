@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import Navbar from '../common/Navbar';
 import Footer from '../common/Footer';
 import DisclaimerBanner from '../common/DisclaimerBanner';
+import PageLoader from '../common/PageLoader';
 
 export default function AppLayout() {
   return (
@@ -15,7 +16,9 @@ export default function AppLayout() {
 
       {/* Page Content Viewport */}
       <main className="flex-1 flex flex-col">
-        <Outlet />
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
       </main>
 
       {/* Trust & Civic Footer */}

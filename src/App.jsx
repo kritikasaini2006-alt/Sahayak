@@ -1,18 +1,20 @@
-import React from 'react';
+import React, { lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { LanguageProvider } from './context/LanguageContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AppLayout from './components/layout/AppLayout';
-import HomePage from './pages/HomePage';
-import DiscoverSchemesPage from './pages/DiscoverSchemesPage';
-import CheckEligibilityPage from './pages/CheckEligibilityPage';
-import AIAssistantPage from './pages/AIAssistantPage';
-import MyApplicationsPage from './pages/MyApplicationsPage';
-import AboutPage from './pages/AboutPage';
-import LoginPage from './pages/LoginPage';
-import SignUpPage from './pages/SignUpPage';
-import NotFoundPage from './pages/NotFoundPage';
+
+// Route-level code splitting with React.lazy
+const HomePage = lazy(() => import('./pages/HomePage'));
+const DiscoverSchemesPage = lazy(() => import('./pages/DiscoverSchemesPage'));
+const CheckEligibilityPage = lazy(() => import('./pages/CheckEligibilityPage'));
+const AIAssistantPage = lazy(() => import('./pages/AIAssistantPage'));
+const MyApplicationsPage = lazy(() => import('./pages/MyApplicationsPage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const SignUpPage = lazy(() => import('./pages/SignUpPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 
 export default function App() {
   return (
