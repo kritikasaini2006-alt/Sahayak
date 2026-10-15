@@ -5,6 +5,7 @@ const testSuites = [
   { name: 'Documents & Application Guidance', path: 'scripts/test-guidance.mjs' },
   { name: 'Saved Schemes & Applications Storage', path: 'scripts/test-applications.mjs' },
   { name: 'Chatbot Backend & Rate Limiting', path: 'scripts/test-chat.mjs' },
+  { name: 'Interactive Guided Assistant & Structured Flow', path: 'scripts/test-guided-assistant.mjs' },
   { name: 'Authentication & User Data Isolation', path: 'scripts/test-auth.mjs' },
   { name: 'Navbar UI/UX & Responsive Breakpoints', path: 'scripts/test-navbar.mjs' },
   { name: 'Bilingual System & i18n Dictionary Parity', path: 'scripts/test-i18n.mjs' },

@@ -26,7 +26,7 @@ import {
 import Badge from '../components/common/Badge';
 import MicrophonePermissionModal from '../components/common/MicrophonePermissionModal';
 import { TRANSLATIONS, SUPPORTED_LANGUAGES } from '../data/translations';
-import { loadCitizenProfile } from '../utils/eligibilityEngine';
+import { loadCitizenProfile, saveCitizenProfile } from '../utils/eligibilityEngine';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
@@ -40,6 +40,10 @@ export default function AIAssistantPage() {
 
   // Stored Citizen Profile
   const [profile, setProfile] = useState(null);
+
+  // Guided assistant interactive selection states
+  const [selectedOptionsMap, setSelectedOptionsMap] = useState({});
+  const [multiDrafts, setMultiDrafts] = useState({});
 
   // Chat message history
   const [messages, setMessages] = useState(() => [
@@ -461,6 +465,87 @@ export default function AIAssistantPage() {
     }
   };
 
+  // Update citizen profile when field is identified from conversation
+  const updateProfileField = (fieldKey, value) => {
+    if (!fieldKey || !value) return;
+    const current = loadCitizenProfile() || {};
+    let updated = { ...current };
+
+    if (fieldKey === 'state') {
+      const isOther = value === 'Other' || value === 'other' || String(value).includes('अन्य');
+      if (!isOther) {
+        updated.state = value;
+      }
+    } else if (fieldKey === 'ageGroup') {
+      const v = String(value).toLowerCase();
+      if (v.includes('18') && (v.includes('35') || v.includes('40'))) updated.age = 28;
+      else if (v.includes('36') || v.includes('41')) updated.age = 45;
+      else if (v.includes('60') && (v.includes('69') || v.includes('senior'))) updated.age = 65;
+      else if (v.includes('70') || v.includes('above_60')) updated.age = 72;
+      else if (v.includes('under') || v.includes('कम')) updated.age = 16;
+    } else if (fieldKey === 'occupation') {
+      updated.occupation = value;
+    } else if (fieldKey === 'farmerLandholding') {
+      updated.farmerLandholding = value;
+    } else if (fieldKey === 'artisanTrade') {
+      updated.artisanTrade = value;
+    } else if (fieldKey === 'incomeRange') {
+      const v = String(value).toLowerCase();
+      if (v.includes('below') || v.includes('1l_') || v.includes('1 लाख से कम')) updated.annualIncome = 80000;
+      else if (v.includes('1l_2.5l') || v.includes('1 लाख से ₹2.5')) updated.annualIncome = 180000;
+      else if (v.includes('2.5l_8l') || v.includes('8 लाख')) updated.annualIncome = 450000;
+      else if (v.includes('above') || v.includes('अधिक')) updated.annualIncome = 950000;
+    }
+
+    saveCitizenProfile(updated);
+    setProfile(updated);
+  };
+
+  const handleSelectOption = (msg, option) => {
+    if (isTyping) return;
+    setSelectedOptionsMap((prev) => ({ ...prev, [msg.id]: option.label }));
+    if (msg.fieldKey) {
+      updateProfileField(msg.fieldKey, option.value || option.label);
+    }
+    handleSendMessage(option.label);
+  };
+
+  const handleResetQuestionChoice = (msgId) => {
+    setSelectedOptionsMap((prev) => {
+      const next = { ...prev };
+      delete next[msgId];
+      return next;
+    });
+  };
+
+  const handleToggleMultiOption = (msgId, optValue) => {
+    setMultiDrafts((prev) => {
+      const current = prev[msgId] || [];
+      if (current.includes(optValue)) {
+        return { ...prev, [msgId]: current.filter((v) => v !== optValue) };
+      }
+      return { ...prev, [msgId]: [...current, optValue] };
+    });
+  };
+
+  const handleConfirmMultiSelect = (msg) => {
+    const selectedValues = multiDrafts[msg.id] || [];
+    if (selectedValues.length === 0 || isTyping) return;
+    const matchingLabels = msg.options
+      .filter((o) => selectedValues.includes(o.value) || selectedValues.includes(o.label))
+      .map((o) => o.label);
+    const text = matchingLabels.join(', ');
+    setSelectedOptionsMap((prev) => ({ ...prev, [msg.id]: text }));
+    handleSendMessage(text);
+  };
+
+  const handleSkipQuestion = (msg) => {
+    if (isTyping) return;
+    const skipLabel = language === 'hi' ? 'यह प्रश्न छोड़ें' : 'Skip this question';
+    setSelectedOptionsMap((prev) => ({ ...prev, [msg.id]: language === 'hi' ? 'छोड़ा गया' : 'Skipped' }));
+    handleSendMessage(skipLabel);
+  };
+
   // Send Message to Server API /api/chat
   const handleSendMessage = async (customPrompt = null) => {
     const textToSend = (customPrompt !== null ? customPrompt : inputPrompt).trim();
@@ -528,6 +613,11 @@ export default function AIAssistantPage() {
         sender: 'assistant',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         text: data.reply,
+        questionType: data.questionType || 'none',
+        fieldKey: data.fieldKey || null,
+        options: Array.isArray(data.options) ? data.options : [],
+        allowSkip: !!data.allowSkip,
+        recommendedSchemes: Array.isArray(data.recommendedSchemes) ? data.recommendedSchemes : [],
         sources: data.sources || ['india.gov.in', 'myscheme.gov.in'],
         isDemoMode: !!data.isDemoMode,
         demoReason: data.demoReason,
@@ -795,6 +885,206 @@ export default function AIAssistantPage() {
                 <div className="space-y-1">
                   {formatMessageText(msg.text)}
                 </div>
+
+                {/* Single-Choice Clickable Options */}
+                {msg.sender === 'assistant' && msg.questionType === 'single_choice' && msg.options && msg.options.length > 0 && (
+                  <div className="pt-2.5 mt-2 border-t border-slate-200/70 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                        <span>{t.selectOptionPrompt || 'Please choose an option:'}</span>
+                      </p>
+                      {selectedOptionsMap[msg.id] && (
+                        <button
+                          type="button"
+                          onClick={() => handleResetQuestionChoice(msg.id)}
+                          className="text-[11px] text-teal-700 hover:text-teal-900 font-semibold underline"
+                        >
+                          {t.changeAnswer || 'Change Answer'}
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {msg.options.map((opt, optIdx) => {
+                        const isSelected = selectedOptionsMap[msg.id] === opt.label || selectedOptionsMap[msg.id] === opt.value;
+                        return (
+                          <button
+                            key={optIdx}
+                            type="button"
+                            disabled={isTyping}
+                            onClick={() => handleSelectOption(msg, opt)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs flex items-center gap-1.5 cursor-pointer ${
+                              isSelected
+                                ? 'bg-teal-700 text-white border-teal-700 ring-2 ring-teal-200 shadow-sm'
+                                : 'bg-white text-navy-900 border-slate-300 hover:border-teal-500 hover:bg-teal-50/70 active:scale-[0.98]'
+                            }`}
+                          >
+                            {isSelected && <Check className="w-3 h-3 text-white" />}
+                            <span>{opt.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Skip Action */}
+                    {msg.allowSkip && (
+                      <div className="pt-1 flex justify-end">
+                        <button
+                          type="button"
+                          disabled={isTyping}
+                          onClick={() => handleSkipQuestion(msg)}
+                          className="text-xs text-slate-500 hover:text-slate-800 font-medium underline inline-flex items-center gap-1"
+                        >
+                          <span>{t.skipQuestion || 'Skip this question →'}</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Multi-Choice Options with Checkboxes & Confirm */}
+                {msg.sender === 'assistant' && msg.questionType === 'multi_choice' && msg.options && msg.options.length > 0 && (
+                  <div className="pt-2.5 mt-2 border-t border-slate-200/70 space-y-2">
+                    <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                      <span>{t.selectMultiplePrompt || 'Select all that apply, then confirm:'}</span>
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {msg.options.map((opt, optIdx) => {
+                        const currentDraft = multiDrafts[msg.id] || [];
+                        const isChecked = currentDraft.includes(opt.value || opt.label);
+                        return (
+                          <button
+                            key={optIdx}
+                            type="button"
+                            disabled={isTyping || !!selectedOptionsMap[msg.id]}
+                            onClick={() => handleToggleMultiOption(msg.id, opt.value || opt.label)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs flex items-center gap-1.5 ${
+                              isChecked
+                                ? 'bg-teal-50 text-teal-950 border-teal-500 ring-2 ring-teal-200'
+                                : 'bg-white text-slate-700 border-slate-300 hover:border-teal-400 hover:bg-slate-50'
+                            }`}
+                          >
+                            <span
+                              className={`w-3.5 h-3.5 rounded flex items-center justify-center border text-[10px] font-bold ${
+                                isChecked
+                                  ? 'bg-teal-600 text-white border-teal-600'
+                                  : 'bg-white border-slate-400 text-transparent'
+                              }`}
+                            >
+                              ✓
+                            </span>
+                            <span>{opt.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {/* Confirm and Skip Buttons */}
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/50">
+                      {msg.allowSkip ? (
+                        <button
+                          type="button"
+                          disabled={isTyping}
+                          onClick={() => handleSkipQuestion(msg)}
+                          className="text-xs text-slate-500 hover:text-slate-800 font-medium underline"
+                        >
+                          {t.skipQuestion || 'Skip this question →'}
+                        </button>
+                      ) : <div />}
+                      <button
+                        type="button"
+                        disabled={isTyping || !(multiDrafts[msg.id] && multiDrafts[msg.id].length > 0) || !!selectedOptionsMap[msg.id]}
+                        onClick={() => handleConfirmMultiSelect(msg)}
+                        className="px-3.5 py-1.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-40 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>{t.confirmSelection || 'Confirm Selection'}</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Structured Scheme Recommendation Cards */}
+                {msg.sender === 'assistant' && msg.recommendedSchemes && msg.recommendedSchemes.length > 0 && (
+                  <div className="pt-3 mt-2 border-t border-slate-200/70 space-y-3">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-teal-950">
+                      <ShieldCheck className="w-4 h-4 text-teal-600" />
+                      <span>{t.recommendedSchemesTitle || 'Recommended Government Welfare Schemes'}</span>
+                    </div>
+                    <div className="space-y-3">
+                      {msg.recommendedSchemes.map((scheme, sIdx) => (
+                        <div
+                          key={sIdx}
+                          className="bg-white border border-teal-200 rounded-xl p-3.5 shadow-2xs hover:shadow-xs transition-shadow space-y-2.5"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <h4 className="font-bold text-navy-950 text-sm leading-snug">
+                              {scheme.title}
+                            </h4>
+                            <span className="bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0">
+                              Verified Scheme
+                            </span>
+                          </div>
+
+                          {scheme.benefit && (
+                            <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-lg p-2 text-xs text-emerald-950 font-medium">
+                              <span className="text-emerald-900 font-bold block text-[10px] uppercase tracking-wide">
+                                Benefit:
+                              </span>
+                              {scheme.benefit}
+                            </div>
+                          )}
+
+                          {scheme.keyCriteria && (
+                            <div className="text-xs text-slate-700">
+                              <span className="font-semibold text-navy-900">
+                                {t.keyCriteriaLabel || 'Key Eligibility'}:{' '}
+                              </span>
+                              {scheme.keyCriteria}
+                            </div>
+                          )}
+
+                          {scheme.documentsRequired && scheme.documentsRequired.length > 0 && (
+                            <div className="text-xs space-y-1">
+                              <span className="font-semibold text-slate-600 text-[11px] block">
+                                {t.requiredDocsLabel || 'Required Documents'}:
+                              </span>
+                              <div className="flex flex-wrap gap-1.5">
+                                {scheme.documentsRequired.map((doc, dIdx) => (
+                                  <span
+                                    key={dIdx}
+                                    className="bg-slate-100 text-slate-700 border border-slate-200 px-2 py-0.5 rounded text-[11px]"
+                                  >
+                                    {doc}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                            {scheme.portalUrl && (
+                              <a
+                                href={scheme.portalUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-teal-700 hover:text-teal-900 hover:underline"
+                              >
+                                <span>{t.officialPortalLabel || 'Official Portal'}</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            )}
+                            <Link
+                              to="/check-eligibility"
+                              className="text-xs font-semibold text-navy-800 hover:text-teal-700 hover:underline"
+                            >
+                              {t.checkEligibilityAction || 'Check Full Eligibility →'}
+                            </Link>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Demo reason note if offline catalog was used */}
                 {msg.demoReason && (

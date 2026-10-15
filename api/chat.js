@@ -53,12 +53,152 @@ export function checkRateLimit(clientIp = 'default') {
   return { allowed: true };
 }
 
+export class OfflineReply {
+  constructor({
+    reply = '',
+    questionType = 'none',
+    fieldKey = null,
+    options = [],
+    allowSkip = false,
+    recommendedSchemes = [],
+  } = {}) {
+    this.reply = reply;
+    this.questionType = questionType;
+    this.fieldKey = fieldKey;
+    this.options = options;
+    this.allowSkip = allowSkip;
+    this.recommendedSchemes = recommendedSchemes;
+  }
+
+  toString() {
+    return this.reply;
+  }
+
+  includes(sub, position) {
+    return this.reply.includes(sub, position);
+  }
+}
+
+export const DEFAULT_OPTIONS_BY_FIELD = {
+  state: {
+    en: [
+      { label: 'Uttar Pradesh', value: 'Uttar Pradesh' },
+      { label: 'Maharashtra', value: 'Maharashtra' },
+      { label: 'Bihar', value: 'Bihar' },
+      { label: 'Madhya Pradesh', value: 'Madhya Pradesh' },
+      { label: 'Rajasthan', value: 'Rajasthan' },
+      { label: 'West Bengal', value: 'West Bengal' },
+      { label: 'Tamil Nadu', value: 'Tamil Nadu' },
+      { label: 'Other State / UT', value: 'Other' },
+    ],
+    hi: [
+      { label: 'उत्तर प्रदेश', value: 'Uttar Pradesh' },
+      { label: 'बिहार', value: 'Bihar' },
+      { label: 'महाराष्ट्र', value: 'Maharashtra' },
+      { label: 'मध्य प्रदेश', value: 'Madhya Pradesh' },
+      { label: 'राजस्थान', value: 'Rajasthan' },
+      { label: 'पश्चिम बंगाल', value: 'West Bengal' },
+      { label: 'अन्य राज्य / केंद्र शासित प्रदेश', value: 'Other' },
+    ],
+  },
+  ageGroup: {
+    en: [
+      { label: 'Under 18 years', value: 'under_18' },
+      { label: '18 - 35 years', value: '18_35' },
+      { label: '36 - 59 years', value: '36_59' },
+      { label: '60 - 69 years (Senior Citizen)', value: '60_69' },
+      { label: '70+ years (Universal Ayushman)', value: '70_plus' },
+    ],
+    hi: [
+      { label: '18 वर्ष से कम', value: 'under_18' },
+      { label: '18 से 35 वर्ष', value: '18_35' },
+      { label: '36 से 59 वर्ष', value: '36_59' },
+      { label: '60 से 69 वर्ष (वरिष्ठ नागरिक)', value: '60_69' },
+      { label: '70 वर्ष या अधिक (यूनिवर्सल आयुष्मान)', value: '70_plus' },
+    ],
+  },
+  occupation: {
+    en: [
+      { label: 'Farmer / Cultivator', value: 'farmer' },
+      { label: 'Traditional Artisan / Craftsperson', value: 'artisan' },
+      { label: 'Street Vendor / Micro Merchant', value: 'vendor' },
+      { label: 'Daily Wage / Construction Worker', value: 'daily_wage' },
+      { label: 'Salaried / Private Employee', value: 'salaried' },
+      { label: 'Homemaker / Domestic', value: 'homemaker' },
+      { label: 'Student / Youth', value: 'student' },
+      { label: 'Unemployed / Seeking Work', value: 'unemployed' },
+      { label: 'Other', value: 'other' },
+    ],
+    hi: [
+      { label: 'किसान / कृषक', value: 'farmer' },
+      { label: 'पारंपरिक कारीगर / शिल्पकार', value: 'artisan' },
+      { label: 'रेहड़ी-पटरी / छोटा व्यवसायी', value: 'vendor' },
+      { label: 'दैनिक मजदूर / निर्माण श्रमिक', value: 'daily_wage' },
+      { label: 'निजी / वेतनभोगी कर्मचारी', value: 'salaried' },
+      { label: 'गृहिणी', value: 'homemaker' },
+      { label: 'विद्यार्थी / युवा', value: 'student' },
+      { label: 'बेरोजगार', value: 'unemployed' },
+      { label: 'अन्य', value: 'other' },
+    ],
+  },
+  incomeRange: {
+    en: [
+      { label: 'Below ₹1 Lakh', value: 'below_1l' },
+      { label: '₹1 Lakh - ₹2.5 Lakhs', value: '1l_2.5l' },
+      { label: '₹2.5 Lakhs - ₹8 Lakhs', value: '2.5l_8l' },
+      { label: 'Above ₹8 Lakhs', value: 'above_8l' },
+      { label: 'Prefer not to say / Not sure', value: 'skip' },
+    ],
+    hi: [
+      { label: '₹1 लाख से कम', value: 'below_1l' },
+      { label: '₹1 लाख से ₹2.5 लाख', value: '1l_2.5l' },
+      { label: '₹2.5 लाख से ₹8 लाख', value: '2.5l_8l' },
+      { label: '₹8 लाख से अधिक', value: 'above_8l' },
+      { label: 'बताना नहीं चाहते / निश्चित नहीं', value: 'skip' },
+    ],
+  },
+  farmerLandholding: {
+    en: [
+      { label: 'Cultivable land in my name (Marginal <= 1 ha)', value: 'marginal' },
+      { label: 'Cultivable land in my name (Small 1-2 ha)', value: 'small' },
+      { label: 'Medium or Large Landholding (> 2 ha)', value: 'medium_large' },
+      { label: 'Tenant Farmer / No land in name', value: 'tenant' },
+      { label: 'Not applicable', value: 'na' },
+    ],
+    hi: [
+      { label: 'मेरे नाम पर कृषि भूमि (1 हेक्टेयर तक)', value: 'marginal' },
+      { label: 'मेरे नाम पर कृषि भूमि (1-2 हेक्टेयर)', value: 'small' },
+      { label: '2 हेक्टेयर से अधिक भूमि', value: 'medium_large' },
+      { label: 'बटाईदार / भूमिहीन किसान', value: 'tenant' },
+      { label: 'लागू नहीं', value: 'na' },
+    ],
+  },
+  artisanTrade: {
+    en: [
+      { label: 'Carpenter (Suthar) / Boat Maker', value: 'carpenter' },
+      { label: 'Blacksmith (Lohar) / Tool Maker', value: 'blacksmith' },
+      { label: 'Potter (Kumhaar) / Sculptor', value: 'potter' },
+      { label: 'Tailor (Darzi) / Cobbler', value: 'tailor' },
+      { label: 'Mason (Rajmistri) / Barber', value: 'mason' },
+      { label: 'Other Traditional Trade', value: 'other' },
+    ],
+    hi: [
+      { label: 'बढ़ई / नाव निर्माता', value: 'carpenter' },
+      { label: 'लोहार / औजार निर्माता', value: 'blacksmith' },
+      { label: 'कुम्हार / मूर्तिकार', value: 'potter' },
+      { label: 'दर्जी / चर्मकार', value: 'tailor' },
+      { label: 'राजमिस्त्री / नाई', value: 'mason' },
+      { label: 'अन्य पारंपरिक शिल्प', value: 'other' },
+    ],
+  },
+};
+
 /**
  * Generates the structured system instruction for the AI assistant.
  */
 export function generateSystemPrompt(language = 'en', profile = null) {
   let profileContext = 'Citizen Profile: Anonymous user (no profile details provided).';
-  if (profile && (profile.age || profile.occupation || profile.state)) {
+  if (profile && (profile.age || profile.occupation || profile.state || profile.annualIncome)) {
     profileContext = `Citizen Profile Provided:
 - Age: ${profile.age || 'Not specified'} years
 - Gender: ${profile.gender || 'Not specified'}
@@ -76,10 +216,10 @@ ${profile.artisanTrade ? `- Traditional Trade: ${profile.artisanTrade}` : ''}
 
   const langInstruction =
     language === 'hi'
-      ? 'PRIMARY LANGUAGE: Respond in fluent, polite, accessible Hindi (हिन्दी). Use easy-to-understand Hindi without overly complex bureaucratic terms. When citing portals or numbers, you can include them in English or Devanagari.'
+      ? 'PRIMARY LANGUAGE: Respond in fluent, polite, accessible Hindi (हिन्दी). All explanations, questions, and option labels MUST be in natural Devanagari Hindi. Use easy-to-understand Hindi without overly complex bureaucratic terms.'
       : 'PRIMARY LANGUAGE: Respond in clear, accessible Indian English. Avoid bureaucratic legalese.';
 
-  return `You are Sahayak AI (सहायक AI), a helpful, empathetic, and neutral civic-tech assistant helping Indian citizens understand government welfare schemes, criteria, and documentation.
+  return `You are Sahayak AI (सहायक AI), an interactive civic-tech assistant helping Indian citizens understand government welfare schemes, criteria, and documentation.
 
 ${langInstruction}
 
@@ -87,14 +227,56 @@ ${profileContext}
 
 ${VERIFIED_SCHEMES_KNOWLEDGE}
 
+OUTPUT FORMAT REQUIREMENTS:
+You MUST ALWAYS respond with a strictly valid JSON object matching this schema:
+{
+  "reply": "(string) Courteous, accessible message in the primary language. Markdown formatting (bold, bullet points, links) is supported.",
+  "questionType": "'none' | 'single_choice' | 'multi_choice' | 'recommendations'",
+  "fieldKey": "'state' | 'ageGroup' | 'occupation' | 'incomeRange' | 'farmerLandholding' | 'artisanTrade' | 'hasGirlChildUnder10' | 'hasDisability' | 'rationCard' | 'none'",
+  "options": [
+    { "label": "(string) Display text for the button/chip in the primary language", "value": "(string) internal value code" }
+  ],
+  "allowSkip": (boolean) true if the question is optional/non-essential,
+  "recommendedSchemes": [
+    {
+      "id": "(string) scheme identifier, e.g. pm-kisan, pm-jay, ssy, pm-mudra, pm-vishwakarma",
+      "title": "(string) official scheme name",
+      "benefit": "(string) core monetary or health benefit",
+      "keyCriteria": "(string) primary eligibility requirement",
+      "documentsRequired": ["Aadhaar Card", "..."],
+      "portalUrl": "(string) official .gov.in URL"
+    }
+  ]
+}
+
 OPERATIONAL PRINCIPLES:
-1. Ground answers strictly in official central and state government guidelines.
-2. Distinguish verified statutory facts from general guidance.
-3. If citizen profile details are available, tailor the eligibility explanation to their profile.
-4. If essential criteria are missing (e.g. land records, age, ration card), explicitly explain what is needed rather than guessing or assuming.
-5. NEVER claim that an application was submitted, approved, processed, or officially verified.
-6. Always direct citizens to verified official government portals (.gov.in) or Common Service Centres (CSCs) for official applications.
-7. Keep responses concise, structured (bullet points for documents or steps), and easy to read on mobile devices.`;
+1. DIRECT INQUIRIES vs. GUIDED FLOW:
+   - If the user asks a direct question about a specific scheme or rule (e.g. "What is PM-KISAN?", "Who is eligible for Ayushman Bharat?", "What documents are needed for SSY?"):
+     Provide complete factual details, criteria, and official portals directly in 'reply'.
+     Set questionType='none', fieldKey='none', options=[], allowSkip=false, recommendedSchemes=[].
+   - If the user asks to find schemes, check eligibility, or gives an open-ended request (e.g. "Find schemes for me", "Which schemes can I get?", "Guide me"):
+     Start or continue the step-by-step guided flow.
+2. ASK ONE QUESTION AT A TIME:
+   - Ask ONLY ONE question per turn. Never combine multiple questions.
+   - Do NOT ask questions that are already answered in the Citizen Profile above or earlier conversation turns! Skip them automatically.
+   - Guided Flow Progression:
+     * Step 1: State or Union Territory (fieldKey='state', questionType='single_choice')
+     * Step 2: Age group (fieldKey='ageGroup', questionType='single_choice')
+     * Step 3: Primary occupation or livelihood (fieldKey='occupation', questionType='single_choice')
+     * Step 4: Scheme-specific criterion (e.g. landholding for farmer, artisan trade for craftsman, girl child under 10 for daughter, or annual income if relevant for BPL)
+     * Step 5: Final Scheme Recommendations (questionType='recommendations') with tailored schemes populated in 'recommendedSchemes'.
+3. CLICKABLE OPTIONS RULE:
+   - Whenever questionType is 'single_choice' or 'multi_choice', 'options' MUST be a non-empty array with 4 to 8 relevant choices formatted as { label, value } in the primary language.
+   - Always include choices like "Other", "Not sure", or "None of these" where appropriate.
+   - Set allowSkip=true for non-essential questions (income, specific trade, girl child).
+4. MULTI-CHOICE QUESTIONS:
+   - Use questionType='multi_choice' when the citizen can select multiple valid conditions, documents, or household traits.
+5. CHANGING PREVIOUS ANSWERS:
+   - If the user corrects or changes a previously given detail (e.g., "Actually I am a street vendor" or "Change my state to Bihar"), gracefully acknowledge the change and adapt the subsequent question or recommendations.
+6. CITIZEN PRIVACY & LEGAL DISCLAIMER:
+   - NEVER ask for or store Aadhaar numbers, PAN numbers, bank account numbers, or OTPs.
+   - Ground answers strictly in official guidelines. Never claim an application was officially submitted or approved.
+   - Direct citizens to official .gov.in portals or Common Service Centres (CSCs).`;
 }
 
 /**
@@ -103,37 +285,146 @@ OPERATIONAL PRINCIPLES:
 export function generateOfflineSampleReply(prompt, language = 'en', profile = null) {
   const q = String(prompt).toLowerCase();
 
-  if (language === 'hi') {
-    if (q.includes('किसान') || q.includes('farmer') || q.includes('kisan')) {
-      return `**पीएम-किसान (PM-KISAN) योजना:**\n\n• **मुख्य लाभ:** सभी पात्र भूमिधारक किसान परिवारों को प्रति वर्ष ₹6,000 की प्रत्यक्ष वित्तीय सहायता (₹2,000 की 3 समान किस्तों में)।\n• **पात्रता:** जिनके नाम पर कृषि योग्य भूमि दर्ज है और जिनका बैंक खाता आधार से लिंक (e-KYC) है।\n• **आवश्यक दस्तावेज:** आधार कार्ड, खतौनी/जमाबंदी (भूमि दस्तावेज), और बैंक पासबुक।\n• **आधिकारिक पोर्टल:** [pmkisan.gov.in](https://pmkisan.gov.in)\n\n*नोट:* आधिकारिक पंजीकरण के लिए अपने नजदीकी जन सेवा केंद्र (CSC) या pmkisan.gov.in पोर्टल पर जाएं।`;
-    }
-    if (q.includes('आयुष्मान') || q.includes('स्वास्थ्य') || q.includes('health') || q.includes('hospital')) {
-      return `**आयुष्मान भारत (AB-PMJAY) योजना:**\n\n• **स्वास्थ्य कवर:** प्रति परिवार प्रति वर्ष ₹5,00,000 तक का मुफ्त कैशलेस इलाज।\n• **पात्रता:** SECC 2011 सूची में शामिल परिवार, राशन कार्ड (BPL/AAY) धारक, तथा **70 वर्ष और उससे अधिक आयु के सभी वरिष्ठ नागरिक** (यूनिवर्सल कवर)।\n• **कार्ड कैसे बनवाएं:** अपने आधार कार्ड और राशन कार्ड के साथ नजदीकी सरकारी अस्पताल या पंजीकृत निजी अस्पताल में 'आयुष्मान मित्र' से संपर्क करें।\n• **आधिकारिक पोर्टल:** [beneficiary.nha.gov.in](https://beneficiary.nha.gov.in)`;
-    }
-    if (q.includes('सुकन्या') || q.includes('लड़की') || q.includes('girl') || q.includes('daughter')) {
-      return `**सुकन्या समृद्धि योजना (SSY):**\n\n• **पात्रता:** 10 वर्ष या उससे कम उम्र की बालिकाओं के नाम पर खाता खोला जा सकता है।\n• **ब्याज दर:** 8.2% वार्षिक (सरकारी अधिसूचित) तथा धारा 80C के तहत 100% टैक्स फ्री (EEE)।\n• **न्यूनतम जमा:** प्रति वित्तीय वर्ष मात्र ₹250 (अधिकतम ₹1.5 लाख)।\n• **आवेदन स्थान:** नजदीकी भारतीय डाकघर (Post Office) या अधिकृत राष्ट्रीयकृत बैंक।`;
-    }
-    return `नमस्ते! सहायक AI में आपका स्वागत है।\n\nसरकारी कल्याणकारी योजनाओं के बारे में सही जानकारी प्राप्त करने के लिए आप किसी भी योजना (जैसे पीएम-किसान, आयुष्मान भारत, पीएम आवास, सुकन्या समृद्धि, मुद्रा ऋण, विश्वकर्मा योजना) के बारे में पूछ सकते हैं।\n\nकृपया अपनी उम्र, राज्य, और व्यवसाय बताएं ताकि हम आपको सही पात्रता बता सकें।`;
+  // 1. Direct Scheme Inquiries
+  if (q.includes('farmer') || q.includes('kisan') || q.includes('किसान')) {
+    const text =
+      language === 'hi'
+        ? `**पीएम-किसान (PM-KISAN) योजना:**\n\n• **मुख्य लाभ:** सभी पात्र भूमिधारक किसान परिवारों को प्रति वर्ष ₹6,000 की प्रत्यक्ष वित्तीय सहायता (₹2,000 की 3 समान किस्तों में)।\n• **पात्रता:** जिनके नाम पर कृषि योग्य भूमि दर्ज है और जिनका बैंक खाता आधार से लिंक (e-KYC) है।\n• **आवश्यक दस्तावेज:** आधार कार्ड, खतौनी/जमाबंदी (भूमि दस्तावेज), और बैंक पासबुक।\n• **आधिकारिक पोर्टल:** [pmkisan.gov.in](https://pmkisan.gov.in)\n\n*नोट:* आधिकारिक पंजीकरण के लिए अपने नजदीकी जन सेवा केंद्र (CSC) या pmkisan.gov.in पोर्टल पर जाएं।`
+        : `**PM-KISAN (Pradhan Mantri Kisan Samman Nidhi):**\n\n• **Benefit:** ₹6,000 per year directly credited into your Aadhaar-linked bank account in 3 equal installments of ₹2,000.\n• **Eligibility:** All landholding farmer families with cultivable land in their names. Must complete Aadhaar e-KYC. High-income taxpayers are excluded.\n• **Required Documents:** Aadhaar Card, Land Records (Khatauni/Jamabandi), Bank Passbook with Aadhaar linkage.\n• **Official Portal:** [pmkisan.gov.in](https://pmkisan.gov.in)\n\n*Official Next Step:* Visit pmkisan.gov.in or your nearest Common Service Centre (CSC) to submit official e-KYC.`;
+
+    return new OfflineReply({
+      reply: text,
+      questionType: 'none',
+      recommendedSchemes: [
+        {
+          id: 'pm-kisan',
+          title: language === 'hi' ? 'प्रधानमंत्री किसान सम्मान निधि (PM-KISAN)' : 'Pradhan Mantri Kisan Samman Nidhi (PM-KISAN)',
+          benefit: '₹6,000 / year (3 equal installments of ₹2,000 via DBT)',
+          keyCriteria: language === 'hi' ? 'कृषि योग्य भूमि वाले किसान परिवार' : 'Landholding farmer family with cultivable land',
+          documentsRequired: ['Aadhaar Card', 'Land Records (Khatauni)', 'Bank Passbook'],
+          portalUrl: 'https://pmkisan.gov.in',
+        },
+      ],
+    });
   }
 
-  // English fallback responses
-  if (q.includes('farmer') || q.includes('kisan') || q.includes('agriculture')) {
-    return `**PM-KISAN (Pradhan Mantri Kisan Samman Nidhi):**\n\n• **Benefit:** ₹6,000 per year directly credited into your Aadhaar-linked bank account in 3 equal installments of ₹2,000.\n• **Eligibility:** All landholding farmer families with cultivable land in their names. Must complete Aadhaar e-KYC. High-income taxpayers are excluded.\n• **Required Documents:** Aadhaar Card, Land Records (Khatauni/Jamabandi), Bank Passbook with Aadhaar linkage.\n• **Official Portal:** [pmkisan.gov.in](https://pmkisan.gov.in)\n\n*Official Next Step:* Visit pmkisan.gov.in or your nearest Common Service Centre (CSC) to submit official e-KYC.`;
-  }
-  if (q.includes('ayushman') || q.includes('health') || q.includes('hospital') || q.includes('medical')) {
-    return `**Ayushman Bharat (AB-PMJAY):**\n\n• **Benefit:** Cashless secondary and tertiary hospitalization cover up to ₹5,00,000 per family per year.\n• **Eligibility:** Families identified in SECC 2011 deprivation criteria, active NFSA BPL/AAY ration card holders, and **all senior citizens aged 70+** regardless of income (expanded universal cover).\n• **Where to apply:** Visit any empanelled public or private hospital with your Aadhaar and Ration Card to verify eligibility with the Ayushman Mitra desk.\n• **Official Portal:** [beneficiary.nha.gov.in](https://beneficiary.nha.gov.in)`;
-  }
-  if (q.includes('sukanya') || q.includes('girl') || q.includes('daughter') || q.includes('education')) {
-    return `**Sukanya Samriddhi Yojana (SSY):**\n\n• **Eligibility:** Girl child who is an Indian resident and under 10 years of age on account opening date.\n• **Benefit:** High government-guaranteed interest rate (8.2% p.a.) with Triple Tax Exemption (EEE) under Section 80C.\n• **Deposit Limits:** Minimum ₹250 per financial year; maximum ₹1,50,000.\n• **Where to open:** Any India Post Office branch or authorized commercial bank with the child's birth certificate and guardian's KYC.`;
-  }
-  if (q.includes('artisan') || q.includes('vishwakarma') || q.includes('carpenter') || q.includes('tailor')) {
-    return `**PM Vishwakarma Scheme:**\n\n• **Benefit:** ₹15,000 modern toolkit incentive, skill training with ₹500/day stipend, and collateral-free enterprise credit up to ₹3,00,000 at subsidized 5% interest.\n• **Eligibility:** Traditional artisans working with hands and tools in one of 18 designated family trades (e.g. carpenter, blacksmith, tailor, potter, barber, mason).\n• **How to Apply:** Visit nearest Common Service Centre (CSC) for biometric registration on [pmvishwakarma.gov.in](https://pmvishwakarma.gov.in).`;
-  }
-  if (q.includes('loan') || q.includes('mudra') || q.includes('business') || q.includes('shop')) {
-    return `**Pradhan Mantri MUDRA Yojana (PMMY):**\n\n• **Benefit:** Collateral-free institutional credit up to ₹10 Lakhs (and up to ₹20 Lakhs under Tarun Plus) across Shishu (up to ₹50k), Kishore (up to ₹5L), and Tarun tiers.\n• **Eligibility:** Any Indian citizen with a viable non-farm business proposal in manufacturing, retail, services, or crafts.\n• **Where to Apply:** Apply online via [udyamimitra.in](https://udyamimitra.in) or visit your nearest commercial/regional rural bank.`;
+  if (q.includes('ayushman') || q.includes('health') || q.includes('hospital') || q.includes('आयुष्मान') || q.includes('स्वास्थ्य')) {
+    const text =
+      language === 'hi'
+        ? `**आयुष्मान भारत (AB-PMJAY) योजना:**\n\n• **स्वास्थ्य कवर:** प्रति परिवार प्रति वर्ष ₹5,00,000 तक का मुफ्त कैशलेस इलाज।\n• **पात्रता:** SECC 2011 सूची में शामिल परिवार, राशन कार्ड (BPL/AAY) धारक, तथा **70 वर्ष और उससे अधिक आयु के सभी वरिष्ठ नागरिक** (यूनिवर्सल कवर)।\n• **कार्ड कैसे बनवाएं:** अपने आधार कार्ड और राशन कार्ड के साथ नजदीकी सरकारी अस्पताल या पंजीकृत निजी अस्पताल में 'आयुष्मान मित्र' से संपर्क करें।\n• **आधिकारिक पोर्टल:** [beneficiary.nha.gov.in](https://beneficiary.nha.gov.in)`
+        : `**Ayushman Bharat (AB-PMJAY):**\n\n• **Benefit:** Cashless secondary and tertiary hospitalization cover up to ₹5,00,000 per family per year.\n• **Eligibility:** Families identified in SECC 2011 deprivation criteria, active NFSA BPL/AAY ration card holders, and **all senior citizens aged 70+** regardless of income (expanded universal cover).\n• **Where to apply:** Visit any empanelled public or private hospital with your Aadhaar and Ration Card to verify eligibility with the Ayushman Mitra desk.\n• **Official Portal:** [beneficiary.nha.gov.in](https://beneficiary.nha.gov.in)`;
+
+    return new OfflineReply({
+      reply: text,
+      questionType: 'none',
+      recommendedSchemes: [
+        {
+          id: 'pm-jay',
+          title: language === 'hi' ? 'आयुष्मान भारत - पीएम जन आरोग्य योजना' : 'Ayushman Bharat - PM-JAY',
+          benefit: 'Up to ₹5,00,000 cashless secondary and tertiary hospital cover per family / year',
+          keyCriteria: language === 'hi' ? 'BPL परिवार या 70+ वर्ष के सभी वरिष्ठ नागरिक' : 'SECC 2011 / BPL or all senior citizens aged 70+',
+          documentsRequired: ['Aadhaar Card', 'Ration Card'],
+          portalUrl: 'https://beneficiary.nha.gov.in',
+        },
+      ],
+    });
   }
 
-  return `Namaste! I am your Sahayak AI Civic Assistant.\n\nI can help guide you through official eligibility rules, required documents, and application steps for Indian Central & State welfare initiatives, including:\n• **PM-KISAN** (Farmer income support)\n• **Ayushman Bharat** (₹5 Lakh health assurance)\n• **PMAY-G** (Rural pucca housing grants)\n• **Sukanya Samriddhi** (Girl child savings)\n• **PM MUDRA & SVANidhi** (Micro-enterprise credit)\n• **PM Vishwakarma** (Artisan toolkit & grants)\n\nAsk any question or specify your state, age, and occupation for tailored guidance.`;
+  if (q.includes('sukanya') || q.includes('girl') || q.includes('daughter') || q.includes('सुकन्या') || q.includes('लड़की')) {
+    const text =
+      language === 'hi'
+        ? `**सुकन्या समृद्धि योजना (SSY):**\n\n• **पात्रता:** 10 वर्ष या उससे कम उम्र की बालिकाओं के नाम पर खाता खोला जा सकता है।\n• **ब्याज दर:** 8.2% वार्षिक (सरकारी अधिसूचित) तथा धारा 80C के तहत 100% टैक्स फ्री (EEE)।\n• **न्यूनतम जमा:** प्रति वित्तीय वर्ष मात्र ₹250 (अधिकतम ₹1.5 लाख)।\n• **आवेदन स्थान:** नजदीकी भारतीय डाकघर (Post Office) या अधिकृत राष्ट्रीयकृत बैंक।`
+        : `**Sukanya Samriddhi Yojana (SSY):**\n\n• **Eligibility:** Girl child who is an Indian resident and under 10 years of age on account opening date.\n• **Benefit:** High government-guaranteed interest rate (8.2% p.a.) with Triple Tax Exemption (EEE) under Section 80C.\n• **Deposit Limits:** Minimum ₹250 per financial year; maximum ₹1,50,000.\n• **Where to open:** Any India Post Office branch or authorized commercial bank with the child's birth certificate and guardian's KYC.`;
+
+    return new OfflineReply({
+      reply: text,
+      questionType: 'none',
+      recommendedSchemes: [
+        {
+          id: 'sukanya-samriddhi',
+          title: language === 'hi' ? 'सुकन्या समृद्धि योजना (SSY)' : 'Sukanya Samriddhi Yojana (SSY)',
+          benefit: '8.2% p.a. guaranteed interest rate + 100% tax exemption under 80C',
+          keyCriteria: language === 'hi' ? '10 वर्ष तक की बालिका' : 'Girl child aged 10 years or below',
+          documentsRequired: ['Birth Certificate of Girl Child', "Guardian's Aadhaar", 'Address Proof'],
+          portalUrl: 'https://www.indiapost.gov.in',
+        },
+      ],
+    });
+  }
+
+  if (q.includes('vishwakarma') || q.includes('artisan') || q.includes('carpenter') || q.includes('tailor') || q.includes('विश्वकर्मा')) {
+    const text =
+      language === 'hi'
+        ? `**पीएम विश्वकर्मा योजना:**\n\n• **लाभ:** ₹15,000 का आधुनिक टूलकिट प्रोत्साहन, ₹500/दिन वजीफे के साथ कौशल प्रशिक्षण, तथा 5% रियायती ब्याज पर ₹3,00,000 तक का संपार्श्विक-मुक्त उद्यम ऋण।\n• **पात्रता:** 18 निर्दिष्ट पारंपरिक शिल्पों में हाथों और औजारों से काम करने वाले कारीगर।\n• **आवेदन:** [pmvishwakarma.gov.in](https://pmvishwakarma.gov.in) पर नजदीकी जन सेवा केंद्र (CSC) के माध्यम से बायोमेट्रिक पंजीकरण।`
+        : `**PM Vishwakarma Scheme:**\n\n• **Benefit:** ₹15,00,0 modern toolkit incentive, skill training with ₹500/day stipend, and collateral-free enterprise credit up to ₹3,00,000 at subsidized 5% interest.\n• **Eligibility:** Traditional artisans working with hands and tools in one of 18 designated family trades (e.g. carpenter, blacksmith, tailor, potter, barber, mason).\n• **How to Apply:** Visit nearest Common Service Centre (CSC) for biometric registration on [pmvishwakarma.gov.in](https://pmvishwakarma.gov.in).`;
+
+    return new OfflineReply({
+      reply: text,
+      questionType: 'none',
+      recommendedSchemes: [
+        {
+          id: 'pm-vishwakarma',
+          title: language === 'hi' ? 'पीएम विश्वकर्मा योजना' : 'PM Vishwakarma Scheme',
+          benefit: '₹15,000 toolkit grant + up to ₹3,00,000 collateral-free credit at 5% interest',
+          keyCriteria: language === 'hi' ? '18 पारिवारिक शिल्पों में काम करने वाले पारंपरिक कारीगर' : 'Traditional artisans in 18 designated trades',
+          documentsRequired: ['Aadhaar Card', 'Mobile linked to Aadhaar', 'Bank Account details', 'Trade Proof'],
+          portalUrl: 'https://pmvishwakarma.gov.in',
+        },
+      ],
+    });
+  }
+
+  // 2. Guided Flow Progression in Offline Demo Mode
+  if (!profile?.state) {
+    return new OfflineReply({
+      reply:
+        language === 'hi'
+          ? 'नमस्ते! आपके लिए उपयुक्त कल्याणकारी योजनाएं खोजने हेतु, कृपया अपना **राज्य या केंद्र शासित प्रदेश** चुनें:'
+          : 'Namaste! To identify verified government welfare schemes tailored to you, please select your **State or Union Territory**:',
+      questionType: 'single_choice',
+      fieldKey: 'state',
+      options: DEFAULT_OPTIONS_BY_FIELD.state[language] || DEFAULT_OPTIONS_BY_FIELD.state.en,
+      allowSkip: true,
+    });
+  }
+
+  if (!profile?.age) {
+    return new OfflineReply({
+      reply:
+        language === 'hi'
+          ? 'कृपया अपना **आयु वर्ग** चुनें ताकि हम उम्र के आधार पर लागू योजनाओं (जैसे युवा, वयस्क या वरिष्ठ नागरिक पेंशन) की जांच कर सकें:'
+          : 'Please select your **Age Group** so we can verify schemes targeted to youth, adults, or senior citizens:',
+      questionType: 'single_choice',
+      fieldKey: 'ageGroup',
+      options: DEFAULT_OPTIONS_BY_FIELD.ageGroup[language] || DEFAULT_OPTIONS_BY_FIELD.ageGroup.en,
+      allowSkip: false,
+    });
+  }
+
+  if (!profile?.occupation) {
+    return new OfflineReply({
+      reply:
+        language === 'hi'
+          ? 'कृपया अपना **मुख्य व्यवसाय या आजीविका** चुनें ताकि हम व्यावसायिक सहायता योजनाओं की जांच कर सकें:'
+          : 'Please select your **Primary Occupation or Livelihood** to check occupational support initiatives:',
+      questionType: 'single_choice',
+      fieldKey: 'occupation',
+      options: DEFAULT_OPTIONS_BY_FIELD.occupation[language] || DEFAULT_OPTIONS_BY_FIELD.occupation.en,
+      allowSkip: false,
+    });
+  }
+
+  // General welcome fallback
+  return new OfflineReply({
+    reply:
+      language === 'hi'
+        ? `नमस्ते! सहायक AI में आपका स्वागत है।\n\nसरकारी कल्याणकारी योजनाओं के बारे में सही जानकारी प्राप्त करने के लिए आप किसी भी योजना (जैसे पीएम-किसान, आयुष्मान भारत, पीएम आवास, सुकन्या समृद्धि, मुद्रा ऋण, विश्वकर्मा योजना) के बारे में पूछ सकते हैं।\n\nआप दिए गए विकल्पों में से चुन सकते हैं या अपना प्रश्न नीचे लिख सकते हैं।`
+        : `Namaste! I am your Sahayak AI Civic Assistant.\n\nI can help guide you through official eligibility rules, required documents, and application steps for Indian Central & State welfare initiatives, including:\n• **PM-KISAN** (Farmer income support)\n• **Ayushman Bharat** (₹5 Lakh health assurance)\n• **PMAY-G** (Rural pucca housing grants)\n• **Sukanya Samriddhi** (Girl child savings)\n• **PM MUDRA & SVANidhi** (Micro-enterprise credit)\n• **PM Vishwakarma** (Artisan toolkit & grants)\n\nAsk any question or specify your state, age, and occupation for tailored guidance.`,
+    questionType: 'single_choice',
+    fieldKey: 'occupation',
+    options: DEFAULT_OPTIONS_BY_FIELD.occupation[language] || DEFAULT_OPTIONS_BY_FIELD.occupation.en,
+    allowSkip: true,
+  });
 }
 
 /**
@@ -200,7 +491,6 @@ export async function processChatRequest({
   }
 
   const apiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : '';
-  const model = process.env.GEMINI_MODEL ? process.env.GEMINI_MODEL.trim() : 'gemini-3.5-flash';
 
   // If no Gemini API key is configured on the server, return clear configuration error
   if (!apiKey) {
@@ -212,6 +502,11 @@ export async function processChatRequest({
       },
     };
   }
+
+  // Configure models with automatic fallback
+  const primaryModel = process.env.GEMINI_MODEL ? process.env.GEMINI_MODEL.trim() : 'gemini-3.5-flash-lite';
+  const fallbackModel = primaryModel === 'gemini-3.5-flash-lite' ? 'gemini-3.5-flash' : 'gemini-3.5-flash-lite';
+  const modelsToTry = [primaryModel, fallbackModel];
 
   const systemInstruction = generateSystemPrompt(language, sanitizedProfile);
 
@@ -242,141 +537,193 @@ export async function processChatRequest({
       parts: [{ text: systemInstruction }],
     },
     generationConfig: {
-      temperature: 0.3,
+      responseMimeType: 'application/json',
+      temperature: 0.25,
       topK: 40,
       topP: 0.95,
-      maxOutputTokens: 1024,
+      maxOutputTokens: 1536,
     },
   };
 
-  const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  let lastError = null;
+  let modelActuallyUsed = primaryModel;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15-second timeout
+  for (const currentModel of modelsToTry) {
+    const endpointUrl = `https://generativelanguage.googleapis.com/v1beta/models/${currentModel}:generateContent?key=${apiKey}`;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15-second timeout
 
-  try {
-    const response = await fetch(endpointUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-    });
+    try {
+      const response = await fetch(endpointUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
 
-    clearTimeout(timeoutId);
+      clearTimeout(timeoutId);
 
-    if (!response.ok) {
-      let errorData = null;
-      try {
-        errorData = await response.json();
-      } catch {}
+      if (!response.ok) {
+        let errorData = null;
+        try {
+          errorData = await response.json();
+        } catch {}
 
-      const errorMessage = errorData?.error?.message || '';
-      const errorStatus = errorData?.error?.status || '';
+        const errorMessage = errorData?.error?.message || '';
+        const errorStatus = errorData?.error?.status || '';
 
-      // Handle invalid API key (HTTP 400 with API_KEY_INVALID or 403)
-      if (
-        (response.status === 400 && (errorMessage.includes('API_KEY_INVALID') || errorMessage.includes('API key not valid'))) ||
-        response.status === 403
-      ) {
-        console.error('Gemini Authentication Error: Invalid API key');
-        return {
-          status: 401,
-          body: {
-            error: 'Invalid Gemini API key. Please verify your GEMINI_API_KEY configuration in Vercel.',
-            isAuthError: true,
-          },
-        };
-      }
+        // Handle invalid API key immediately (no retry needed)
+        if (
+          (response.status === 400 && (errorMessage.includes('API_KEY_INVALID') || errorMessage.includes('API key not valid'))) ||
+          response.status === 403
+        ) {
+          console.error('Gemini Authentication Error: Invalid API key');
+          return {
+            status: 401,
+            body: {
+              error: 'Invalid Gemini API key. Please verify your GEMINI_API_KEY configuration in Vercel.',
+              isAuthError: true,
+            },
+          };
+        }
 
-      // Handle Rate Limit / Quota Exceeded (HTTP 429)
-      if (response.status === 429 || errorStatus === 'RESOURCE_EXHAUSTED') {
-        return {
-          status: 429,
-          body: {
-            error: 'Gemini service is currently busy (Rate Limit). Please wait a moment and try again.',
-            isRateLimited: true,
-          },
-        };
-      }
+        // If rate limited (429) or unavailable (503) or 404, try fallback model
+        if (response.status === 429 || errorStatus === 'RESOURCE_EXHAUSTED' || response.status === 503 || response.status === 404) {
+          lastError = { status: response.status, errorStatus, errorMessage };
+          continue;
+        }
 
-      // Handle Model Not Found / Deprecated (HTTP 404)
-      if (response.status === 404 || errorStatus === 'NOT_FOUND') {
-        console.error(`Gemini Model Error: Model "${model}" not found or unsupported`);
         return {
           status: 502,
           body: {
-            error: `Gemini model "${model}" is not available. Please configure GEMINI_MODEL="gemini-3.5-flash" in your environment variables.`,
+            error: `Gemini AI service returned an error (${response.status}). Please try again.`,
           },
         };
       }
 
-      // Handle Service Unavailable / High demand (HTTP 503)
-      if (response.status === 503 || errorStatus === 'UNAVAILABLE') {
+      const data = await response.json();
+      const candidate = data.candidates && data.candidates[0];
+      const rawOutput = candidate?.content?.parts?.[0]?.text;
+
+      if (!rawOutput || !rawOutput.trim()) {
         return {
-          status: 503,
+          status: 502,
           body: {
-            error: 'Gemini AI service is currently experiencing high demand. Please try again in a few moments.',
+            error: 'Gemini API returned an empty response. Please try rephrasing your question.',
           },
         };
       }
 
-      // General Gemini API Error
-      console.error(`Gemini API Error (HTTP ${response.status})`);
+      // Safe JSON parsing with markdown fence stripping
+      let parsed = null;
+      try {
+        parsed = JSON.parse(rawOutput);
+      } catch {
+        const cleaned = rawOutput.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+        try {
+          parsed = JSON.parse(cleaned);
+        } catch {}
+      }
+
+      // Default sanitization
+      let sanitizedReply = typeof parsed?.reply === 'string' && parsed.reply.trim() ? parsed.reply.trim() : rawOutput.trim();
+      let sanitizedQuestionType = ['none', 'single_choice', 'multi_choice', 'recommendations'].includes(parsed?.questionType)
+        ? parsed.questionType
+        : 'none';
+      let sanitizedFieldKey = typeof parsed?.fieldKey === 'string' && parsed.fieldKey ? parsed.fieldKey : null;
+
+      let sanitizedOptions = [];
+      if (Array.isArray(parsed?.options)) {
+        sanitizedOptions = parsed.options
+          .filter((opt) => opt && (typeof opt.label === 'string' || typeof opt.value === 'string'))
+          .map((opt) => ({
+            label: String(opt.label || opt.value).slice(0, 100),
+            value: String(opt.value || opt.label).slice(0, 100),
+          }));
+      }
+
+      // Inject smart default options if model asked single_choice/multi_choice with missing options
+      if (
+        (sanitizedQuestionType === 'single_choice' || sanitizedQuestionType === 'multi_choice') &&
+        sanitizedOptions.length === 0 &&
+        sanitizedFieldKey &&
+        DEFAULT_OPTIONS_BY_FIELD[sanitizedFieldKey]
+      ) {
+        sanitizedOptions = DEFAULT_OPTIONS_BY_FIELD[sanitizedFieldKey][language] || DEFAULT_OPTIONS_BY_FIELD[sanitizedFieldKey].en;
+      }
+
+      let sanitizedSchemes = [];
+      if (Array.isArray(parsed?.recommendedSchemes)) {
+        sanitizedSchemes = parsed.recommendedSchemes
+          .filter((s) => s && typeof s.title === 'string')
+          .map((s) => ({
+            id: String(s.id || s.title.toLowerCase().replace(/[^a-z0-9]/g, '-')),
+            title: String(s.title),
+            benefit: String(s.benefit || ''),
+            keyCriteria: String(s.keyCriteria || ''),
+            documentsRequired: Array.isArray(s.documentsRequired) ? s.documentsRequired.map(String) : [],
+            portalUrl: String(s.portalUrl || 'https://www.india.gov.in'),
+          }));
+      }
+
       return {
-        status: 502,
+        status: 200,
         body: {
-          error: `Gemini AI service returned an error (${response.status}). Please try again.`,
+          reply: sanitizedReply,
+          questionType: sanitizedQuestionType,
+          fieldKey: sanitizedFieldKey,
+          options: sanitizedOptions,
+          allowSkip: !!parsed?.allowSkip,
+          recommendedSchemes: sanitizedSchemes,
+          isDemoMode: false,
+          modelUsed: currentModel,
+          sources: ['Official Gazette Rules', 'National Portal of India', 'myscheme.gov.in'],
         },
       };
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (err.name === 'AbortError') {
+        return {
+          status: 504,
+          body: {
+            error: 'The request to Gemini AI timed out after 15 seconds. Please check your connection and retry.',
+            isTimeout: true,
+          },
+        };
+      }
+      lastError = err;
     }
+  }
 
-    const data = await response.json();
-    const candidate = data.candidates && data.candidates[0];
-    const replyText = candidate?.content?.parts?.[0]?.text;
-
-    if (!replyText || !replyText.trim()) {
-      return {
-        status: 502,
-        body: {
-          error: 'Gemini API returned an empty response. Please try rephrasing your question.',
-        },
-      };
-    }
-
+  // If all models failed
+  if (lastError?.status === 429 || lastError?.errorStatus === 'RESOURCE_EXHAUSTED') {
     return {
-      status: 200,
+      status: 429,
       body: {
-        reply: replyText.trim(),
-        isDemoMode: false,
-        modelUsed: model,
-        sources: ['Official Gazette Rules', 'National Portal of India', 'myscheme.gov.in'],
-      },
-    };
-  } catch (err) {
-    clearTimeout(timeoutId);
-
-    if (err.name === 'AbortError') {
-      return {
-        status: 504,
-        body: {
-          error: 'The request to Gemini AI timed out after 15 seconds. Please check your connection and retry.',
-          isTimeout: true,
-        },
-      };
-    }
-
-    // Safe error logging: only log error name, never citizen prompt
-    console.error('Fetch error connecting to Gemini API:', err?.name || 'NetworkError');
-
-    return {
-      status: 502,
-      body: {
-        error: 'Network error connecting to Gemini AI service. Please check server connectivity.',
+        error: 'Gemini service is currently busy (Rate Limit). Please wait a moment and try again.',
+        isRateLimited: true,
       },
     };
   }
+
+  if (lastError?.status === 503 || lastError?.errorStatus === 'UNAVAILABLE') {
+    return {
+      status: 503,
+      body: {
+        error: 'Gemini AI service is currently experiencing high demand. Please try again in a few moments.',
+      },
+    };
+  }
+
+  console.error('Fetch error connecting to Gemini API:', lastError?.name || 'NetworkError');
+  return {
+    status: 502,
+    body: {
+      error: 'Network error connecting to Gemini AI service. Please check server connectivity.',
+    },
+  };
 }
 
 /**
