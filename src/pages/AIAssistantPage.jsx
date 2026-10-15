@@ -132,44 +132,66 @@ export default function AIAssistantPage() {
     changeLanguage(newLang);
   };
 
-  // Auto-scroll to the START of the new AI message (not to the bottom of the conversation)
-  // Positions the beginning of the AI response near the top of the visible chat area with a small comfortable top margin.
-  // Keeps the AI message heading and first line visible so the user can start reading immediately.
-  // If tokens stream progressively, does not repeatedly force-scroll to the bottom.
+  // Helper to calculate target scrollTop to align an element near the top of the chat container
+  const getMessageTargetScrollTop = (container, messageEl, topPadding = 16) => {
+    if (!container || !messageEl) return 0;
+    if (messageEl.offsetParent === container) {
+      return Math.max(0, messageEl.offsetTop - topPadding);
+    }
+    const containerRect = container.getBoundingClientRect();
+    const messageRect = messageEl.getBoundingClientRect();
+    return Math.max(0, container.scrollTop + (messageRect.top - containerRect.top) - topPadding);
+  };
+
+  // Auto-scroll the CHAT MESSAGE CONTAINER ONLY (never the entire document/window) to the START of the new AI message.
+  // 1. Positions the beginning of the AI response near the top of the chat's scrollable viewport with a comfortable top margin.
+  // 2. The first line of the AI answer is visible near the top of the chat viewport so the citizen can start reading immediately.
+  // 3. Does NOT scroll to the final sentence, the bottom of the AI message, the input box, or the bottom of the entire page/footer.
+  // 4. Triggered once per new response; during progressive token streaming, view stays stable at the start without repeated scrolling.
+  // 5. Does not reposition when the user is reading or scrolling through older messages.
   useEffect(() => {
     if (latestAssistantMessageId && lastScrolledMessageIdRef.current !== latestAssistantMessageId) {
       lastScrolledMessageIdRef.current = latestAssistantMessageId;
 
-      const scrollToStart = () => {
-        if (latestAIMessageRef.current) {
-          latestAIMessageRef.current.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-          });
-        }
+      const scrollToAIMessageStart = () => {
+        const container = chatContainerRef.current;
+        const messageEl = latestAIMessageRef.current;
+        if (!container || !messageEl) return;
+
+        const targetScrollTop = getMessageTargetScrollTop(container, messageEl, 16);
+
+        // Scroll the CHAT CONTAINER ONLY — never scroll the window or document down to the footer!
+        container.scrollTo({
+          top: targetScrollTop,
+          behavior: 'smooth',
+        });
       };
 
       if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
-        const frameId = window.requestAnimationFrame(scrollToStart);
+        const frameId = window.requestAnimationFrame(scrollToAIMessageStart);
         return () => window.cancelAnimationFrame(frameId);
       } else {
-        scrollToStart();
+        scrollToAIMessageStart();
       }
     }
   }, [latestAssistantMessageId, messages]);
 
-  // When a user submits a prompt, bring the user's message into view
+  // When a user submits a prompt, keep conversation positioned appropriately in the chat container only
   useEffect(() => {
     if (latestUserMessageId && lastScrolledUserMessageIdRef.current !== latestUserMessageId) {
       lastScrolledUserMessageIdRef.current = latestUserMessageId;
 
       const scrollToUserMsg = () => {
-        if (latestUserMessageRef.current) {
-          latestUserMessageRef.current.scrollIntoView({
-            behavior: 'smooth',
-            block: 'nearest',
-          });
-        }
+        const container = chatContainerRef.current;
+        const userEl = latestUserMessageRef.current;
+        if (!container || !userEl) return;
+
+        const targetScrollTop = getMessageTargetScrollTop(container, userEl, 16);
+
+        container.scrollTo({
+          top: targetScrollTop,
+          behavior: 'smooth',
+        });
       };
 
       if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
@@ -880,11 +902,11 @@ export default function AIAssistantPage() {
       </div>
 
       {/* Chat Thread Container */}
-      <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm mt-3.5 flex flex-col overflow-hidden min-h-[440px]">
+      <div className="flex-1 bg-white border border-slate-200 rounded-2xl shadow-sm mt-3.5 flex flex-col overflow-hidden h-[calc(100dvh-200px)] min-h-[520px] max-h-[860px]">
         {/* Messages List */}
         <div
           ref={chatContainerRef}
-          className="flex-1 p-3.5 sm:p-5 overflow-y-auto space-y-4"
+          className="relative flex-1 p-3.5 sm:p-5 pb-8 overflow-y-auto space-y-4"
         >
           {messages.map((msg) => {
             const isLatestAssistant = msg.id === latestAssistantMessageId;

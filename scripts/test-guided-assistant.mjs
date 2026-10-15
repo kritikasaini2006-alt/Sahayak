@@ -292,18 +292,26 @@ async function runGuidedAssistantTests() {
     failures++;
   }
 
-  // Test 13: Auto-scroll targets the START of the new AI message with block: 'start'
+  // Test 13: Auto-scroll targets the START of the new AI message strictly inside the chat container
   try {
     const assistantPagePath = path.resolve(__dirname, '../src/pages/AIAssistantPage.jsx');
     const pageContent = fs.readFileSync(assistantPagePath, 'utf8');
 
-    const hasScrollToStart = pageContent.includes("block: 'start'") && pageContent.includes('latestAIMessageRef.current.scrollIntoView');
-    const hasRequestAnimationFrame = pageContent.includes('requestAnimationFrame');
+    const calculatesRelativePosition = pageContent.includes('getMessageTargetScrollTop') &&
+      (pageContent.includes('messageEl.offsetTop') || pageContent.includes('messageRect.top - containerRect.top'));
+    const scrollsContainerOnly = pageContent.includes('container.scrollTo({') &&
+      pageContent.includes('top: targetScrollTop') &&
+      pageContent.includes("behavior: 'smooth'");
+    const doesNotScrollWindow = !pageContent.includes('latestAIMessageRef.current.scrollIntoView') &&
+      !pageContent.includes('window.scrollTo');
+    const hasBoundedContainerLayout = pageContent.includes('h-[calc(100dvh-200px)]') &&
+      pageContent.includes('pb-8') &&
+      pageContent.includes('relative flex-1');
 
-    if (hasScrollToStart && hasRequestAnimationFrame) {
-      console.log('✅ Test 13 Passed: Auto-scroll correctly targets START of AI message with block: "start".');
+    if (calculatesRelativePosition && scrollsContainerOnly && doesNotScrollWindow && hasBoundedContainerLayout) {
+      console.log('✅ Test 13 Passed: Chat container exclusively scrolled to start of AI response; document/footer never scrolled.');
     } else {
-      console.error('❌ Test 13 Failed: Auto-scroll start alignment or animation frame missing.');
+      console.error('❌ Test 13 Failed: Container-only scroll calculation or bounded layout check failed.');
       failures++;
     }
   } catch (err) {
