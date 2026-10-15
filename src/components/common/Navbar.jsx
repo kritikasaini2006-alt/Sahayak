@@ -82,12 +82,13 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-40 bg-[#445363] border-b border-[#384452] shadow-sm backdrop-blur-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 lg:h-[68px]">
-          {/* Logo & Civic Branding */}
+      {/* Full width responsive container (replaces restrictive max-w-7xl mx-auto to eliminate excessive left blank space) */}
+      <div className="w-full px-3 sm:px-5 lg:px-6 xl:px-8">
+        <div className="flex items-center justify-between h-16 lg:h-[68px] gap-2 lg:gap-4">
+          {/* Logo & Civic Branding (Left Section) */}
           <Link
             to="/"
-            className="flex items-center gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EDD575] rounded-xl p-1 shrink-0"
+            className="flex items-center gap-2 sm:gap-2.5 group focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EDD575] rounded-xl py-1 pr-1 shrink-0"
             aria-label={t('brand.name')}
           >
             <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#454F2A] flex items-center justify-center text-[#FAF8F1] shadow-sm group-hover:scale-[1.03] transition-transform shrink-0">
@@ -108,8 +109,11 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Navigation Links (Visible on lg and larger) */}
-          <nav className="hidden lg:flex items-center gap-0.5 xl:gap-1.5" aria-label={t('nav.toggleMenu')}>
+          {/* Desktop Navigation Links (Flexible Central Section) */}
+          <nav
+            className="hidden lg:flex flex-1 items-center justify-center gap-1 xl:gap-2 px-2 xl:px-4 min-w-0"
+            aria-label={t('nav.toggleMenu')}
+          >
             {navLinks.map((item) => {
               const Icon = item.icon;
               return (
@@ -136,8 +140,8 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Desktop Right Actions (Visible on lg and larger) */}
-          <div className="hidden lg:flex items-center gap-2 xl:gap-2.5">
+          {/* Desktop Right Actions (Grouped on Right) */}
+          <div className="hidden lg:flex items-center justify-end gap-2 xl:gap-2.5 shrink-0">
             {/* Language Selector Desktop */}
             <LanguageSelector variant="desktop" />
 

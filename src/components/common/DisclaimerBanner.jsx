@@ -13,7 +13,7 @@ export default function DisclaimerBanner() {
       aria-label={t('disclaimerBanner.title')}
       className="bg-[#34404e] text-[#FAF8F1] border-b border-[#2c3743] text-xs py-2 px-4 transition-all"
     >
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+      <div className="w-full px-3 sm:px-5 lg:px-6 xl:px-8 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 overflow-hidden">
           <ShieldAlert className="w-4 h-4 text-[#EDD575] shrink-0" aria-hidden="true" />
           <p className="truncate sm:whitespace-normal leading-relaxed">

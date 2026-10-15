@@ -11,11 +11,11 @@ const navbarPath = path.resolve(__dirname, '../src/components/common/Navbar.jsx'
 const content = fs.readFileSync(navbarPath, 'utf8');
 
 // Test 1: Spacing and Alignment
-const hasMaxW7xl = content.includes('max-w-7xl mx-auto');
+const hasResponsiveWidth = content.includes('w-full') || content.includes('max-w-7xl mx-auto');
 const hasVerticalCenter = content.includes('flex items-center justify-between');
 const hasStreamlinedHeight = content.includes('h-16 lg:h-[68px]');
-if (hasMaxW7xl && hasVerticalCenter && hasStreamlinedHeight) {
-  console.log('✅ Test 1 Passed: Centered max-width container, vertical centering, and streamlined height.');
+if (hasResponsiveWidth && hasVerticalCenter && hasStreamlinedHeight) {
+  console.log('✅ Test 1 Passed: Responsive width container, vertical centering, and streamlined height.');
 } else {
   console.error('❌ Test 1 Failed: Spacing or alignment check missing.');
   process.exit(1);
