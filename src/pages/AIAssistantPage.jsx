@@ -98,8 +98,16 @@ export default function AIAssistantPage() {
     }
   }, [language]);
 
-  // Save language preference via global context
+  // Save language preference via global context and stop any active voice input
   const handleLanguageChange = (newLang) => {
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {}
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+    setIsConnectingMic(false);
     changeLanguage(newLang);
   };
 
@@ -133,7 +141,7 @@ export default function AIAssistantPage() {
     setSpeechError(msg);
     speechErrorTimeoutRef.current = setTimeout(() => {
       setSpeechError(null);
-    }, 5000);
+    }, 9000);
   };
 
   // Query microphone permission state where supported (Chromium / Permissions API)
@@ -189,6 +197,7 @@ export default function AIAssistantPage() {
       recognition.lang = language === 'hi' ? 'hi-IN' : 'en-IN';
       recognition.continuous = false;
       recognition.interimResults = false;
+      recognition.maxAlternatives = 1;
 
       recognition.onstart = () => {
         setIsConnectingMic(false);
@@ -207,6 +216,12 @@ export default function AIAssistantPage() {
 
       recognition.onerror = (event) => {
         console.warn('Speech Recognition error:', event.error);
+        if (recognitionRef.current) {
+          try {
+            recognitionRef.current.abort();
+          } catch {}
+          recognitionRef.current = null;
+        }
         setIsConnectingMic(false);
         setIsListening(false);
 
@@ -218,12 +233,15 @@ export default function AIAssistantPage() {
           // Speech recognition service unavailable (e.g. Brave Google Services disabled)
           showEphemeralSpeechError(
             t.micServiceNotAllowed ||
-              'Speech recognition service is disabled in your browser settings (e.g. Brave Google Services).'
+              'Speech recognition service is disabled in your browser settings (e.g. Brave Google Services). Click Retry or type below.'
           );
         } else if (event.error === 'audio-capture') {
           showEphemeralSpeechError(t.micNoDevice || 'No microphone detected on your device.');
         } else if (event.error === 'network') {
-          showEphemeralSpeechError(t.micNetworkError || 'Speech recognition network error.');
+          showEphemeralSpeechError(
+            t.micNetworkError ||
+              'Speech recognition service unreachable. This may be caused by browser privacy shields (e.g. Brave), ad blockers, or network filters. Click Retry or type below.'
+          );
         } else if (event.error === 'no-speech') {
           showEphemeralSpeechError(t.micNoSpeech || 'No speech detected. Click the mic to try again.');
         } else if (event.error !== 'aborted') {
@@ -234,6 +252,7 @@ export default function AIAssistantPage() {
       recognition.onend = () => {
         setIsConnectingMic(false);
         setIsListening(false);
+        recognitionRef.current = null;
       };
 
       recognitionRef.current = recognition;
@@ -887,21 +906,35 @@ export default function AIAssistantPage() {
           ))}
         </div>
 
-        {/* Contextual Speech Error Banner (auto-dismissed / dismissible) */}
+        {/* Contextual Speech Error Banner (auto-dismissed / dismissible with Retry option) */}
         {speechError && (
-          <div className="px-4 py-2.5 bg-amber-50 border-t border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-2 animate-fadeIn">
-            <div className="flex items-center gap-2">
+          <div className="px-4 py-2.5 bg-amber-50 border-t border-amber-200 text-xs text-amber-900 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 animate-fadeIn">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>{speechError}</span>
+              <span className="leading-relaxed">{speechError}</span>
             </div>
-            <button
-              type="button"
-              onClick={() => setSpeechError(null)}
-              className="text-amber-700 hover:text-amber-900 p-1 rounded-md hover:bg-amber-100/60 transition-colors"
-              aria-label="Dismiss error"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+              <button
+                type="button"
+                onClick={() => {
+                  setSpeechError(null);
+                  handleToggleListening();
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-200/80 hover:bg-amber-300/80 text-amber-950 font-semibold text-[11px] transition-colors shadow-2xs"
+                title={t.micRetry || 'Retry'}
+              >
+                <RotateCcw className="w-3 h-3 text-amber-800" />
+                <span>{t.micRetry || 'Retry'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSpeechError(null)}
+                className="text-amber-700 hover:text-amber-900 p-1 rounded-md hover:bg-amber-100/60 transition-colors"
+                aria-label="Dismiss error"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         )}
 
