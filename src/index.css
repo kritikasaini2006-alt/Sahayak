@@ -4,7 +4,33 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 font-sans;
+    @apply bg-[#E5E8E1] text-[#445363] font-sans antialiased;
+  }
+}
+
+/* Ashoka Chakra continuous linear spin & breathing scale animation */
+@keyframes chakraSpinAndBreathe {
+  0% {
+    transform: rotate(0deg) scale(0.94);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.06);
+  }
+  100% {
+    transform: rotate(360deg) scale(0.94);
+  }
+}
+
+.animate-chakra {
+  animation: chakraSpinAndBreathe 11s linear infinite;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-chakra {
+    animation: none;
+    transform: rotate(0deg) scale(1);
   }
 }
 

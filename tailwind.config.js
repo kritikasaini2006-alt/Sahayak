@@ -7,6 +7,33 @@ export default {
   theme: {
     extend: {
       colors: {
+        charcoal: {
+          DEFAULT: '#445363',
+          dark: '#34404e',
+          light: '#536578',
+        },
+        creamGrey: '#E5E8E1',
+        'cream-grey': '#E5E8E1',
+        olive: {
+          DEFAULT: '#454F2A',
+          dark: '#384022',
+          light: '#586536',
+        },
+        mustard: {
+          DEFAULT: '#EDD575',
+          dark: '#dfc455',
+          light: '#f5e49a',
+        },
+        warmBeige: '#F5EAD9',
+        'warm-beige': '#F5EAD9',
+        softCream: '#FAF8F1',
+        'soft-cream': '#FAF8F1',
+        chakraBlue: {
+          DEFAULT: '#315D9B',
+          dark: '#274b7d',
+          light: '#3d72bc',
+        },
+        'chakra-blue': '#315D9B',
         navy: {
           50: '#f0f5fa',
           100: '#e1ecf5',
