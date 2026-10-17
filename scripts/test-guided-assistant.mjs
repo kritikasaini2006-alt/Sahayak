@@ -346,8 +346,51 @@ async function runGuidedAssistantTests() {
     failures++;
   }
 
+  // Test 15: Check Eligibility navigation & route resolution in App.jsx and AIAssistantPage.jsx
+  try {
+    const appPath = path.resolve(__dirname, '../src/App.jsx');
+    const appContent = fs.readFileSync(appPath, 'utf8');
+    const assistantPagePath = path.resolve(__dirname, '../src/pages/AIAssistantPage.jsx');
+    const assistantContent = fs.readFileSync(assistantPagePath, 'utf8');
+
+    const hasEligibilityRoute = appContent.includes('path="eligibility"') && appContent.includes('element={<CheckEligibilityPage />}');
+    const hasCheckEligibilityAlias = appContent.includes('path="check-eligibility"') && appContent.includes('element={<CheckEligibilityPage />}');
+    const linksToEligibility = assistantContent.includes('to={scheme.id ? `/eligibility?scheme=') || assistantContent.includes('to="/eligibility"');
+    const preservesSchemeContext = assistantContent.includes('state={{ schemeId: scheme.id, schemeTitle: scheme.title }}');
+    const noBrokenCheckEligibilityLinks = !assistantContent.includes('to="/check-eligibility"');
+
+    if (hasEligibilityRoute && hasCheckEligibilityAlias && linksToEligibility && preservesSchemeContext && noBrokenCheckEligibilityLinks) {
+      console.log('✅ Test 15 Passed: Check Eligibility routes (canonical /eligibility and /check-eligibility alias) registered, links updated with scheme context.');
+    } else {
+      console.error('❌ Test 15 Failed: Route alias or scheme link update check failed.');
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 15 Exception:', err);
+    failures++;
+  }
+
+  // Test 16: Vercel SPA Fallback Configuration for Client-Side Routing
+  try {
+    const vercelConfigPath = path.resolve(__dirname, '../vercel.json');
+    const vercelConfig = JSON.parse(fs.readFileSync(vercelConfigPath, 'utf8'));
+
+    const hasSpaRewrite = Array.isArray(vercelConfig.rewrites) &&
+      vercelConfig.rewrites.some((r) => r.source === '/(.*)' && r.destination === '/index.html');
+
+    if (hasSpaRewrite) {
+      console.log('✅ Test 16 Passed: Vercel SPA fallback rewrite rule configured (/(.*) -> /index.html) preventing 404s on direct navigation & page refresh.');
+    } else {
+      console.error('❌ Test 16 Failed: Missing SPA fallback rewrite in vercel.json');
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 16 Exception:', err);
+    failures++;
+  }
+
   if (failures === 0) {
-    console.log('\n🎉 ALL 14 GUIDED ASSISTANT & CHAT SCROLLING TESTS PASSED SUCCESSFULLY!\n');
+    console.log('\n🎉 ALL 16 GUIDED ASSISTANT & CHAT SCROLLING TESTS PASSED SUCCESSFULLY!\n');
   } else {
     console.error(`\n🚨 ${failures} GUIDED ASSISTANT TESTS FAILED.\n`);
     process.exit(1);

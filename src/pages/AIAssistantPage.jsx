@@ -924,7 +924,7 @@ export default function AIAssistantPage() {
           )}
         </div>
         <Link
-          to="/check-eligibility"
+          to="/eligibility"
           className="font-medium text-teal-800 hover:text-teal-950 underline self-start sm:self-auto shrink-0"
         >
           {t.editProfile}
@@ -1198,7 +1198,8 @@ export default function AIAssistantPage() {
                               </a>
                             )}
                             <Link
-                              to="/check-eligibility"
+                              to={scheme.id ? `/eligibility?scheme=${encodeURIComponent(scheme.id)}` : '/eligibility'}
+                              state={{ schemeId: scheme.id, schemeTitle: scheme.title }}
                               className="text-xs font-semibold text-navy-800 hover:text-teal-700 hover:underline"
                             >
                               {t.checkEligibilityAction || 'Check Full Eligibility →'}

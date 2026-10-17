@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
   ShieldCheck,
   RotateCcw,
@@ -25,6 +26,7 @@ import {
   clearCitizenProfile,
 } from '../utils/eligibilityEngine';
 import { SAMPLE_PROFILES } from '../data/sampleProfiles';
+import { MOCK_SCHEMES } from '../data/mockSchemes';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
@@ -49,6 +51,8 @@ export default function CheckEligibilityPage() {
   const { t, language } = useTranslation();
   useDocumentTitle(t('eligibility.pageTitle'));
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [errors, setErrors] = useState({});
@@ -56,6 +60,11 @@ export default function CheckEligibilityPage() {
   const [evaluationResults, setEvaluationResults] = useState(null);
   const [storedProfile, setStoredProfile] = useState(null);
   const [notification, setNotification] = useState(null);
+  const [showTargetNotice, setShowTargetNotice] = useState(true);
+
+  const targetSchemeParam = searchParams.get('scheme');
+  const matchedScheme = targetSchemeParam ? MOCK_SCHEMES.find((s) => s.id === targetSchemeParam) : null;
+  const targetSchemeTitle = location.state?.schemeTitle || matchedScheme?.title || targetSchemeParam;
 
   // Load existing profile from localStorage on component mount or user change
   useEffect(() => {
@@ -203,6 +212,27 @@ export default function CheckEligibilityPage() {
           {t('eligibility.pageSubtitle')}
         </p>
       </div>
+ 
+      {/* Target Scheme Notice (when navigated from AI Assistant or Scheme Card) */}
+      {targetSchemeTitle && showTargetNotice && (
+        <div className="bg-teal-50 border border-teal-200 text-teal-900 px-4 py-3 rounded-xl text-xs sm:text-sm flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <Sparkles className="w-4 h-4 text-teal-700 shrink-0" />
+            <span>
+              {language === 'hi'
+                ? `लक्षित योजना: "${targetSchemeTitle}" — पूर्ण पात्रता जांच के लिए नीचे विवरण भरें या समीक्षा करें।`
+                : `Target Scheme: "${targetSchemeTitle}" — review or fill in your details below to evaluate full eligibility.`}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowTargetNotice(false)}
+            className="text-teal-700 hover:text-teal-950 text-xs font-semibold shrink-0 cursor-pointer"
+          >
+            {t('common.dismiss')}
+          </button>
+        </div>
+      )}
 
       {/* Floating Notification */}
       {notification && (

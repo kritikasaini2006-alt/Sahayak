@@ -26,6 +26,7 @@ export default function App() {
               <Route index element={<HomePage />} />
               <Route path="schemes" element={<DiscoverSchemesPage />} />
               <Route path="eligibility" element={<CheckEligibilityPage />} />
+              <Route path="check-eligibility" element={<CheckEligibilityPage />} />
               <Route path="assistant" element={<AIAssistantPage />} />
               <Route
                 path="applications"
