@@ -13,6 +13,7 @@ const testSuites = [
   { name: 'Discover Schemes Layout & Empty-State Stability', path: 'scripts/test-schemes-layout.mjs' },
   { name: 'Immediate Language Switching & Chat Translation', path: 'scripts/test-immediate-language-switch.mjs' },
   { name: 'Persistent Chat History & New Chat', path: 'scripts/test-persistent-chat.mjs' },
+  { name: 'AI Response Rendering & Universal Parser', path: 'scripts/test-response-rendering.mjs' },
 ];
 
 console.log('====================================================');

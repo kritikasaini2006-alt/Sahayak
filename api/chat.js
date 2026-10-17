@@ -80,7 +80,8 @@ export class OfflineReply {
 }
 
 import { DEFAULT_OPTIONS_BY_FIELD } from '../src/data/chatOptions.js';
-export { DEFAULT_OPTIONS_BY_FIELD };
+import { parseStructuredResponse } from '../src/utils/responseParser.js';
+export { DEFAULT_OPTIONS_BY_FIELD, parseStructuredResponse };
 
 /**
  * Generates the structured system instruction for the AI assistant.
@@ -505,67 +506,18 @@ export async function processChatRequest({
         };
       }
 
-      // Safe JSON parsing with markdown fence stripping
-      let parsed = null;
-      try {
-        parsed = JSON.parse(rawOutput);
-      } catch {
-        const cleaned = rawOutput.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-        try {
-          parsed = JSON.parse(cleaned);
-        } catch {}
-      }
-
-      // Default sanitization
-      let sanitizedReply = typeof parsed?.reply === 'string' && parsed.reply.trim() ? parsed.reply.trim() : rawOutput.trim();
-      let sanitizedQuestionType = ['none', 'single_choice', 'multi_choice', 'recommendations'].includes(parsed?.questionType)
-        ? parsed.questionType
-        : 'none';
-      let sanitizedFieldKey = typeof parsed?.fieldKey === 'string' && parsed.fieldKey ? parsed.fieldKey : null;
-
-      let sanitizedOptions = [];
-      if (Array.isArray(parsed?.options)) {
-        sanitizedOptions = parsed.options
-          .filter((opt) => opt && (typeof opt.label === 'string' || typeof opt.value === 'string'))
-          .map((opt) => ({
-            label: String(opt.label || opt.value).slice(0, 100),
-            value: String(opt.value || opt.label).slice(0, 100),
-          }));
-      }
-
-      // Inject smart default options if model asked single_choice/multi_choice with missing options
-      if (
-        (sanitizedQuestionType === 'single_choice' || sanitizedQuestionType === 'multi_choice') &&
-        sanitizedOptions.length === 0 &&
-        sanitizedFieldKey &&
-        DEFAULT_OPTIONS_BY_FIELD[sanitizedFieldKey]
-      ) {
-        sanitizedOptions = DEFAULT_OPTIONS_BY_FIELD[sanitizedFieldKey][language] || DEFAULT_OPTIONS_BY_FIELD[sanitizedFieldKey].en;
-      }
-
-      let sanitizedSchemes = [];
-      if (Array.isArray(parsed?.recommendedSchemes)) {
-        sanitizedSchemes = parsed.recommendedSchemes
-          .filter((s) => s && typeof s.title === 'string')
-          .map((s) => ({
-            id: String(s.id || s.title.toLowerCase().replace(/[^a-z0-9]/g, '-')),
-            title: String(s.title),
-            benefit: String(s.benefit || ''),
-            keyCriteria: String(s.keyCriteria || ''),
-            documentsRequired: Array.isArray(s.documentsRequired) ? s.documentsRequired.map(String) : [],
-            portalUrl: String(s.portalUrl || 'https://www.india.gov.in'),
-          }));
-      }
+      // Safe structured response parsing using universal response parser
+      const structured = parseStructuredResponse(rawOutput, language);
 
       return {
         status: 200,
         body: {
-          reply: sanitizedReply,
-          questionType: sanitizedQuestionType,
-          fieldKey: sanitizedFieldKey,
-          options: sanitizedOptions,
-          allowSkip: !!parsed?.allowSkip,
-          recommendedSchemes: sanitizedSchemes,
+          reply: structured.reply,
+          questionType: structured.questionType,
+          fieldKey: structured.fieldKey,
+          options: structured.options,
+          allowSkip: structured.allowSkip,
+          recommendedSchemes: structured.recommendedSchemes,
           isDemoMode: false,
           modelUsed: currentModel,
           sources: ['Official Gazette Rules', 'National Portal of India', 'myscheme.gov.in'],

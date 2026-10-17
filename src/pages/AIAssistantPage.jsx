@@ -32,6 +32,7 @@ import { DEFAULT_OPTIONS_BY_FIELD } from '../data/chatOptions';
 import { SCHEME_TRANSLATIONS } from '../data/schemeTranslations';
 import { MOCK_SCHEMES } from '../data/mockSchemes';
 import { loadCitizenProfile, saveCitizenProfile } from '../utils/eligibilityEngine';
+import { parseStructuredResponse } from '../utils/responseParser';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
@@ -898,16 +899,18 @@ export default function AIAssistantPage() {
   };
 
   const handleSelectOption = (msg, option) => {
-    if (isTyping) return;
-    const updatedMap = { ...selectedOptionsMap, [msg.id]: option.label };
+    if (isTyping || selectedOptionsMap[msg.id]) return;
+    const chosenValue = option.value || option.label;
+    const chosenLabel = option.label || option.value;
+    const updatedMap = { ...selectedOptionsMap, [msg.id]: chosenLabel };
     setSelectedOptionsMap(updatedMap);
     if (activeConversationId) {
       updateConversationSelectedOptions(activeConversationId, updatedMap, user?.id);
     }
     if (msg.fieldKey) {
-      updateProfileField(msg.fieldKey, option.value || option.label);
+      updateProfileField(msg.fieldKey, chosenValue);
     }
-    handleSendMessage(option.label);
+    handleSendMessage(chosenValue);
   };
 
   const handleResetQuestionChoice = (msgId) => {
@@ -1032,21 +1035,24 @@ export default function AIAssistantPage() {
         throw new Error(data.error || 'Request failed');
       }
 
+      // Safe structured response parsing to guarantee clean text and parsed control fields
+      const structured = parseStructuredResponse(data, language);
+
       const assistantMessage = {
         id: `asst_${Date.now()}`,
         sender: 'assistant',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        text: data.reply,
-        originalText: data.reply,
+        text: structured.reply,
+        originalText: structured.reply,
         originalLanguage: language,
         translations: {
-          [language]: data.reply,
+          [language]: structured.reply,
         },
-        questionType: data.questionType || 'none',
-        fieldKey: data.fieldKey || null,
-        options: Array.isArray(data.options) ? data.options : [],
-        allowSkip: !!data.allowSkip,
-        recommendedSchemes: Array.isArray(data.recommendedSchemes) ? data.recommendedSchemes : [],
+        questionType: structured.questionType || 'none',
+        fieldKey: structured.fieldKey || null,
+        options: Array.isArray(structured.options) ? structured.options : [],
+        allowSkip: !!structured.allowSkip,
+        recommendedSchemes: Array.isArray(structured.recommendedSchemes) ? structured.recommendedSchemes : [],
         sources: data.sources || ['india.gov.in', 'myscheme.gov.in'],
         isDemoMode: !!data.isDemoMode,
         demoReason: data.demoReason,
@@ -1317,7 +1323,19 @@ export default function AIAssistantPage() {
 
   // Safe formatting for bold text and bullet points
   const formatMessageText = (content) => {
-    const lines = content.split('\n');
+    if (!content || typeof content !== 'string') return null;
+
+    // Safety guard: if raw JSON ever reaches formatMessageText, parse and display only the reply
+    let textToFormat = content;
+    const trimmed = textToFormat.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('```') || trimmed.includes('"reply"')) {
+      const parsed = parseStructuredResponse(textToFormat);
+      if (parsed.reply && parsed.reply !== textToFormat) {
+        textToFormat = parsed.reply;
+      }
+    }
+
+    const lines = textToFormat.split('\n');
     return lines.map((line, lineIdx) => {
       // Check for bullet lines
       const isBullet = line.startsWith('• ') || line.startsWith('- ');
@@ -1592,16 +1610,21 @@ export default function AIAssistantPage() {
                     <div className="flex flex-wrap gap-2">
                       {msg.options.map((opt, optIdx) => {
                         const isSelected = selectedOptionsMap[msg.id] === opt.label || selectedOptionsMap[msg.id] === opt.value;
+                        const isDisabled = isTyping || !!selectedOptionsMap[msg.id];
                         return (
                           <button
                             key={optIdx}
                             type="button"
-                            disabled={isTyping}
+                            disabled={isDisabled}
                             onClick={() => handleSelectOption(msg, opt)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs flex items-center gap-1.5 cursor-pointer ${
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs flex items-center gap-1.5 ${
+                              isDisabled
+                                ? 'disabled:opacity-60 disabled:cursor-not-allowed'
+                                : 'cursor-pointer active:scale-[0.98]'
+                            } ${
                               isSelected
                                 ? 'bg-teal-700 text-white border-teal-700 ring-2 ring-teal-200 shadow-sm'
-                                : 'bg-white text-navy-900 border-slate-300 hover:border-teal-500 hover:bg-teal-50/70 active:scale-[0.98]'
+                                : 'bg-white text-navy-900 border-slate-300 hover:border-teal-500 hover:bg-teal-50/70'
                             }`}
                           >
                             {isSelected && <Check className="w-3 h-3 text-white" />}
@@ -1615,9 +1638,9 @@ export default function AIAssistantPage() {
                       <div className="pt-1 flex justify-end">
                         <button
                           type="button"
-                          disabled={isTyping}
+                          disabled={isTyping || !!selectedOptionsMap[msg.id]}
                           onClick={() => handleSkipQuestion(msg)}
-                          className="text-xs text-slate-500 hover:text-slate-800 font-medium underline inline-flex items-center gap-1"
+                          className="text-xs text-slate-500 hover:text-slate-800 disabled:opacity-40 font-medium underline inline-flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
                         >
                           <span>{t.skipQuestion || 'Skip this question →'}</span>
                         </button>

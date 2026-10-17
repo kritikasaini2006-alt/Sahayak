@@ -12,6 +12,9 @@
 
 import { getScopedKey } from './userStorage.js';
 import { TRANSLATIONS } from '../data/translations.js';
+import { normalizeMessage } from './responseParser.js';
+
+export { normalizeMessage };
 
 export const CONVERSATIONS_STORAGE_KEY = 'sahayak_chat_conversations';
 export const ACTIVE_CONVERSATION_ID_KEY = 'sahayak_active_conversation_id';
@@ -145,9 +148,13 @@ export function getConversations(userId = null) {
 
     if (!Array.isArray(parsed)) return [];
 
-    // Filter valid conversations and sort by updatedAt descending
+    // Filter valid conversations, normalize messages, and sort by updatedAt descending
     return parsed
       .filter((c) => c && typeof c === 'object' && c.id && Array.isArray(c.messages))
+      .map((c) => ({
+        ...c,
+        messages: c.messages.map((m) => normalizeMessage(m, c.language)),
+      }))
       .sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0));
   } catch (err) {
     console.error('Failed to load conversations from storage:', err);
@@ -189,14 +196,14 @@ export function saveConversation(conversation, userId = null) {
       title = generateConversationTitle(userMsg.text, conversation.language);
     }
 
-    // Deduplicate messages by ID
+    // Deduplicate messages by ID and normalize their content
     const uniqueMessages = [];
     const seenMsgIds = new Set();
     if (Array.isArray(conversation.messages)) {
       for (const m of conversation.messages) {
         if (m && m.id && !seenMsgIds.has(m.id)) {
           seenMsgIds.add(m.id);
-          uniqueMessages.push(m);
+          uniqueMessages.push(normalizeMessage(m, conversation.language));
         }
       }
     }
@@ -363,3 +370,4 @@ export function getOrCreateActiveConversation(userId = null, language = 'en') {
   setActiveConversationId(fresh.id, userId);
   return fresh;
 }
+
