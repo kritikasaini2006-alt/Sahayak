@@ -12,6 +12,7 @@ const testSuites = [
   { name: 'Microphone Interaction & Permission Guidance Modal', path: 'scripts/test-microphone.mjs' },
   { name: 'Discover Schemes Layout & Empty-State Stability', path: 'scripts/test-schemes-layout.mjs' },
   { name: 'Immediate Language Switching & Chat Translation', path: 'scripts/test-immediate-language-switch.mjs' },
+  { name: 'Persistent Chat History & New Chat', path: 'scripts/test-persistent-chat.mjs' },
 ];
 
 console.log('====================================================');

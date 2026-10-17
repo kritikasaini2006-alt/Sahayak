@@ -21,6 +21,9 @@ import {
   Info,
   Loader2,
   X,
+  Plus,
+  History,
+  MessageSquare,
 } from 'lucide-react';
 import Badge from '../components/common/Badge';
 import MicrophonePermissionModal from '../components/common/MicrophonePermissionModal';
@@ -32,6 +35,20 @@ import { loadCitizenProfile, saveCitizenProfile } from '../utils/eligibilityEngi
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
+import {
+  getConversations,
+  getConversationById,
+  saveConversation,
+  updateConversationMessages,
+  updateConversationSelectedOptions,
+  deleteConversation,
+  clearAllConversations,
+  createNewConversation,
+  setActiveConversationId,
+  getOrCreateActiveConversation,
+  formatConversationTime,
+  createWelcomeMessage,
+} from '../utils/chatStorage';
 
 // Localize options by fieldKey or value lookup across supported languages
 const getLocalizedOptions = (options, fieldKey, targetLang) => {
@@ -96,33 +113,62 @@ export default function AIAssistantPage() {
   // Stored Citizen Profile
   const [profile, setProfile] = useState(null);
 
-  // Guided assistant interactive selection states
-  const [selectedOptionsMap, setSelectedOptionsMap] = useState({});
-  const [multiDrafts, setMultiDrafts] = useState({});
+  // Active conversation & persistent chat history state
+  const [activeConversationId, setActiveConversationIdState] = useState(() => {
+    if (typeof window === 'undefined') return 'conv_init';
+    const conv = getOrCreateActiveConversation(user?.id, language);
+    return conv.id;
+  });
 
-  // Chat message history
-  const [messages, setMessages] = useState(() => [
-    {
-      id: 'welcome',
-      sender: 'assistant',
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      text: TRANSLATIONS[language]?.welcomeMessage || TRANSLATIONS.en.welcomeMessage,
-      originalText: TRANSLATIONS[language]?.welcomeMessage || TRANSLATIONS.en.welcomeMessage,
-      originalLanguage: language,
-      translations: {
-        en: TRANSLATIONS.en.welcomeMessage,
-        hi: TRANSLATIONS.hi.welcomeMessage,
-      },
-      sources: ['india.gov.in', 'myscheme.gov.in'],
-      isDemoMode: false,
-      isTranslating: false,
-    },
-  ]);
+  const [conversations, setConversations] = useState(() => {
+    if (typeof window === 'undefined') return [];
+    return getConversations(user?.id);
+  });
+
+  const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
+
+  // Guided assistant interactive selection states
+  const [selectedOptionsMap, setSelectedOptionsMap] = useState(() => {
+    if (typeof window === 'undefined') return {};
+    const conv = getOrCreateActiveConversation(user?.id, language);
+    return conv.selectedOptionsMap || {};
+  });
+  const [multiDrafts, setMultiDrafts] = useState(() => {
+    if (typeof window === 'undefined') return {};
+    const conv = getOrCreateActiveConversation(user?.id, language);
+    return conv.multiDrafts || {};
+  });
+
+  // Chat message history restored from active conversation or initialized with welcome
+  const [messages, setMessages] = useState(() => {
+    if (typeof window === 'undefined') {
+      return [
+        {
+          id: 'welcome',
+          sender: 'assistant',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          text: TRANSLATIONS[language]?.welcomeMessage || TRANSLATIONS.en.welcomeMessage,
+          originalText: TRANSLATIONS[language]?.welcomeMessage || TRANSLATIONS.en.welcomeMessage,
+          originalLanguage: language,
+          translations: {
+            en: TRANSLATIONS.en.welcomeMessage,
+            hi: TRANSLATIONS.hi.welcomeMessage,
+          },
+          sources: ['india.gov.in', 'myscheme.gov.in'],
+          isDemoMode: false,
+          isTranslating: false,
+        },
+      ];
+    }
+    const conv = getOrCreateActiveConversation(user?.id, language);
+    return conv.messages && conv.messages.length > 0 ? conv.messages : [createWelcomeMessage(language)];
+  });
 
   const [inputPrompt, setInputPrompt] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [speakingId, setSpeakingId] = useState(null);
+  const activeAbortControllerRef = useRef(null);
 
   // Translation cache & active language trackers
   const activeLanguageRef = useRef(language);
@@ -173,7 +219,7 @@ export default function AIAssistantPage() {
   );
   const latestUserMessageId = latestUserMessage?.id;
 
-  // Load citizen profile on mount or user change
+  // Load citizen profile and sync user conversation workspace on mount or user change
   useEffect(() => {
     const loadedProfile = loadCitizenProfile();
     if (loadedProfile && (loadedProfile.age || loadedProfile.state || loadedProfile.occupation)) {
@@ -181,7 +227,27 @@ export default function AIAssistantPage() {
     } else {
       setProfile(null);
     }
+
+    const conv = getOrCreateActiveConversation(user?.id, language);
+    setActiveConversationIdState(conv.id);
+    setMessages(conv.messages && conv.messages.length > 0 ? conv.messages : [createWelcomeMessage(language)]);
+    setSelectedOptionsMap(conv.selectedOptionsMap || {});
+    setMultiDrafts(conv.multiDrafts || {});
+    setConversations(getConversations(user?.id));
   }, [user]);
+
+  // Close history drawer on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && showHistoryDrawer) {
+        setShowHistoryDrawer(false);
+      }
+    };
+    if (showHistoryDrawer) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showHistoryDrawer]);
 
   // Handle immediate language switching across all existing AI messages and active speech tools
   useEffect(() => {
@@ -833,7 +899,11 @@ export default function AIAssistantPage() {
 
   const handleSelectOption = (msg, option) => {
     if (isTyping) return;
-    setSelectedOptionsMap((prev) => ({ ...prev, [msg.id]: option.label }));
+    const updatedMap = { ...selectedOptionsMap, [msg.id]: option.label };
+    setSelectedOptionsMap(updatedMap);
+    if (activeConversationId) {
+      updateConversationSelectedOptions(activeConversationId, updatedMap, user?.id);
+    }
     if (msg.fieldKey) {
       updateProfileField(msg.fieldKey, option.value || option.label);
     }
@@ -844,6 +914,9 @@ export default function AIAssistantPage() {
     setSelectedOptionsMap((prev) => {
       const next = { ...prev };
       delete next[msgId];
+      if (activeConversationId) {
+        updateConversationSelectedOptions(activeConversationId, next, user?.id);
+      }
       return next;
     });
   };
@@ -865,18 +938,26 @@ export default function AIAssistantPage() {
       .filter((o) => selectedValues.includes(o.value) || selectedValues.includes(o.label))
       .map((o) => o.label);
     const text = matchingLabels.join(', ');
-    setSelectedOptionsMap((prev) => ({ ...prev, [msg.id]: text }));
+    const updatedMap = { ...selectedOptionsMap, [msg.id]: text };
+    setSelectedOptionsMap(updatedMap);
+    if (activeConversationId) {
+      updateConversationSelectedOptions(activeConversationId, updatedMap, user?.id);
+    }
     handleSendMessage(text);
   };
 
   const handleSkipQuestion = (msg) => {
     if (isTyping) return;
     const skipLabel = language === 'hi' ? 'यह प्रश्न छोड़ें' : 'Skip this question';
-    setSelectedOptionsMap((prev) => ({ ...prev, [msg.id]: language === 'hi' ? 'छोड़ा गया' : 'Skipped' }));
+    const updatedMap = { ...selectedOptionsMap, [msg.id]: language === 'hi' ? 'छोड़ा गया' : 'Skipped' };
+    setSelectedOptionsMap(updatedMap);
+    if (activeConversationId) {
+      updateConversationSelectedOptions(activeConversationId, updatedMap, user?.id);
+    }
     handleSendMessage(skipLabel);
   };
 
-  // Send Message to Server API /api/chat
+  // Send Message to Server API /api/chat with immediate automatic persistence
   const handleSendMessage = async (customPrompt = null) => {
     const textToSend = (customPrompt !== null ? customPrompt : inputPrompt).trim();
     if (!textToSend || isTyping) return;
@@ -901,14 +982,26 @@ export default function AIAssistantPage() {
       text: textToSend,
     };
 
-    // Append user message immediately
-    setMessages((prev) => [...prev, userMessage]);
+    // Append user message immediately and persist so navigation or reload preserves conversation
+    const messagesWithUser = [...messages, userMessage];
+    setMessages(messagesWithUser);
     setInputPrompt('');
     setIsTyping(true);
 
+    const currentConvId = activeConversationId;
+    updateConversationMessages(currentConvId, messagesWithUser, selectedOptionsMap, user?.id);
+    setConversations(getConversations(user?.id));
+
+    // Abort controller for safe cancellation if user starts New Chat or switches conversation
+    if (activeAbortControllerRef.current) {
+      activeAbortControllerRef.current.abort();
+    }
+    const abortController = new AbortController();
+    activeAbortControllerRef.current = abortController;
+
     try {
       // Build conversation history for context
-      const historyPayload = messages.map((m) => ({
+      const historyPayload = messagesWithUser.map((m) => ({
         sender: m.sender,
         text: m.text,
       }));
@@ -918,6 +1011,7 @@ export default function AIAssistantPage() {
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: abortController.signal,
         body: JSON.stringify({
           prompt: textToSend,
           history: historyPayload,
@@ -973,7 +1067,10 @@ export default function AIAssistantPage() {
       if (activeLanguageRef.current !== language) {
         const curLang = activeLanguageRef.current;
         assistantMessage.isTranslating = true;
-        setMessages((prev) => [...prev, assistantMessage]);
+        const messagesWithAssistant = [...messagesWithUser, assistantMessage];
+        setMessages(messagesWithAssistant);
+        updateConversationMessages(currentConvId, messagesWithAssistant, selectedOptionsMap, user?.id);
+        setConversations(getConversations(user?.id));
 
         // Immediate background translation of new message to active language
         (async () => {
@@ -981,6 +1078,7 @@ export default function AIAssistantPage() {
             const res = await fetch('/api/translate', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
+              signal: abortController.signal,
               body: JSON.stringify({
                 messages: [
                   {
@@ -1008,8 +1106,8 @@ export default function AIAssistantPage() {
                   recommendedSchemes: tr.translatedSchemes,
                 };
                 if (activeLanguageRef.current === curLang) {
-                  setMessages((prev) =>
-                    prev.map((m) =>
+                  setMessages((prev) => {
+                    const next = prev.map((m) =>
                       m.id === assistantMessage.id
                         ? {
                             ...m,
@@ -1019,8 +1117,10 @@ export default function AIAssistantPage() {
                             isTranslating: false,
                           }
                         : m
-                    )
-                  );
+                    );
+                    updateConversationMessages(currentConvId, next, selectedOptionsMap, user?.id);
+                    return next;
+                  });
                 }
               }
             }
@@ -1031,9 +1131,15 @@ export default function AIAssistantPage() {
           }
         })();
       } else {
-        setMessages((prev) => [...prev, assistantMessage]);
+        const messagesWithAssistant = [...messagesWithUser, assistantMessage];
+        setMessages(messagesWithAssistant);
+        updateConversationMessages(currentConvId, messagesWithAssistant, selectedOptionsMap, user?.id);
+        setConversations(getConversations(user?.id));
       }
     } catch (err) {
+      if (err.name === 'AbortError' || abortController.signal.aborted) {
+        return;
+      }
       console.error('Chat API Error:', err);
 
       const errorMessage = {
@@ -1046,13 +1152,18 @@ export default function AIAssistantPage() {
         originalPrompt: textToSend,
       };
 
-      setMessages((prev) => [...prev, errorMessage]);
+      const messagesWithError = [...messagesWithUser, errorMessage];
+      setMessages(messagesWithError);
+      updateConversationMessages(currentConvId, messagesWithError, selectedOptionsMap, user?.id);
+      setConversations(getConversations(user?.id));
     } finally {
-      setIsTyping(false);
+      if (!abortController.signal.aborted) {
+        setIsTyping(false);
+      }
     }
   };
 
-  // Clear conversation history
+  // Clear current active conversation back to welcome message
   const handleClearChat = () => {
     if (window.confirm(t.clearConfirm)) {
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
@@ -1075,24 +1186,133 @@ export default function AIAssistantPage() {
           },
         },
       };
-      setMessages([
-        {
-          id: 'welcome',
-          sender: 'assistant',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: t.welcomeMessage,
-          originalText: t.welcomeMessage,
-          originalLanguage: language,
-          translations: {
-            en: TRANSLATIONS.en.welcomeMessage,
-            hi: TRANSLATIONS.hi.welcomeMessage,
-          },
-          sources: ['india.gov.in', 'myscheme.gov.in'],
-          isDemoMode: false,
-          isTranslating: false,
-        },
-      ]);
+      const welcome = createWelcomeMessage(language);
+      setMessages([welcome]);
+      setSelectedOptionsMap({});
+      setMultiDrafts({});
+      updateConversationMessages(activeConversationId, [welcome], {}, user?.id);
+      setConversations(getConversations(user?.id));
     }
+  };
+
+  // Start a fresh new conversation (+ New Chat)
+  const handleNewChat = () => {
+    if (activeAbortControllerRef.current) {
+      activeAbortControllerRef.current.abort();
+      activeAbortControllerRef.current = null;
+    }
+    setIsTyping(false);
+
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    setSpeakingId(null);
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch {}
+      recognitionRef.current = null;
+    }
+    setIsListening(false);
+    setIsConnectingMic(false);
+
+    const newConv = createNewConversation(language);
+    saveConversation(newConv, user?.id);
+    setActiveConversationId(newConv.id, user?.id);
+
+    setActiveConversationIdState(newConv.id);
+    setMessages(newConv.messages);
+    setSelectedOptionsMap({});
+    setMultiDrafts({});
+    setInputPrompt('');
+    lastScrolledMessageIdRef.current = null;
+    lastScrolledUserMessageIdRef.current = null;
+
+    setConversations(getConversations(user?.id));
+    setShowHistoryDrawer(false);
+  };
+
+  // Open existing conversation from chat history
+  const handleSelectConversation = (convId) => {
+    if (convId === activeConversationId) {
+      setShowHistoryDrawer(false);
+      return;
+    }
+
+    if (activeAbortControllerRef.current) {
+      activeAbortControllerRef.current.abort();
+      activeAbortControllerRef.current = null;
+    }
+    setIsTyping(false);
+
+    const target = getConversationById(convId, user?.id);
+    if (!target) return;
+
+    setActiveConversationId(target.id, user?.id);
+    setActiveConversationIdState(target.id);
+    setMessages(target.messages);
+    setSelectedOptionsMap(target.selectedOptionsMap || {});
+    setMultiDrafts(target.multiDrafts || {});
+    setInputPrompt('');
+
+    const targetLatestAssistant = [...target.messages].reverse().find(
+      (m) => m.sender === 'assistant' && m.id !== 'welcome'
+    );
+    lastScrolledMessageIdRef.current = targetLatestAssistant?.id || null;
+    const targetLatestUser = [...target.messages].reverse().find(
+      (m) => m.sender === 'user'
+    );
+    lastScrolledUserMessageIdRef.current = targetLatestUser?.id || null;
+
+    target.messages.forEach((m) => {
+      if (m.sender === 'assistant') {
+        if (!translationCacheRef.current[m.id]) {
+          translationCacheRef.current[m.id] = {};
+        }
+        if (m.translations) {
+          Object.entries(m.translations).forEach(([l, txt]) => {
+            translationCacheRef.current[m.id][l] = {
+              text: txt,
+              options: m.options,
+              recommendedSchemes: m.recommendedSchemes,
+            };
+          });
+        }
+      }
+    });
+
+    setShowHistoryDrawer(false);
+  };
+
+  // Delete an individual conversation
+  const handleDeleteConversation = (convId, e) => {
+    if (e) e.stopPropagation();
+    if (!window.confirm(t.deleteChatConfirm || 'Are you sure you want to delete this conversation?')) {
+      return;
+    }
+
+    deleteConversation(convId, user?.id);
+    const remaining = getConversations(user?.id);
+    setConversations(remaining);
+
+    if (convId === activeConversationId) {
+      if (remaining.length > 0) {
+        handleSelectConversation(remaining[0].id);
+      } else {
+        handleNewChat();
+      }
+    }
+  };
+
+  // Clear entire conversation history
+  const handleClearAllHistory = () => {
+    if (!window.confirm(t.clearAllHistoryConfirm || 'Are you sure you want to clear your entire chat history? This cannot be undone.')) {
+      return;
+    }
+
+    clearAllConversations(user?.id);
+    setConversations([]);
+    handleNewChat();
   };
 
   // Safe formatting for bold text and bullet points
@@ -1168,33 +1388,69 @@ export default function AIAssistantPage() {
   return (
     <div className="py-4 sm:py-6 flex-1 flex flex-col max-w-5xl mx-auto px-3 sm:px-6 lg:px-8 w-full">
       {/* Header bar */}
-      <div className="flex items-center justify-between pb-3.5 border-b border-slate-200 gap-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-600 text-white flex items-center justify-center shadow-md">
+      <div className="flex flex-wrap sm:flex-nowrap items-center justify-between pb-3.5 border-b border-slate-200 gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-teal-600 to-emerald-600 text-white flex items-center justify-center shadow-md shrink-0">
             <Sparkles className="w-5 h-5 text-teal-100" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg md:text-xl font-bold text-navy-900">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg md:text-xl font-bold text-navy-900 truncate">
                 {t.title}
               </h1>
               <Badge variant="teal">{t.badgeStatus}</Badge>
             </div>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 truncate">
               {t.subtitle}
             </p>
           </div>
         </div>
 
-        {/* Clear Chat Button */}
-        <button
-          onClick={handleClearChat}
-          className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-slate-200 transition-colors shrink-0"
-          title={t.clearChat}
-          aria-label={t.clearChat}
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
+        {/* Action Controls: Chat History, + New Chat, Clear */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Chat History Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setConversations(getConversations(user?.id));
+              setShowHistoryDrawer(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:text-teal-700 rounded-xl border border-slate-200 transition-colors shadow-2xs cursor-pointer"
+            title={t.chatHistory || 'Chat History'}
+            aria-label={t.chatHistory || 'Chat History'}
+          >
+            <History className="w-4 h-4 text-slate-500" />
+            <span className="hidden sm:inline">{t.chatHistory || 'Chat History'}</span>
+            {conversations.length > 0 && (
+              <span className="px-1.5 py-0.2 text-[10px] font-bold bg-slate-100 text-slate-600 rounded-full">
+                {conversations.length}
+              </span>
+            )}
+          </button>
+
+          {/* + New Chat Button */}
+          <button
+            type="button"
+            onClick={handleNewChat}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-colors shadow-sm cursor-pointer"
+            title={t.newChat || '+ New Chat'}
+            aria-label={t.newChat || '+ New Chat'}
+          >
+            <Plus className="w-4 h-4" />
+            <span>{t.newChat || '+ New Chat'}</span>
+          </button>
+
+          {/* Clear Current Chat Button */}
+          <button
+            type="button"
+            onClick={handleClearChat}
+            className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-xl border border-slate-200 transition-colors shrink-0 cursor-pointer"
+            title={t.clearChat}
+            aria-label={t.clearChat}
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
       </div>
 
       {/* Citizen Profile Status Banner */}
@@ -1785,6 +2041,160 @@ export default function AIAssistantPage() {
         language={language}
         translations={t}
       />
+
+      {/* Slide-over Chat History Drawer */}
+      {showHistoryDrawer && (
+        <div
+          className="fixed inset-0 z-50 flex justify-end"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t.chatHistory || 'Chat History'}
+        >
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-navy-950/40 backdrop-blur-xs transition-opacity animate-fadeIn"
+            onClick={() => setShowHistoryDrawer(false)}
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative w-full max-w-sm sm:max-w-md bg-white h-full shadow-2xl flex flex-col z-10 border-l border-slate-200 animate-fadeIn">
+            {/* Drawer Header */}
+            <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-teal-600" />
+                <h2 className="text-base font-bold text-navy-950">
+                  {t.chatHistory || 'Chat History'}
+                </h2>
+                {conversations.length > 0 && (
+                  <span className="px-2 py-0.5 text-xs font-semibold bg-teal-100 text-teal-800 rounded-full">
+                    {conversations.length}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHistoryDrawer(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
+                aria-label="Close chat history"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Action: + New Chat */}
+            <div className="p-3 border-b border-slate-100">
+              <button
+                type="button"
+                onClick={handleNewChat}
+                className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold text-xs transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{t.newChat || '+ New Chat'}</span>
+              </button>
+            </div>
+
+            {/* Conversation List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {conversations.length === 0 ? (
+                <div className="text-center py-12 px-4 space-y-3">
+                  <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                    <MessageSquare className="w-6 h-6" />
+                  </div>
+                  <p className="text-sm font-semibold text-slate-700">
+                    {t.noHistory || 'No previous conversations yet.'}
+                  </p>
+                  <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                    {t.noHistorySubtitle || 'Start asking questions to explore Indian welfare schemes.'}
+                  </p>
+                </div>
+              ) : (
+                conversations.map((conv) => {
+                  const isActive = conv.id === activeConversationId;
+                  const messageCount = Array.isArray(conv.messages) ? conv.messages.length : 0;
+                  const lastMsg = Array.isArray(conv.messages) && conv.messages.length > 1
+                    ? conv.messages[conv.messages.length - 1]
+                    : null;
+
+                  return (
+                    <div
+                      key={conv.id}
+                      onClick={() => handleSelectConversation(conv.id)}
+                      className={`group p-3 rounded-xl border text-left transition-all cursor-pointer relative ${
+                        isActive
+                          ? 'bg-teal-50/80 border-teal-500 ring-1 ring-teal-300 shadow-2xs'
+                          : 'bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <MessageSquare
+                            className={`w-4 h-4 shrink-0 ${
+                              isActive ? 'text-teal-600' : 'text-slate-400 group-hover:text-slate-600'
+                            }`}
+                          />
+                          <h3 className="font-semibold text-xs text-navy-950 truncate">
+                            {conv.title || (language === 'hi' ? 'नयी बातचीत' : 'New Conversation')}
+                          </h3>
+                        </div>
+
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteConversation(conv.id, e)}
+                          className="text-slate-400 hover:text-rose-600 p-1 rounded hover:bg-rose-50 transition-colors shrink-0"
+                          title={t.deleteChat || 'Delete conversation'}
+                          aria-label={t.deleteChat || 'Delete conversation'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Snippet / preview of last message */}
+                      {lastMsg && (
+                        <p className="text-[11px] text-slate-500 line-clamp-1 mt-1 pl-6">
+                          {lastMsg.text.replace(/[*#_~`[\]()]/g, '').slice(0, 70)}
+                        </p>
+                      )}
+
+                      {/* Footer: Date & Message Count & Active Tag */}
+                      <div className="flex items-center justify-between text-[10px] text-slate-400 mt-2 pl-6">
+                        <span>{formatConversationTime(conv.updatedAt || conv.createdAt, language)}</span>
+                        <div className="flex items-center gap-2">
+                          <span>
+                            {(t.messagesCount || '{count} messages').replace('{count}', messageCount)}
+                          </span>
+                          {isActive && (
+                            <span className="font-bold text-teal-700 bg-teal-100/90 px-1.5 py-0.2 rounded-full">
+                              {t.activeChat || 'Active'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Drawer Footer Actions */}
+            {conversations.length > 0 && (
+              <div className="p-3 border-t border-slate-200 bg-slate-50/80 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={handleClearAllHistory}
+                  className="text-xs text-rose-600 hover:text-rose-800 font-semibold inline-flex items-center gap-1.5 hover:underline cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{t.clearAllHistory || 'Clear All History'}</span>
+                </button>
+                <span className="text-[11px] text-slate-400">
+                  {conversations.length} {conversations.length === 1 ? 'chat' : 'chats'}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

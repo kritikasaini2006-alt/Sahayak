@@ -18,6 +18,9 @@ import {
 } from './applicationStorage.js';
 import { PROFILE_STORAGE_KEY } from './eligibilityEngine.js';
 
+export const CONVERSATIONS_STORAGE_KEY = 'sahayak_chat_conversations';
+export const ACTIVE_CONVERSATION_ID_KEY = 'sahayak_active_conversation_id';
+
 let currentAuthUserId = null;
 
 /**
@@ -49,16 +52,19 @@ export function hasGuestDataToMigrate() {
     const rawSaved = localStorage.getItem(SAVED_SCHEMES_KEY);
     const rawApps = localStorage.getItem(APPLICATION_RECORDS_KEY);
     const rawProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
+    const rawConversations = localStorage.getItem(CONVERSATIONS_STORAGE_KEY);
 
     const saved = safeJsonParse(rawSaved, []);
     const apps = safeJsonParse(rawApps, []);
     const profile = safeJsonParse(rawProfile, null);
+    const conversations = safeJsonParse(rawConversations, []);
 
     const hasSaved = Array.isArray(saved) && saved.length > 0;
     const hasApps = Array.isArray(apps) && apps.length > 0;
     const hasProfile = Boolean(profile && (profile.age || profile.state || profile.occupation));
+    const hasConversations = Array.isArray(conversations) && conversations.length > 0;
 
-    return hasSaved || hasApps || hasProfile;
+    return hasSaved || hasApps || hasProfile || hasConversations;
   } catch {
     return false;
   }
@@ -75,11 +81,15 @@ export function migrateGuestDataToUser(userId) {
     const guestApps = safeJsonParse(localStorage.getItem(APPLICATION_RECORDS_KEY), null);
     const guestProfile = safeJsonParse(localStorage.getItem(PROFILE_STORAGE_KEY), null);
     const guestChecklists = safeJsonParse(localStorage.getItem(CHECKLIST_STORAGE_KEY), null);
+    const guestConversations = safeJsonParse(localStorage.getItem(CONVERSATIONS_STORAGE_KEY), null);
+    const guestActiveConvId = localStorage.getItem(ACTIVE_CONVERSATION_ID_KEY);
 
     const userSavedKey = getScopedKey(SAVED_SCHEMES_KEY, userId);
     const userAppsKey = getScopedKey(APPLICATION_RECORDS_KEY, userId);
     const userProfileKey = getScopedKey(PROFILE_STORAGE_KEY, userId);
     const userChecklistKey = getScopedKey(CHECKLIST_STORAGE_KEY, userId);
+    const userConversationsKey = getScopedKey(CONVERSATIONS_STORAGE_KEY, userId);
+    const userActiveConvIdKey = getScopedKey(ACTIVE_CONVERSATION_ID_KEY, userId);
 
     // Only populate if user store doesn't already have its own records
     if (guestSaved && !localStorage.getItem(userSavedKey)) {
@@ -100,6 +110,14 @@ export function migrateGuestDataToUser(userId) {
 
     if (guestChecklists && !localStorage.getItem(userChecklistKey)) {
       localStorage.setItem(userChecklistKey, JSON.stringify(guestChecklists));
+    }
+
+    if (guestConversations && !localStorage.getItem(userConversationsKey)) {
+      localStorage.setItem(userConversationsKey, JSON.stringify(guestConversations));
+    }
+
+    if (guestActiveConvId && !localStorage.getItem(userActiveConvIdKey)) {
+      localStorage.setItem(userActiveConvIdKey, guestActiveConvId);
     }
 
     return true;
