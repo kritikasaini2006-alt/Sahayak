@@ -880,17 +880,22 @@ export default function AIAssistantPage() {
     const utterance = new SpeechSynthesisUtterance(chunk.text);
     speechUtteranceRef.current = utterance;
 
-    const rate = SPEED_RATES[ttsSettings.speed] || 1.0;
-    utterance.rate = rate;
-
     const targetLang = chunk.lang === 'hi' ? 'hi' : 'en';
-    utterance.lang = targetLang === 'hi' ? 'hi-IN' : 'en-IN';
-
     const preferredURI = targetLang === 'hi' ? ttsSettings.preferredVoiceHi : ttsSettings.preferredVoiceEn;
     const chosenVoice = selectBestVoice(availableVoices, targetLang, preferredURI);
     if (chosenVoice) {
       utterance.voice = chosenVoice;
+      utterance.lang = chosenVoice.lang || (targetLang === 'hi' ? 'hi-IN' : 'en-US');
+    } else {
+      utterance.lang = targetLang === 'hi' ? 'hi-IN' : 'en-IN';
     }
+
+    const rate = typeof ttsSettings.rate === 'number'
+      ? ttsSettings.rate
+      : (SPEED_RATES[ttsSettings.speed] || 0.88);
+    utterance.rate = rate;
+    utterance.pitch = typeof ttsSettings.pitch === 'number' ? ttsSettings.pitch : 1.0;
+    utterance.volume = typeof ttsSettings.volume === 'number' ? ttsSettings.volume : 0.85;
 
     utterance.onend = () => {
       currentChunkIndexRef.current = idx + 1;
@@ -989,7 +994,7 @@ export default function AIAssistantPage() {
     handleStartSpeech(msg);
   };
 
-  const handlePreviewVoice = ({ speed, preferredVoiceHi, preferredVoiceEn, lang }) => {
+  const handlePreviewVoice = ({ speed, rate, volume, pitch, preferredVoiceHi, preferredVoiceEn, lang }) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       alert(t.ttsUnsupported || 'Text-to-speech audio is not supported in this browser.');
       return;
@@ -1001,16 +1006,26 @@ export default function AIAssistantPage() {
 
     const isHi = lang === 'hi';
     const sampleText = isHi
-      ? (t.testVoiceSampleHi || 'नमस्ते, मैं आपका सहायक AI हूँ। मैं भारतीय सरकारी योजनाओं की जानकारी में आपकी मदद कर सकता हूँ।')
-      : (t.testVoiceSampleEn || 'Hello, I am your Sahayak AI assistant. I can help you discover Indian welfare schemes.');
+      ? (t.testVoiceSampleHi || 'नमस्ते! सहायक AI में आपका स्वागत है। मैं सरकारी योजनाओं और सेवाओं को समझने में आपकी मदद के लिए यहाँ हूँ।')
+      : (t.testVoiceSampleEn || 'Hello! Welcome to Sahayak AI. I’m here to help you understand government schemes and services.');
 
     const utterance = new SpeechSynthesisUtterance(sampleText);
-    utterance.lang = isHi ? 'hi-IN' : 'en-IN';
-    utterance.rate = SPEED_RATES[speed] || 1.0;
 
     const prefURI = isHi ? preferredVoiceHi : preferredVoiceEn;
     const voice = selectBestVoice(availableVoices, isHi ? 'hi' : 'en', prefURI);
-    if (voice) utterance.voice = voice;
+    if (voice) {
+      utterance.voice = voice;
+      utterance.lang = voice.lang || (isHi ? 'hi-IN' : 'en-US');
+    } else {
+      utterance.lang = isHi ? 'hi-IN' : 'en-IN';
+    }
+
+    const effectiveRate = typeof rate === 'number'
+      ? rate
+      : (speed ? (SPEED_RATES[speed] || 0.88) : (ttsSettings.rate ?? 0.88));
+    utterance.rate = effectiveRate;
+    utterance.pitch = typeof pitch === 'number' ? pitch : (ttsSettings.pitch ?? 1.0);
+    utterance.volume = typeof volume === 'number' ? volume : (ttsSettings.volume ?? 0.85);
 
     utterance.onend = () => {
       setIsPreviewPlaying(false);

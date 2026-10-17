@@ -9,6 +9,7 @@ import {
   Info,
   Play,
   Square,
+  Volume1,
 } from 'lucide-react';
 import { SPEED_RATES, getVoiceCategories } from '../../utils/textToSpeech';
 import { useTranslation } from '../../context/LanguageContext';
@@ -44,14 +45,22 @@ export default function AudioSettingsModal({
 
   if (!isOpen) return null;
 
-  const currentSpeed = settings.speed || 'normal';
+  const currentSpeed = settings.speed || 'calm';
+  const currentVolume = typeof settings.volume === 'number' ? settings.volume : 0.85;
+  const currentRate = typeof settings.rate === 'number' ? settings.rate : (SPEED_RATES[currentSpeed] || 0.88);
   const preferredVoiceHi = settings.preferredVoiceHi || '';
   const preferredVoiceEn = settings.preferredVoiceEn || '';
 
-  const { hindi, indianEnglish, otherEnglish } = getVoiceCategories(availableVoices);
+  const { hindi, englishVoices } = getVoiceCategories(availableVoices);
 
   const handleSpeedSelect = (speedKey) => {
-    onSaveSettings?.({ speed: speedKey });
+    const rate = SPEED_RATES[speedKey] || 0.88;
+    onSaveSettings?.({ speed: speedKey, rate });
+  };
+
+  const handleVolumeChange = (e) => {
+    const vol = parseFloat(e.target.value);
+    onSaveSettings?.({ volume: vol });
   };
 
   const handleVoiceHiChange = (e) => {
@@ -70,6 +79,9 @@ export default function AudioSettingsModal({
     } else {
       onPreviewVoice?.({
         speed: currentSpeed,
+        rate: currentRate,
+        volume: currentVolume,
+        pitch: 1.0,
         preferredVoiceHi: preferredVoiceHi || null,
         preferredVoiceEn: preferredVoiceEn || null,
         lang: language,
@@ -106,8 +118,8 @@ export default function AudioSettingsModal({
               </h3>
               <p className="text-[11px] text-slate-500">
                 {language === 'hi'
-                  ? 'बोलने की गति और प्राकृतिक आवाज़ अपनी पसंद से चुनें'
-                  : 'Customize natural speech playback speed and preferred voices'}
+                  ? 'शांत सिरी शैली की आवाज़, गति और तीव्रता अपनी पसंद से चुनें'
+                  : 'Siri-style natural voice, conversational pacing, and volume controls'}
               </p>
             </div>
           </div>
@@ -125,34 +137,96 @@ export default function AudioSettingsModal({
 
         {/* Content Body */}
         <div className="p-5 space-y-5 overflow-y-auto">
-          {/* Speed Selector */}
+          {/* Speech Speed Controls */}
           <div>
-            <label className="block text-xs font-bold text-navy-900 mb-2">
-              {t.speechSpeed || 'Speech Speed'}
-            </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="flex items-center justify-between mb-2">
+              <label className="text-xs font-bold text-navy-900">
+                {t.speechSpeed || 'Speech Speed'}
+              </label>
+              <span className="text-[11px] font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                {currentRate.toFixed(2)}x
+              </span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {[
+                { key: 'calm', label: t.speedCalm || 'Calm (0.88x)', rate: '0.88x', badge: 'Siri' },
                 { key: 'slow', label: t.speedSlow || 'Slow (0.85x)', rate: '0.85x' },
-                { key: 'normal', label: t.speedNormal || 'Normal (1.0x)', rate: '1.0x' },
-                { key: 'fast', label: t.speedFast || 'Fast (1.2x)', rate: '1.2x' },
+                { key: 'standard', label: t.speedStandard || 'Standard (1.0x)', rate: '1.0x' },
+                { key: 'fast', label: t.speedFast || 'Fast (1.15x)', rate: '1.15x' },
               ].map((sp) => {
-                const isActive = currentSpeed === sp.key;
+                const isActive = currentSpeed === sp.key || (sp.key === 'calm' && currentSpeed === 'normal');
                 return (
                   <button
                     key={sp.key}
                     type="button"
                     onClick={() => handleSpeedSelect(sp.key)}
-                    className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
+                    className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition-all flex flex-col items-center justify-center gap-0.5 cursor-pointer ${
                       isActive
                         ? 'bg-teal-700 text-white border-teal-700 shadow-xs'
                         : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                     }`}
                   >
-                    <span>{sp.label}</span>
+                    <span className="truncate">{sp.label}</span>
                   </button>
                 );
               })}
             </div>
+          </div>
+
+          {/* Volume Control */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="volume-slider" className="text-xs font-bold text-navy-900 flex items-center gap-1.5">
+                <Volume2 className="w-3.5 h-3.5 text-teal-700" />
+                <span>{t.speechVolume || 'Speech Volume'}</span>
+              </label>
+              <span className="text-[11px] font-semibold text-teal-800">
+                {Math.round(currentVolume * 100)}%
+              </span>
+            </div>
+            <input
+              id="volume-slider"
+              type="range"
+              min="0.50"
+              max="1.00"
+              step="0.05"
+              value={currentVolume}
+              onChange={handleVolumeChange}
+              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-teal-600"
+            />
+            <p className="mt-1 text-[11px] text-slate-500">
+              {t.volumeNotice || 'Recommended: 85% for warm, balanced sound'}
+            </p>
+          </div>
+
+          {/* English Voice Selector */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label htmlFor="select-voice-en" className="text-xs font-bold text-navy-900">
+                {t.voiceSelectEnglish || 'English Voice (Apple / Natural)'}
+              </label>
+              {englishVoices.length > 0 && (
+                <span className="text-[10px] text-teal-800 font-semibold bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                  {englishVoices.length} {language === 'hi' ? 'आवाज़ें उपलब्ध' : 'voices available'}
+                </span>
+              )}
+            </div>
+
+            <select
+              id="select-voice-en"
+              value={preferredVoiceEn}
+              onChange={handleVoiceEnChange}
+              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-teal-600"
+            >
+              <option value="">
+                {t.voiceAutoRecommended || 'Auto-select (Best Siri-style / Natural Voice)'}
+              </option>
+              {englishVoices.map((v) => (
+                <option key={v.voiceURI} value={v.voiceURI}>
+                  {v.displayLabel} {v.isRecommended ? '★ (Recommended)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Hindi Voice Selector */}
@@ -192,49 +266,6 @@ export default function AudioSettingsModal({
             )}
           </div>
 
-          {/* English Voice Selector */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label htmlFor="select-voice-en" className="text-xs font-bold text-navy-900">
-                {t.voiceSelectEnglish || 'English Voice (Indian English)'}
-              </label>
-              {(indianEnglish.length > 0 || otherEnglish.length > 0) && (
-                <span className="text-[10px] text-teal-800 font-semibold bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
-                  {indianEnglish.length + otherEnglish.length} {language === 'hi' ? 'आवाज़ें उपलब्ध' : 'voices available'}
-                </span>
-              )}
-            </div>
-
-            <select
-              id="select-voice-en"
-              value={preferredVoiceEn}
-              onChange={handleVoiceEnChange}
-              className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600 focus:border-teal-600"
-            >
-              <option value="">
-                {t.voiceAutoRecommended || 'Auto-select (Best Natural Voice)'}
-              </option>
-              {indianEnglish.length > 0 && (
-                <optgroup label="Indian English (en-IN)">
-                  {indianEnglish.map((v) => (
-                    <option key={v.voiceURI} value={v.voiceURI}>
-                      {v.name} {v.isRecommended ? '★ (Recommended)' : ''}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-              {otherEnglish.length > 0 && (
-                <optgroup label="Other English">
-                  {otherEnglish.map((v) => (
-                    <option key={v.voiceURI} value={v.voiceURI}>
-                      {v.name} {v.isRecommended ? '★ (Natural)' : ''}
-                    </option>
-                  ))}
-                </optgroup>
-              )}
-            </select>
-          </div>
-
           {/* Preview / Test Voice Button */}
           <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
             <button
@@ -249,18 +280,20 @@ export default function AudioSettingsModal({
               {isPreviewPlaying ? (
                 <>
                   <Square className="w-3.5 h-3.5 fill-current" />
-                  <span>{t.testVoiceStop || 'Stop Preview'}</span>
+                  <span>{t.testVoiceStop || 'Stop Voice'}</span>
                 </>
               ) : (
                 <>
                   <Play className="w-3.5 h-3.5 fill-current" />
-                  <span>{t.testVoicePreview || 'Preview Voice'}</span>
+                  <span>{t.testVoicePreview || 'Test Voice'}</span>
                 </>
               )}
             </button>
 
-            <span className="text-[11px] text-slate-500 italic">
-              {language === 'hi' ? 'नमूना वाक्य सुनें' : 'Listen to voice sample'}
+            <span className="text-[11px] text-slate-500 italic max-w-[240px] truncate text-right">
+              {language === 'hi'
+                ? 'नमस्ते! सहायक AI में आपका स्वागत है...'
+                : '“Hello! Welcome to Sahayak AI...”'}
             </span>
           </div>
 
@@ -268,7 +301,7 @@ export default function AudioSettingsModal({
           <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-xl flex items-start gap-2 text-[11px] text-slate-600">
             <Info className="w-4 h-4 text-teal-700 shrink-0 mt-0.5" />
             <span>
-              {t.ttsDeviceNotice || 'Natural voices are provided by your browser and operating system.'}
+              {t.ttsDeviceNotice || 'Natural Apple and system voices are provided by your browser and operating system.'}
             </span>
           </div>
         </div>

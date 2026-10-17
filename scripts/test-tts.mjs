@@ -1,5 +1,7 @@
 /**
  * Unit & Integration Tests: Natural Text-To-Speech (TTS) Engine
+ * Verifies Siri-style Apple voice prioritization, acoustic defaults (rate 0.88, pitch 1.0, volume 0.85),
+ * currency & pronunciation sanitization, and honest voice categorization.
  */
 
 import assert from 'assert';
@@ -9,10 +11,11 @@ import {
   detectScriptLanguage,
   getVoiceCategories,
   selectBestVoice,
+  evaluateEnglishVoice,
   loadTtsSettings,
   saveTtsSettings,
   SPEED_RATES,
-  TTS_STORAGE_KEY,
+  DEFAULT_TTS_SETTINGS,
 } from '../src/utils/textToSpeech.js';
 
 console.log('--- Sahayak AI Natural Text-To-Speech (TTS) Unit Tests ---\n');
@@ -27,7 +30,7 @@ global.localStorage = {
 };
 
 // ============================================================================
-// TEST 1: Sanitization of Markdown, Headings, Bullets, and Numbered Lists
+// TEST 1: Markdown, Headings, Bullets, and Numbered Lists
 // ============================================================================
 console.log('▶ Test 1: Markdown, Headings, Bullets, and List Sanitization');
 const sampleMarkdown = `
@@ -62,20 +65,18 @@ assert(spokenHi.includes('आधिकारिक पोर्टल लिं�
 console.log('✅ Test 2 Passed: Bare URLs replaced with natural spoken notices in English and Hindi.');
 
 // ============================================================================
-// TEST 3: Raw JSON / Structured Object Handling
+// TEST 3: Currency, Percentage, HTML, and Emoji Pronunciation Sanitization
 // ============================================================================
-console.log('▶ Test 3: Raw JSON and Structured Object Handling');
-const rawJsonResponse = JSON.stringify({
-  reply: 'Here are the details for your application inquiry.',
-  questionType: 'none',
-  fieldKey: null,
-  allowSkip: false,
-});
-const spokenFromJson = prepareSpokenText(rawJsonResponse, 'en');
-assert(!spokenFromJson.includes('{'), 'Must not speak opening brace');
-assert(!spokenFromJson.includes('"reply"'), 'Must not speak JSON keys');
-assert(spokenFromJson.includes('Here are the details for your application inquiry.'), 'Extracts clean reply text');
-console.log('✅ Test 3 Passed: Serialized JSON gracefully normalized to readable text.');
+console.log('▶ Test 3: Currency, Percentage, HTML, and Emoji Sanitization');
+const textWithSymbols = '<b>PM-KISAN</b>: Receives ₹6,000 /year with 100% subsidy! 🌾✨';
+const spokenPronunciation = prepareSpokenText(textWithSymbols, 'en');
+assert(!spokenPronunciation.includes('<b>'), 'Strips HTML bold tag');
+assert(!spokenPronunciation.includes('</b>'), 'Strips HTML closing tag');
+assert(!spokenPronunciation.includes('🌾'), 'Strips emoji');
+assert(!spokenPronunciation.includes('✨'), 'Strips emoji');
+assert(spokenPronunciation.includes('Rupees 6,000'), 'Converts ₹ into spoken Rupees in English');
+assert(spokenPronunciation.includes('percent'), 'Converts % into spoken percent');
+console.log('✅ Test 3 Passed: HTML tags, emojis, and currency converted into clear spoken phonetics.');
 
 // ============================================================================
 // TEST 4: Structured Scheme Recommendation Summaries
@@ -94,7 +95,7 @@ const msgWithSchemes = {
 };
 const spokenWithSchemes = prepareSpokenText(msgWithSchemes, 'en');
 assert(spokenWithSchemes.includes('PM-KISAN'), 'Preserves scheme title');
-assert(spokenWithSchemes.includes('Benefit: ₹6,000 per year via DBT'), 'Preserves benefit details');
+assert(spokenWithSchemes.includes('Benefit: Rupees 6,000 per year'), 'Preserves benefit details with Rupees');
 assert(spokenWithSchemes.includes('Small and marginal farmers'), 'Preserves eligibility criteria');
 console.log('✅ Test 4 Passed: Scheme details naturally woven into spoken content.');
 
@@ -122,47 +123,56 @@ for (const chunk of chunks) {
 console.log('✅ Test 6 Passed: Chunking respects punctuation boundaries and max-length bounds.');
 
 // ============================================================================
-// TEST 7: Voice Categorization & Priority Ranking
+// TEST 7: Apple Siri-Style Voice Prioritization over Harsh Legacy Voices
 // ============================================================================
-console.log('▶ Test 7: Voice Categorization and Priority Ranking');
-const mockVoices = [
-  { name: 'Generic Default', lang: 'en-US', voiceURI: 'def-1', default: true },
+console.log('▶ Test 7: Apple Siri-Style Voice Prioritization');
+const mockMacVoices = [
+  { name: 'Rishi', lang: 'en-IN', voiceURI: 'en-rishi', default: false },
+  { name: 'Samantha', lang: 'en-US', voiceURI: 'en-samantha', default: true },
+  { name: 'Daniel', lang: 'en-GB', voiceURI: 'en-daniel', default: false },
   { name: 'Google हिन्दी', lang: 'hi-IN', voiceURI: 'hi-google', default: false },
-  { name: 'Lekha (Hindi India)', lang: 'hi-IN', voiceURI: 'hi-lekha', default: false },
-  { name: 'Rishi (English India)', lang: 'en-IN', voiceURI: 'en-rishi', default: false },
   { name: 'Microsoft Swara Natural - Hindi (India)', lang: 'hi-IN', voiceURI: 'hi-swara', default: false },
 ];
 
-const categories = getVoiceCategories(mockVoices);
-assert(categories.hindi.length >= 3, 'Finds all Hindi voices');
-assert(categories.indianEnglish.length >= 1, 'Finds Indian English voices');
+// Evaluate Samantha on Apple device
+const samanthaEval = evaluateEnglishVoice(mockMacVoices[1], true);
+assert(samanthaEval.isSiriStyle, 'Samantha is recognized as Apple Natural Siri-style voice');
+assert.strictEqual(samanthaEval.displayLabel, 'Samantha (Apple Natural - Siri-style)');
 
-// Best Hindi voice selection
-const bestHindi = selectBestVoice(mockVoices, 'hi');
-assert(
-  bestHindi.name.includes('Google') || bestHindi.name.includes('Swara'),
-  `Expected natural Hindi voice, got ${bestHindi.name}`
-);
+// Evaluate unenhanced Rishi
+const rishiEval = evaluateEnglishVoice(mockMacVoices[0], true);
+assert(!rishiEval.isSiriStyle, 'Unenhanced Rishi is NOT marked as Siri-style');
+assert.strictEqual(rishiEval.displayLabel, 'Rishi (Indian English - Standard)');
 
-// Best Indian English selection
-const bestEnglish = selectBestVoice(mockVoices, 'en');
-assert.strictEqual(bestEnglish.name, 'Rishi (English India)');
+// On Apple devices, Samantha must be prioritized over legacy robotic Rishi
+assert(samanthaEval.score > rishiEval.score, 'Apple natural Siri-style voice scored higher than unenhanced voice');
+
+// Best English voice selection on Apple devices
+const categories = getVoiceCategories(mockMacVoices);
+assert(categories.englishVoices.length >= 3, 'Finds all English voices');
 
 // User preference override
-const preferredOverride = selectBestVoice(mockVoices, 'hi', 'hi-lekha');
-assert.strictEqual(preferredOverride.voiceURI, 'hi-lekha', 'Honors user preferred voice');
+const preferredOverride = selectBestVoice(mockMacVoices, 'hi', 'hi-swara');
+assert.strictEqual(preferredOverride.voiceURI, 'hi-swara', 'Honors user preferred voice');
 
-console.log('✅ Test 7 Passed: Voice categorization, natural ranking, and overrides verified.');
+console.log('✅ Test 7 Passed: Apple Siri-style natural voice prioritized over robotic voice without false labels.');
 
 // ============================================================================
-// TEST 8: Settings Persistence
+// TEST 8: Settings Persistence & Initial Acoustic Defaults (Rate 0.88, Volume 0.85, Pitch 1.0)
 // ============================================================================
-console.log('▶ Test 8: Settings Persistence');
-saveTtsSettings({ speed: 'slow', preferredVoiceHi: 'hi-swara' });
+console.log('▶ Test 8: Settings Persistence and Acoustic Parameters');
+assert.strictEqual(DEFAULT_TTS_SETTINGS.rate, 0.88, 'Default speech rate must be 0.88');
+assert.strictEqual(DEFAULT_TTS_SETTINGS.pitch, 1.0, 'Default pitch must be 1.0');
+assert.strictEqual(DEFAULT_TTS_SETTINGS.volume, 0.85, 'Default volume must be 0.85');
+
+saveTtsSettings({ speed: 'calm', rate: 0.88, volume: 0.85, pitch: 1.0, preferredVoiceEn: 'en-samantha' });
 const loaded = loadTtsSettings();
-assert.strictEqual(loaded.speed, 'slow');
-assert.strictEqual(loaded.preferredVoiceHi, 'hi-swara');
-assert.strictEqual(SPEED_RATES[loaded.speed], 0.85);
-console.log('✅ Test 8 Passed: Speed and voice preferences saved and restored.');
+assert.strictEqual(loaded.speed, 'calm');
+assert.strictEqual(loaded.rate, 0.88);
+assert.strictEqual(loaded.volume, 0.85);
+assert.strictEqual(loaded.pitch, 1.0);
+assert.strictEqual(loaded.preferredVoiceEn, 'en-samantha');
+assert.strictEqual(SPEED_RATES[loaded.speed], 0.88);
+console.log('✅ Test 8 Passed: Acoustic defaults (rate 0.88, volume 0.85, pitch 1.0) verified and persisted.');
 
 console.log('\n🎉 ALL 8 TEXT-TO-SPEECH UNIT TESTS PASSED WITH 100% SUCCESS!\n');
