@@ -50,6 +50,38 @@ export default defineConfig(({ mode }) => {
               });
               return;
             }
+
+            if (req.url === '/api/translate' && req.method === 'POST') {
+              let bodyStr = '';
+              let tooLarge = false;
+              req.on('data', (chunk) => {
+                bodyStr += chunk;
+                if (bodyStr.length > 32768) {
+                  tooLarge = true;
+                  res.statusCode = 413;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ error: 'Payload Too Large: Maximum request body size is 32 KB.' }));
+                  req.destroy();
+                }
+              });
+              req.on('end', async () => {
+                if (tooLarge) return;
+                try {
+                  const { processTranslateRequest } = await import('./api/translate.js');
+                  const payload = bodyStr ? JSON.parse(bodyStr) : {};
+                  const result = await processTranslateRequest(payload);
+                  res.statusCode = result.status;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify(result.body));
+                } catch (err) {
+                  console.error('Error handling /api/translate in Vite dev middleware:', err?.name || 'InternalError');
+                  res.statusCode = 500;
+                  res.setHeader('Content-Type', 'application/json');
+                  res.end(JSON.stringify({ error: err.message || 'Internal server error' }));
+                }
+              });
+              return;
+            }
             next();
           });
         },

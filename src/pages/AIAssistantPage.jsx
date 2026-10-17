@@ -25,10 +25,66 @@ import {
 import Badge from '../components/common/Badge';
 import MicrophonePermissionModal from '../components/common/MicrophonePermissionModal';
 import { TRANSLATIONS } from '../data/translations';
+import { DEFAULT_OPTIONS_BY_FIELD } from '../data/chatOptions';
+import { SCHEME_TRANSLATIONS } from '../data/schemeTranslations';
+import { MOCK_SCHEMES } from '../data/mockSchemes';
 import { loadCitizenProfile, saveCitizenProfile } from '../utils/eligibilityEngine';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
+
+// Localize options by fieldKey or value lookup across supported languages
+const getLocalizedOptions = (options, fieldKey, targetLang) => {
+  if (fieldKey && DEFAULT_OPTIONS_BY_FIELD[fieldKey]?.[targetLang]) {
+    return DEFAULT_OPTIONS_BY_FIELD[fieldKey][targetLang];
+  }
+  if (!Array.isArray(options) || options.length === 0) return [];
+  return options.map((opt) => {
+    const val = opt.value || opt.label;
+    for (const fKey of Object.keys(DEFAULT_OPTIONS_BY_FIELD)) {
+      const match = DEFAULT_OPTIONS_BY_FIELD[fKey][targetLang]?.find((o) => o.value === val);
+      if (match) return match;
+    }
+    return opt;
+  });
+};
+
+// Localize recommended scheme cards by scheme ID across supported languages
+const getLocalizedSchemes = (schemes, targetLang) => {
+  if (!Array.isArray(schemes) || schemes.length === 0) return [];
+  return schemes.map((s) => {
+    if (targetLang === 'hi') {
+      const hiData = SCHEME_TRANSLATIONS[s.id];
+      if (hiData) {
+        return {
+          ...s,
+          title: hiData.title || s.title,
+          benefit: hiData.financialBenefit || s.benefit,
+          keyCriteria: (hiData.eligibilityCriteria && hiData.eligibilityCriteria[0]) || s.keyCriteria,
+          documentsRequired:
+            hiData.documentsRequired && hiData.documentsRequired.length > 0
+              ? hiData.documentsRequired
+              : s.documentsRequired,
+        };
+      }
+    } else {
+      const enData = MOCK_SCHEMES.find((item) => item.id === s.id);
+      if (enData) {
+        return {
+          ...s,
+          title: enData.title || s.title,
+          benefit: enData.financialBenefit || s.benefit,
+          keyCriteria: (enData.eligibilityCriteria && enData.eligibilityCriteria[0]) || s.keyCriteria,
+          documentsRequired:
+            enData.documentsRequired && enData.documentsRequired.length > 0
+              ? enData.documentsRequired
+              : s.documentsRequired,
+        };
+      }
+    }
+    return s;
+  });
+};
 
 export default function AIAssistantPage() {
   const { language } = useTranslation();
@@ -51,8 +107,15 @@ export default function AIAssistantPage() {
       sender: 'assistant',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       text: TRANSLATIONS[language]?.welcomeMessage || TRANSLATIONS.en.welcomeMessage,
+      originalText: TRANSLATIONS[language]?.welcomeMessage || TRANSLATIONS.en.welcomeMessage,
+      originalLanguage: language,
+      translations: {
+        en: TRANSLATIONS.en.welcomeMessage,
+        hi: TRANSLATIONS.hi.welcomeMessage,
+      },
       sources: ['india.gov.in', 'myscheme.gov.in'],
       isDemoMode: false,
+      isTranslating: false,
     },
   ]);
 
@@ -60,6 +123,24 @@ export default function AIAssistantPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [speakingId, setSpeakingId] = useState(null);
+
+  // Translation cache & active language trackers
+  const activeLanguageRef = useRef(language);
+  const translationCacheRef = useRef({
+    welcome: {
+      en: {
+        text: TRANSLATIONS.en.welcomeMessage,
+        options: [],
+        recommendedSchemes: [],
+      },
+      hi: {
+        text: TRANSLATIONS.hi.welcomeMessage,
+        options: [],
+        recommendedSchemes: [],
+      },
+    },
+  });
+  const inFlightTranslationsRef = useRef(new Set());
 
   // Speech Recognition States (Native Browser Speech)
   const [isListening, setIsListening] = useState(false);
@@ -102,22 +183,138 @@ export default function AIAssistantPage() {
     }
   }, [user]);
 
-  // Sync welcome message if language changes and chat has only the welcome message
+  // Handle immediate language switching across all existing AI messages and active speech tools
   useEffect(() => {
-    if (messages.length === 1 && messages[0].id === 'welcome') {
-      setMessages([
-        {
-          id: 'welcome',
-          sender: 'assistant',
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: TRANSLATIONS[language]?.welcomeMessage || TRANSLATIONS.en.welcomeMessage,
-          sources: ['india.gov.in', 'myscheme.gov.in'],
-          isDemoMode: false,
-        },
-      ]);
-    }
+    const prevLang = activeLanguageRef.current;
+    activeLanguageRef.current = language;
 
+    // Clean up active speech synthesis and recognition
+    if (speakingId && typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      setSpeakingId(null);
+    }
     handleLanguageChange(language);
+
+    if (prevLang === language) return;
+
+    // Identify messages needing translation
+    const untranslatedMessages = [];
+
+    setMessages((prevMessages) => {
+      return prevMessages.map((msg) => {
+        if (msg.sender !== 'assistant') {
+          return msg;
+        }
+
+        if (msg.id === 'welcome') {
+          const welcomeText = TRANSLATIONS[language]?.welcomeMessage || TRANSLATIONS.en.welcomeMessage;
+          return {
+            ...msg,
+            text: welcomeText,
+            isTranslating: false,
+          };
+        }
+
+        // Check cache
+        const cached = translationCacheRef.current[msg.id]?.[language];
+        if (cached && cached.text) {
+          return {
+            ...msg,
+            text: cached.text,
+            options: cached.options && cached.options.length > 0 ? cached.options : getLocalizedOptions(msg.options, msg.fieldKey, language),
+            recommendedSchemes: cached.recommendedSchemes && cached.recommendedSchemes.length > 0 ? cached.recommendedSchemes : getLocalizedSchemes(msg.recommendedSchemes, language),
+            isTranslating: false,
+          };
+        }
+
+        // If not cached, mark as translating and collect
+        untranslatedMessages.push(msg);
+        return {
+          ...msg,
+          // Pre-localize options and schemes if possible while text is being translated
+          options: getLocalizedOptions(msg.options, msg.fieldKey, language),
+          recommendedSchemes: getLocalizedSchemes(msg.recommendedSchemes, language),
+          isTranslating: true,
+        };
+      });
+    });
+
+    // If there are messages to translate, trigger translation API call
+    if (untranslatedMessages.length > 0) {
+      const messagesToFetch = untranslatedMessages.filter(
+        (m) => !inFlightTranslationsRef.current.has(`${m.id}_${language}`)
+      );
+
+      if (messagesToFetch.length > 0) {
+        messagesToFetch.forEach((m) => {
+          inFlightTranslationsRef.current.add(`${m.id}_${language}`);
+        });
+
+        (async () => {
+          try {
+            const res = await fetch('/api/translate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                messages: messagesToFetch.map((m) => ({
+                  id: m.id,
+                  text: m.originalText || m.text,
+                  options: m.options,
+                  recommendedSchemes: m.recommendedSchemes,
+                  fieldKey: m.fieldKey,
+                })),
+                targetLanguage: language,
+                sourceLanguage: prevLang,
+              }),
+            });
+
+            if (res.ok) {
+              const data = await res.json();
+              if (Array.isArray(data.translations)) {
+                data.translations.forEach((item) => {
+                  if (!translationCacheRef.current[item.id]) {
+                    translationCacheRef.current[item.id] = {};
+                  }
+                  translationCacheRef.current[item.id][language] = {
+                    text: item.translatedText,
+                    options: item.translatedOptions,
+                    recommendedSchemes: item.translatedSchemes,
+                  };
+                });
+              }
+            }
+          } catch (err) {
+            console.error('Translation error:', err);
+          } finally {
+            messagesToFetch.forEach((m) => {
+              inFlightTranslationsRef.current.delete(`${m.id}_${language}`);
+            });
+
+            // Prevent race condition: only update UI if user is still on this language
+            if (activeLanguageRef.current === language) {
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.sender === 'assistant' && m.id !== 'welcome') {
+                    const cached = translationCacheRef.current[m.id]?.[language];
+                    if (cached && cached.text) {
+                      return {
+                        ...m,
+                        text: cached.text,
+                        options: cached.options && cached.options.length > 0 ? cached.options : m.options,
+                        recommendedSchemes: cached.recommendedSchemes && cached.recommendedSchemes.length > 0 ? cached.recommendedSchemes : m.recommendedSchemes,
+                        isTranslating: false,
+                      };
+                    }
+                    return { ...m, isTranslating: false };
+                  }
+                  return m;
+                })
+              );
+            }
+          }
+        })();
+      }
+    }
   }, [language]);
 
   // Clean up active speech recognition on language change
@@ -746,6 +943,11 @@ export default function AIAssistantPage() {
         sender: 'assistant',
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         text: data.reply,
+        originalText: data.reply,
+        originalLanguage: language,
+        translations: {
+          [language]: data.reply,
+        },
         questionType: data.questionType || 'none',
         fieldKey: data.fieldKey || null,
         options: Array.isArray(data.options) ? data.options : [],
@@ -755,9 +957,82 @@ export default function AIAssistantPage() {
         isDemoMode: !!data.isDemoMode,
         demoReason: data.demoReason,
         modelUsed: data.modelUsed,
+        isTranslating: false,
       };
 
-      setMessages((prev) => [...prev, assistantMessage]);
+      // Seed translation cache for this message
+      translationCacheRef.current[assistantMessage.id] = {
+        [language]: {
+          text: assistantMessage.text,
+          options: assistantMessage.options,
+          recommendedSchemes: assistantMessage.recommendedSchemes,
+        },
+      };
+
+      // If user switched language while waiting for response, translate immediately
+      if (activeLanguageRef.current !== language) {
+        const curLang = activeLanguageRef.current;
+        assistantMessage.isTranslating = true;
+        setMessages((prev) => [...prev, assistantMessage]);
+
+        // Immediate background translation of new message to active language
+        (async () => {
+          try {
+            const res = await fetch('/api/translate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                messages: [
+                  {
+                    id: assistantMessage.id,
+                    text: assistantMessage.originalText,
+                    options: assistantMessage.options,
+                    recommendedSchemes: assistantMessage.recommendedSchemes,
+                    fieldKey: assistantMessage.fieldKey,
+                  },
+                ],
+                targetLanguage: curLang,
+                sourceLanguage: language,
+              }),
+            });
+            if (res.ok) {
+              const transData = await res.json();
+              if (Array.isArray(transData?.translations) && transData.translations[0]) {
+                const tr = transData.translations[0];
+                if (!translationCacheRef.current[assistantMessage.id]) {
+                  translationCacheRef.current[assistantMessage.id] = {};
+                }
+                translationCacheRef.current[assistantMessage.id][curLang] = {
+                  text: tr.translatedText,
+                  options: tr.translatedOptions,
+                  recommendedSchemes: tr.translatedSchemes,
+                };
+                if (activeLanguageRef.current === curLang) {
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMessage.id
+                        ? {
+                            ...m,
+                            text: tr.translatedText,
+                            options: tr.translatedOptions || m.options,
+                            recommendedSchemes: tr.translatedSchemes || m.recommendedSchemes,
+                            isTranslating: false,
+                          }
+                        : m
+                    )
+                  );
+                }
+              }
+            }
+          } catch {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === assistantMessage.id ? { ...m, isTranslating: false } : m))
+            );
+          }
+        })();
+      } else {
+        setMessages((prev) => [...prev, assistantMessage]);
+      }
     } catch (err) {
       console.error('Chat API Error:', err);
 
@@ -786,14 +1061,35 @@ export default function AIAssistantPage() {
       setSpeakingId(null);
       lastScrolledMessageIdRef.current = null;
       lastScrolledUserMessageIdRef.current = null;
+      translationCacheRef.current = {
+        welcome: {
+          en: {
+            text: TRANSLATIONS.en.welcomeMessage,
+            options: [],
+            recommendedSchemes: [],
+          },
+          hi: {
+            text: TRANSLATIONS.hi.welcomeMessage,
+            options: [],
+            recommendedSchemes: [],
+          },
+        },
+      };
       setMessages([
         {
           id: 'welcome',
           sender: 'assistant',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           text: t.welcomeMessage,
+          originalText: t.welcomeMessage,
+          originalLanguage: language,
+          translations: {
+            en: TRANSLATIONS.en.welcomeMessage,
+            hi: TRANSLATIONS.hi.welcomeMessage,
+          },
           sources: ['india.gov.in', 'myscheme.gov.in'],
           isDemoMode: false,
+          isTranslating: false,
         },
       ]);
     }
@@ -1007,7 +1303,16 @@ export default function AIAssistantPage() {
 
                 {/* Formatted Text Content */}
                 <div className="space-y-1">
-                  {formatMessageText(msg.text)}
+                  {msg.isTranslating ? (
+                    <div className="py-2.5 px-3 bg-teal-50/80 border border-teal-200/70 rounded-xl text-xs text-teal-900 flex items-center gap-2.5 animate-pulse my-1">
+                      <Loader2 className="w-4 h-4 animate-spin text-teal-600 shrink-0" />
+                      <span className="font-medium">
+                        {language === 'hi' ? 'हिन्दी में अनुवाद किया जा रहा है...' : 'Translating to English...'}
+                      </span>
+                    </div>
+                  ) : (
+                    formatMessageText(msg.text)
+                  )}
                 </div>
 
                 {/* Single-Choice Clickable Options */}
@@ -1145,14 +1450,14 @@ export default function AIAssistantPage() {
                               {scheme.title}
                             </h4>
                             <span className="bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0">
-                              Verified Scheme
+                              {language === 'hi' ? 'सत्यापित योजना' : 'Verified Scheme'}
                             </span>
                           </div>
 
                           {scheme.benefit && (
                             <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-lg p-2 text-xs text-emerald-950 font-medium">
                               <span className="text-emerald-900 font-bold block text-[10px] uppercase tracking-wide">
-                                Benefit:
+                                {language === 'hi' ? 'मुख्य लाभ:' : 'Benefit:'}
                               </span>
                               {scheme.benefit}
                             </div>

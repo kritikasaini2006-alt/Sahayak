@@ -11,6 +11,7 @@ const testSuites = [
   { name: 'Bilingual System & i18n Dictionary Parity', path: 'scripts/test-i18n.mjs' },
   { name: 'Microphone Interaction & Permission Guidance Modal', path: 'scripts/test-microphone.mjs' },
   { name: 'Discover Schemes Layout & Empty-State Stability', path: 'scripts/test-schemes-layout.mjs' },
+  { name: 'Immediate Language Switching & Chat Translation', path: 'scripts/test-immediate-language-switch.mjs' },
 ];
 
 console.log('====================================================');
