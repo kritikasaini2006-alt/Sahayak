@@ -14,6 +14,7 @@ const testSuites = [
   { name: 'Immediate Language Switching & Chat Translation', path: 'scripts/test-immediate-language-switch.mjs' },
   { name: 'Persistent Chat History & New Chat', path: 'scripts/test-persistent-chat.mjs' },
   { name: 'AI Response Rendering & Universal Parser', path: 'scripts/test-response-rendering.mjs' },
+  { name: 'Natural Text-To-Speech (TTS) Engine', path: 'scripts/test-tts.mjs' },
 ];
 
 console.log('====================================================');

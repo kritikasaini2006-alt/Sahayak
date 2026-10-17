@@ -10,6 +10,10 @@ import {
   MicOff,
   Volume2,
   VolumeX,
+  Pause,
+  Play,
+  Square,
+  SlidersHorizontal,
   Copy,
   Check,
   RotateCcw,
@@ -27,6 +31,16 @@ import {
 } from 'lucide-react';
 import Badge from '../components/common/Badge';
 import MicrophonePermissionModal from '../components/common/MicrophonePermissionModal';
+import AudioSettingsModal from '../components/common/AudioSettingsModal';
+import {
+  isSpeechSynthesisSupported,
+  loadTtsSettings,
+  saveTtsSettings,
+  SPEED_RATES,
+  selectBestVoice,
+  prepareSpokenText,
+  splitIntoSpokenChunks,
+} from '../utils/textToSpeech';
 import { TRANSLATIONS } from '../data/translations';
 import { DEFAULT_OPTIONS_BY_FIELD } from '../data/chatOptions';
 import { SCHEME_TRANSLATIONS } from '../data/schemeTranslations';
@@ -169,6 +183,17 @@ export default function AIAssistantPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [speakingId, setSpeakingId] = useState(null);
+  const [speechStatus, setSpeechStatus] = useState('idle'); // 'idle' | 'playing' | 'paused'
+  const [ttsSettings, setTtsSettings] = useState(() => loadTtsSettings());
+  const [availableVoices, setAvailableVoices] = useState([]);
+  const [showAudioSettings, setShowAudioSettings] = useState(false);
+  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
+
+  const speechChunksRef = useRef([]);
+  const currentChunkIndexRef = useRef(0);
+  const speechUtteranceRef = useRef(null);
+  const speechHeartbeatRef = useRef(null);
+  const isPreviewingRef = useRef(false);
   const activeAbortControllerRef = useRef(null);
 
   // Translation cache & active language trackers
@@ -256,10 +281,7 @@ export default function AIAssistantPage() {
     activeLanguageRef.current = language;
 
     // Clean up active speech synthesis and recognition
-    if (speakingId && typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      setSpeakingId(null);
-    }
+    stopAllSpeech();
     handleLanguageChange(language);
 
     if (prevLang === language) return;
@@ -519,12 +541,31 @@ export default function AIAssistantPage() {
     };
   }, []);
 
+  // Load available speech synthesis voices and listen to dynamic voice updates
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+
+    const updateVoices = () => {
+      const v = window.speechSynthesis.getVoices() || [];
+      if (v.length > 0) {
+        setAvailableVoices(v);
+      }
+    };
+
+    updateVoices();
+    window.speechSynthesis.onvoiceschanged = updateVoices;
+
+    return () => {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.onvoiceschanged = null;
+      }
+    };
+  }, []);
+
   // Clean up any ongoing TTS / STT / MediaRecorder on unmount
   useEffect(() => {
     return () => {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
+      stopAllSpeech();
       if (recognitionRef.current) {
         try {
           recognitionRef.current.abort();
@@ -805,50 +846,202 @@ export default function AIAssistantPage() {
     }, 50);
   };
 
-  // Text-to-Speech (TTS) Read-Aloud
-  const handleToggleSpeak = (msgId, text) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert(t.ttsUnsupported);
+  // Natural Text-To-Speech (TTS) Engine Controller
+  const stopAllSpeech = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+    }
+    if (speechHeartbeatRef.current) {
+      clearInterval(speechHeartbeatRef.current);
+      speechHeartbeatRef.current = null;
+    }
+    speechChunksRef.current = [];
+    currentChunkIndexRef.current = 0;
+    setSpeakingId(null);
+    setSpeechStatus('idle');
+    setIsPreviewPlaying(false);
+    isPreviewingRef.current = false;
+  };
+
+  // Play next sentence/clause chunk in sequential queue
+  const playNextChunk = (msgId) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    const chunks = speechChunksRef.current;
+    const idx = currentChunkIndexRef.current;
+
+    if (idx >= chunks.length) {
+      stopAllSpeech();
       return;
     }
 
-    if (speakingId === msgId) {
-      window.speechSynthesis.cancel();
-      setSpeakingId(null);
-      return;
-    }
+    const chunk = chunks[idx];
+    const utterance = new SpeechSynthesisUtterance(chunk.text);
+    speechUtteranceRef.current = utterance;
 
-    window.speechSynthesis.cancel();
+    const rate = SPEED_RATES[ttsSettings.speed] || 1.0;
+    utterance.rate = rate;
 
-    // Clean markdown characters for clearer speech
-    const cleanText = text
-      .replace(/\*\*/g, '')
-      .replace(/•/g, '')
-      .replace(/\[([^\]]+)\]\([^\)]+\)/g, '$1')
-      .replace(/#+\s/g, '');
+    const targetLang = chunk.lang === 'hi' ? 'hi' : 'en';
+    utterance.lang = targetLang === 'hi' ? 'hi-IN' : 'en-IN';
 
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = language === 'hi' ? 'hi-IN' : 'en-IN';
-    utterance.rate = 0.95;
-
-    // Pick best available voice matching target language
-    const voices = window.speechSynthesis.getVoices();
-    const targetLangCode = language === 'hi' ? 'hi' : 'en';
-    const matchedVoice = voices.find((v) => v.lang.startsWith(targetLangCode));
-    if (matchedVoice) {
-      utterance.voice = matchedVoice;
+    const preferredURI = targetLang === 'hi' ? ttsSettings.preferredVoiceHi : ttsSettings.preferredVoiceEn;
+    const chosenVoice = selectBestVoice(availableVoices, targetLang, preferredURI);
+    if (chosenVoice) {
+      utterance.voice = chosenVoice;
     }
 
     utterance.onend = () => {
-      setSpeakingId(null);
+      currentChunkIndexRef.current = idx + 1;
+      playNextChunk(msgId);
     };
 
-    utterance.onerror = () => {
-      setSpeakingId(null);
+    utterance.onerror = (e) => {
+      if (e.error === 'canceled' || e.error === 'interrupted') {
+        return;
+      }
+      console.warn('Speech playback notice/error:', e.error);
+      stopAllSpeech();
     };
 
-    setSpeakingId(msgId);
+    try {
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.error('Failed to invoke speechSynthesis.speak:', err);
+      stopAllSpeech();
+    }
+  };
+
+  // Start reading message aloud
+  const handleStartSpeech = (msg) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      alert(t.ttsUnsupported || 'Text-to-speech audio is not supported in this browser.');
+      return;
+    }
+
+    if (speakingId === msg.id) {
+      if (speechStatus === 'playing') {
+        handlePauseSpeech();
+        return;
+      } else if (speechStatus === 'paused') {
+        handleResumeSpeech();
+        return;
+      }
+    }
+
+    stopAllSpeech();
+
+    const cleanText = prepareSpokenText(msg, language);
+    if (!cleanText) return;
+
+    const chunks = splitIntoSpokenChunks(cleanText, language);
+    if (chunks.length === 0) return;
+
+    speechChunksRef.current = chunks;
+    currentChunkIndexRef.current = 0;
+    setSpeakingId(msg.id);
+    setSpeechStatus('playing');
+
+    if (speechHeartbeatRef.current) clearInterval(speechHeartbeatRef.current);
+    speechHeartbeatRef.current = setInterval(() => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window && window.speechSynthesis.speaking) {
+        window.speechSynthesis.pause();
+        window.speechSynthesis.resume();
+      }
+    }, 10000);
+
+    playNextChunk(msg.id);
+  };
+
+  const handlePauseSpeech = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+    } catch {}
+    setSpeechStatus('paused');
+  };
+
+  const handleResumeSpeech = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    if (!speakingId || speechChunksRef.current.length === 0) return;
+
+    setSpeechStatus('playing');
+    playNextChunk(speakingId);
+  };
+
+  const handleRestartSpeech = (msg) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+    try {
+      window.speechSynthesis.cancel();
+    } catch {}
+    currentChunkIndexRef.current = 0;
+    setSpeechStatus('playing');
+    playNextChunk(msg.id);
+  };
+
+  const handleStopSpeech = () => {
+    stopAllSpeech();
+  };
+
+  const handleToggleSpeak = (msgId, text) => {
+    const msg = messages.find((m) => m.id === msgId) || { id: msgId, text };
+    handleStartSpeech(msg);
+  };
+
+  const handlePreviewVoice = ({ speed, preferredVoiceHi, preferredVoiceEn, lang }) => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      alert(t.ttsUnsupported || 'Text-to-speech audio is not supported in this browser.');
+      return;
+    }
+
+    stopAllSpeech();
+    setIsPreviewPlaying(true);
+    isPreviewingRef.current = true;
+
+    const isHi = lang === 'hi';
+    const sampleText = isHi
+      ? (t.testVoiceSampleHi || 'नमस्ते, मैं आपका सहायक AI हूँ। मैं भारतीय सरकारी योजनाओं की जानकारी में आपकी मदद कर सकता हूँ।')
+      : (t.testVoiceSampleEn || 'Hello, I am your Sahayak AI assistant. I can help you discover Indian welfare schemes.');
+
+    const utterance = new SpeechSynthesisUtterance(sampleText);
+    utterance.lang = isHi ? 'hi-IN' : 'en-IN';
+    utterance.rate = SPEED_RATES[speed] || 1.0;
+
+    const prefURI = isHi ? preferredVoiceHi : preferredVoiceEn;
+    const voice = selectBestVoice(availableVoices, isHi ? 'hi' : 'en', prefURI);
+    if (voice) utterance.voice = voice;
+
+    utterance.onend = () => {
+      setIsPreviewPlaying(false);
+      isPreviewingRef.current = false;
+    };
+    utterance.onerror = (e) => {
+      if (e.error !== 'canceled' && e.error !== 'interrupted') {
+        console.warn('Preview speech error:', e.error);
+      }
+      setIsPreviewPlaying(false);
+      isPreviewingRef.current = false;
+    };
+
     window.speechSynthesis.speak(utterance);
+  };
+
+  const handleStopPreview = () => {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+      } catch {}
+    }
+    setIsPreviewPlaying(false);
+    isPreviewingRef.current = false;
+  };
+
+  const handleSaveSettings = (newPartial) => {
+    const updated = saveTtsSettings(newPartial);
+    if (updated) {
+      setTtsSettings(updated);
+    }
   };
 
   // Copy Message to Clipboard
@@ -973,10 +1166,7 @@ export default function AIAssistantPage() {
       setIsListening(false);
       setIsConnectingMic(false);
     }
-    if (speakingId && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      setSpeakingId(null);
-    }
+    stopAllSpeech();
 
     const userMessage = {
       id: `usr_${Date.now()}`,
@@ -1172,10 +1362,7 @@ export default function AIAssistantPage() {
   // Clear current active conversation back to welcome message
   const handleClearChat = () => {
     if (window.confirm(t.clearConfirm)) {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
-      setSpeakingId(null);
+      stopAllSpeech();
       lastScrolledMessageIdRef.current = null;
       lastScrolledUserMessageIdRef.current = null;
       translationCacheRef.current = {
@@ -1208,11 +1395,7 @@ export default function AIAssistantPage() {
       activeAbortControllerRef.current = null;
     }
     setIsTyping(false);
-
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    setSpeakingId(null);
+    stopAllSpeech();
     if (recognitionRef.current) {
       try {
         recognitionRef.current.abort();
@@ -1250,6 +1433,7 @@ export default function AIAssistantPage() {
       activeAbortControllerRef.current = null;
     }
     setIsTyping(false);
+    stopAllSpeech();
 
     const target = getConversationById(convId, user?.id);
     if (!target) return;
@@ -1456,6 +1640,18 @@ export default function AIAssistantPage() {
           >
             <Plus className="w-4 h-4 shrink-0" />
             <span>{t.newChat ? t.newChat.replace(/^\+\s*/, '') : 'New Chat'}</span>
+          </button>
+
+          {/* Voice & Speed Settings Button */}
+          <button
+            type="button"
+            onClick={() => setShowAudioSettings(true)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:text-teal-700 rounded-xl border border-slate-200 transition-colors shadow-2xs shrink-0 cursor-pointer"
+            title={t.audioSettings || 'Voice & Speed Settings'}
+            aria-label={t.audioSettings || 'Voice & Speed Settings'}
+          >
+            <SlidersHorizontal className="w-4 h-4 text-teal-700 shrink-0" />
+            <span className="hidden md:inline">{t.audioSettings || 'Voice Settings'}</span>
           </button>
 
           {/* Clear Current Chat Button */}
@@ -1833,33 +2029,126 @@ export default function AIAssistantPage() {
 
                 {/* Assistant Controls: Text-To-Speech & Copy */}
                 {msg.sender === 'assistant' && !msg.isError && (
-                  <div className="pt-2 border-t border-slate-200/60 flex items-center justify-end gap-2 text-slate-500 text-xs">
-                    {/* Read Aloud Button */}
-                    <button
-                      onClick={() => handleToggleSpeak(msg.id, msg.text)}
-                      className={`inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-200/60 transition-colors ${
-                        speakingId === msg.id ? 'text-teal-700 font-semibold bg-teal-100' : ''
-                      }`}
-                      title={speakingId === msg.id ? t.stopSpeaking : t.speak}
-                      aria-label={speakingId === msg.id ? t.stopSpeaking : t.speak}
-                    >
-                      {speakingId === msg.id ? (
-                        <>
-                          <VolumeX className="w-3.5 h-3.5 text-teal-700 animate-pulse" />
-                          <span>{t.stopSpeaking}</span>
-                        </>
-                      ) : (
-                        <>
+                  <div className="pt-2 border-t border-slate-200/60 flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 text-slate-500 text-xs">
+                    {speakingId === msg.id ? (
+                      <>
+                        {/* Status Indicator */}
+                        {speechStatus === 'playing' ? (
+                          <div
+                            className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-teal-50 border border-teal-200 text-teal-800 text-[11px] font-semibold"
+                            role="status"
+                            aria-live="polite"
+                          >
+                            <span className="flex items-center gap-0.5 h-3">
+                              <span className="w-0.5 h-2 bg-teal-600 rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                              <span className="w-0.5 h-3 bg-teal-700 rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                              <span className="w-0.5 h-2.5 bg-teal-600 rounded-full animate-bounce"></span>
+                            </span>
+                            <span>{t.playingAudio || 'Playing...'}</span>
+                          </div>
+                        ) : (
+                          <div
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-semibold"
+                            role="status"
+                            aria-live="polite"
+                          >
+                            <Pause className="w-3 h-3 text-amber-700" />
+                            <span>{t.pausedAudio || 'Paused'}</span>
+                          </div>
+                        )}
+
+                        {/* Pause / Resume Button */}
+                        {speechStatus === 'playing' ? (
+                          <button
+                            type="button"
+                            onClick={handlePauseSpeech}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-teal-900 bg-teal-100/90 hover:bg-teal-200 font-semibold transition-colors cursor-pointer"
+                            title={t.pauseSpeaking || 'Pause speech'}
+                            aria-label={t.pauseSpeaking || 'Pause speech'}
+                          >
+                            <Pause className="w-3.5 h-3.5 fill-current" />
+                            <span>{t.pauseSpeaking || 'Pause'}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={handleResumeSpeech}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-teal-900 bg-teal-100/90 hover:bg-teal-200 font-semibold transition-colors cursor-pointer"
+                            title={t.resumeSpeaking || 'Resume speech'}
+                            aria-label={t.resumeSpeaking || 'Resume speech'}
+                          >
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                            <span>{t.resumeSpeaking || 'Resume'}</span>
+                          </button>
+                        )}
+
+                        {/* Restart Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleRestartSpeech(msg)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                          title={t.restartSpeaking || 'Restart from start'}
+                          aria-label={t.restartSpeaking || 'Restart from start'}
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">{t.restartSpeaking || 'Restart'}</span>
+                        </button>
+
+                        {/* Stop Button */}
+                        <button
+                          type="button"
+                          onClick={handleStopSpeech}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 font-semibold transition-colors cursor-pointer"
+                          title={t.stopSpeaking || 'Stop speaking'}
+                          aria-label={t.stopSpeaking || 'Stop speaking'}
+                        >
+                          <Square className="w-3 h-3 fill-current" />
+                          <span>{t.stopSpeaking || 'Stop'}</span>
+                        </button>
+
+                        {/* Settings Button */}
+                        <button
+                          type="button"
+                          onClick={() => setShowAudioSettings(true)}
+                          className="p-1 text-slate-400 hover:text-teal-700 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
+                          title={t.audioSettings || 'Voice & Speed Settings'}
+                          aria-label={t.audioSettings || 'Voice & Speed Settings'}
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        {/* Listen Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleStartSpeech(msg)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-slate-600 hover:text-teal-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                          title={t.speak}
+                          aria-label={t.speak}
+                        >
                           <Volume2 className="w-3.5 h-3.5" />
                           <span>{t.speak}</span>
-                        </>
-                      )}
-                    </button>
+                        </button>
+
+                        {/* Settings Button */}
+                        <button
+                          type="button"
+                          onClick={() => setShowAudioSettings(true)}
+                          className="p-1 text-slate-400 hover:text-teal-700 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
+                          title={t.audioSettings || 'Voice & Speed Settings'}
+                          aria-label={t.audioSettings || 'Voice & Speed Settings'}
+                        >
+                          <SlidersHorizontal className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
 
                     {/* Copy Button */}
                     <button
+                      type="button"
                       onClick={() => handleCopyMessage(msg.id, msg.text)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-200/60 transition-colors"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 transition-colors cursor-pointer"
                       title={t.copy}
                       aria-label={t.copy}
                     >
@@ -2063,6 +2352,19 @@ export default function AIAssistantPage() {
         errorMessage={micModalError}
         language={language}
         translations={t}
+      />
+
+      {/* Audio & Speech Synthesis Settings Modal */}
+      <AudioSettingsModal
+        isOpen={showAudioSettings}
+        onClose={() => setShowAudioSettings(false)}
+        language={language}
+        availableVoices={availableVoices}
+        settings={ttsSettings}
+        onSaveSettings={handleSaveSettings}
+        onPreviewVoice={handlePreviewVoice}
+        isPreviewPlaying={isPreviewPlaying}
+        onStopPreview={handleStopPreview}
       />
 
       {/* Slide-over Chat History Drawer */}
