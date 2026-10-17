@@ -61,7 +61,7 @@ export default function Navbar() {
     { to: '/', label: t('nav.home'), icon: Landmark, end: true },
     { to: '/schemes', label: t('nav.discoverSchemes'), icon: Compass },
     { to: '/eligibility', label: t('nav.checkEligibility'), icon: CheckSquare },
-    { to: '/assistant', label: t('nav.aiAssistant'), icon: Bot, highlight: true },
+    { to: '/assistant', label: t('nav.aiAssistant'), icon: Bot },
     { to: '/applications', label: t('nav.myApplications'), icon: FolderCheck },
     { to: '/about', label: t('nav.about'), icon: Info },
   ];
@@ -121,19 +121,16 @@ export default function Navbar() {
                   key={item.to}
                   to={item.to}
                   end={item.end}
-                  className={({ isActive }) =>
-                    `inline-flex items-center gap-1.5 px-2.5 xl:px-3 py-1.5 rounded-lg text-xs xl:text-sm font-medium transition-all whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EDD575] ${
-                      isActive
-                        ? item.highlight
-                          ? 'bg-teal-700 text-white font-semibold shadow-xs'
-                          : 'bg-slate-800 text-white font-semibold shadow-2xs'
-                        : item.highlight
-                        ? 'text-amber-300 bg-slate-800/80 hover:bg-teal-700 hover:text-white font-medium border border-amber-400/40'
-                        : 'text-slate-300 hover:text-white hover:bg-slate-800'
-                    }`
-                  }
+                  className={({ isActive }) => {
+                    const active = isActive || (item.to === '/eligibility' && location.pathname === '/check-eligibility');
+                    return `inline-flex items-center gap-1.5 px-3 py-1.5 xl:px-3.5 xl:py-2 rounded-lg text-xs xl:text-sm font-semibold transition-all whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[#EDD575] ${
+                      active
+                        ? 'bg-[#0D9488] text-white shadow-xs'
+                        : 'text-slate-300 hover:text-white hover:bg-white/10'
+                    }`;
+                  }}
                 >
-                  <Icon className="w-3.5 h-3.5 xl:w-4 xl:h-4 shrink-0" />
+                  <Icon className="w-3.5 h-3.5 xl:w-4 xl:h-4 shrink-0 text-current" />
                   <span>{item.label}</span>
                 </NavLink>
               );
@@ -330,15 +327,14 @@ export default function Navbar() {
                   to={item.to}
                   end={item.end}
                   onClick={() => setMobileMenuOpen(false)}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors ${
-                      isActive
-                        ? 'bg-navy-900 text-white font-semibold shadow-xs'
-                        : item.highlight
-                        ? 'text-teal-700 bg-teal-50 border border-teal-200 font-semibold'
+                  className={({ isActive }) => {
+                    const active = isActive || (item.to === '/eligibility' && location.pathname === '/check-eligibility');
+                    return `flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                      active
+                        ? 'bg-[#0D9488] text-white shadow-xs'
                         : 'text-slate-700 hover:bg-stone-100'
-                    }`
-                  }
+                    }`;
+                  }}
                 >
                   <Icon className="w-4 h-4 text-current shrink-0" />
                   <span className="whitespace-nowrap">{item.label}</span>

@@ -1451,11 +1451,11 @@ export default function AIAssistantPage() {
             type="button"
             onClick={handleNewChat}
             className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-xl transition-colors shadow-sm cursor-pointer"
-            title={t.newChat || '+ New Chat'}
-            aria-label={t.newChat || '+ New Chat'}
+            title={t.newChat ? `+ ${t.newChat.replace(/^\+\s*/, '')}` : '+ New Chat'}
+            aria-label={t.newChat ? `+ ${t.newChat.replace(/^\+\s*/, '')}` : '+ New Chat'}
           >
-            <Plus className="w-4 h-4" />
-            <span>{t.newChat || '+ New Chat'}</span>
+            <Plus className="w-4 h-4 shrink-0" />
+            <span>{t.newChat ? t.newChat.replace(/^\+\s*/, '') : 'New Chat'}</span>
           </button>
 
           {/* Clear Current Chat Button */}
@@ -2110,9 +2110,11 @@ export default function AIAssistantPage() {
                 type="button"
                 onClick={handleNewChat}
                 className="w-full py-2.5 px-4 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-semibold text-xs transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                title={t.newChat ? `+ ${t.newChat.replace(/^\+\s*/, '')}` : '+ New Chat'}
+                aria-label={t.newChat ? `+ ${t.newChat.replace(/^\+\s*/, '')}` : '+ New Chat'}
               >
-                <Plus className="w-4 h-4" />
-                <span>{t.newChat || '+ New Chat'}</span>
+                <Plus className="w-4 h-4 shrink-0" />
+                <span>{t.newChat ? t.newChat.replace(/^\+\s*/, '') : 'New Chat'}</span>
               </button>
             </div>
 

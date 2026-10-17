@@ -383,7 +383,7 @@ export const en = {
     profileActive: 'Profile Loaded:',
     noProfile: 'No profile loaded (generic advice)',
     editProfile: 'Update Profile',
-    newChat: '+ New Chat',
+    newChat: 'New Chat',
     chatHistory: 'Chat History',
     noHistory: 'No previous conversations yet.',
     noHistorySubtitle: 'Start asking questions to explore Indian welfare schemes.',
