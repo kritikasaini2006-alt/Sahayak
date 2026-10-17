@@ -19,13 +19,13 @@ export default function Button({
   };
 
   const variantStyles = {
-    primary: 'bg-[#454F2A] text-[#FAF8F1] hover:bg-[#384022] active:bg-[#2c331b] focus:ring-[#454F2A] shadow-sm active:scale-[0.99]',
-    teal: 'bg-[#454F2A] text-[#FAF8F1] hover:bg-[#384022] active:bg-[#2c331b] focus:ring-[#454F2A] shadow-sm active:scale-[0.99]',
-    olive: 'bg-[#454F2A] text-[#FAF8F1] hover:bg-[#384022] active:bg-[#2c331b] focus:ring-[#454F2A] shadow-sm active:scale-[0.99]',
-    outline: 'border border-[#445363]/30 bg-[#FAF8F1] text-[#445363] hover:bg-[#E5E8E1] hover:border-[#445363]/60 focus:ring-[#445363] shadow-sm',
-    ghost: 'text-[#445363] hover:bg-[#E5E8E1] focus:ring-[#445363]',
-    subtle: 'bg-[#E5E8E1] text-[#454F2A] hover:bg-[#d8dcd3] border border-[#454F2A]/30 focus:ring-[#454F2A]',
-    charcoal: 'bg-[#445363] text-[#FAF8F1] hover:bg-[#34404e] focus:ring-[#445363] shadow-sm active:scale-[0.99]',
+    primary: 'bg-teal-700 text-white hover:bg-teal-800 active:bg-teal-900 focus:ring-teal-600 shadow-xs active:scale-[0.99]',
+    teal: 'bg-teal-700 text-white hover:bg-teal-800 active:bg-teal-900 focus:ring-teal-600 shadow-xs active:scale-[0.99]',
+    olive: 'bg-[#454F2A] text-white hover:bg-[#384022] active:bg-[#2c331b] focus:ring-[#454F2A] shadow-xs active:scale-[0.99]',
+    outline: 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-400 focus:ring-slate-400 shadow-2xs',
+    ghost: 'text-slate-700 hover:bg-slate-100 focus:ring-slate-400',
+    subtle: 'bg-teal-50 text-teal-800 hover:bg-teal-100 border border-teal-200 focus:ring-teal-500',
+    charcoal: 'bg-navy-900 text-white hover:bg-navy-950 focus:ring-navy-800 shadow-xs active:scale-[0.99]',
   };
 
   return (

@@ -3,13 +3,14 @@ import { cn } from '../../utils/cn';
 
 export default function Badge({ children, variant = 'neutral', className = '' }) {
   const variantStyles = {
-    neutral: 'bg-[#E5E8E1] text-[#445363] border-[#ccd1c6]',
-    primary: 'bg-[#FAF8F1] text-[#445363] border-[#445363]/25 font-semibold',
-    teal: 'bg-[#454F2A]/10 text-[#454F2A] border-[#454F2A]/30 font-semibold',
-    olive: 'bg-[#454F2A]/15 text-[#454F2A] border-[#454F2A]/35 font-semibold',
-    emerald: 'bg-[#454F2A]/10 text-[#454F2A] border-[#454F2A]/30',
-    amber: 'bg-[#EDD575]/35 text-[#445363] border-[#EDD575]/80 font-semibold',
-    mustard: 'bg-[#EDD575]/40 text-[#445363] border-[#EDD575] font-semibold',
+    neutral: 'bg-stone-100 text-slate-700 border-stone-200',
+    primary: 'bg-teal-50 text-teal-800 border-teal-200/80 font-semibold',
+    teal: 'bg-teal-50 text-teal-800 border-teal-200 font-semibold',
+    olive: 'bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold',
+    emerald: 'bg-emerald-50 text-emerald-800 border-emerald-200 font-semibold',
+    amber: 'bg-amber-50 text-amber-900 border-amber-200 font-semibold',
+    mustard: 'bg-amber-100 text-amber-950 border-amber-300 font-semibold',
+    navy: 'bg-navy-50 text-navy-900 border-navy-200 font-semibold',
   };
 
   return (
