@@ -79,9 +79,9 @@ export class OfflineReply {
   }
 }
 
-import { DEFAULT_OPTIONS_BY_FIELD } from '../src/data/chatOptions.js';
-import { parseStructuredResponse, extractAgeFromText, normalizeAgeString, normalizeAgeQuestion } from '../src/utils/responseParser.js';
-export { DEFAULT_OPTIONS_BY_FIELD, parseStructuredResponse, extractAgeFromText, normalizeAgeString, normalizeAgeQuestion };
+import { DEFAULT_OPTIONS_BY_FIELD, AGE_GROUP_OPTIONS } from '../src/data/chatOptions.js';
+import { parseStructuredResponse, extractAgeFromText, normalizeAgeString, normalizeAgeQuestion, determineAgeGroup, parseAgeGroupFromText } from '../src/utils/responseParser.js';
+export { DEFAULT_OPTIONS_BY_FIELD, AGE_GROUP_OPTIONS, parseStructuredResponse, extractAgeFromText, normalizeAgeString, normalizeAgeQuestion, determineAgeGroup, parseAgeGroupFromText };
 
 /**
  * Generates the structured system instruction for the AI assistant.
@@ -182,15 +182,16 @@ OPERATIONAL PRINCIPLES:
    - Do NOT ask questions that are already answered in the Citizen Profile above or earlier conversation turns! Skip them automatically.
    - Guided Flow Progression:
      * Step 1: State or Union Territory (fieldKey='state', questionType='single_choice')
-     * Step 2: Citizen Age (fieldKey='age', questionType='none', options=[])
+     * Step 2: Citizen Age or Age Group (fieldKey='ageGroup', questionType='single_choice')
        - When asking for the citizen's age:
          * In English, use this simple, user-friendly message:
            "Please tell me your age so I can find government schemes that are relevant to you."
          * In Hindi, use this simple, user-friendly message:
            "कृपया मुझे अपनी उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।"
-         * Do NOT say "select your age group" and do NOT refer to options, buttons, or dropdowns. Set questionType='none', fieldKey='age', options=[]. Do NOT add age buttons or chips unless explicitly requested.
-         * Allow citizens to enter their age naturally (e.g. "34", "I am 34 years old", "मेरी उम्र 34 साल है", "34 वर्ष").
-         * Validate the age reasonably (between 1 and 120 years). If valid, continue immediately to the next question (occupation) without repeatedly asking for age.
+         * Present 5 clickable age-group buttons under options:
+           In English: Under 18 years, 18–25 years, 26–40 years, 41–60 years, Above 60 years
+           In Hindi: 18 वर्ष से कम, 18–25 वर्ष, 26–40 वर्ष, 41–60 वर्ष, 60 वर्ष से अधिक
+         * When a citizen clicks an option or enters their age naturally (e.g. "45", "34", "I am 34 years old", "मेरी उम्र 34 साल है", "३४ वर्ष"), accept it, map to the corresponding age group, update the profile, and proceed immediately to Step 3 (occupation) without repeatedly asking for age.
          * If the user enters an unclear or invalid age (e.g. "abc", "150", "-5"), politely ask them to enter their age again (e.g. "Please enter a valid age between 1 and 120 so I can find government schemes that are relevant to you." / Hindi: "कृपया 1 से 120 वर्ष के बीच एक मान्य उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।").
      * Step 3: Primary occupation or livelihood (fieldKey='occupation', questionType='single_choice')
      * Step 4: Scheme-specific criterion (e.g. landholding for farmer, artisan trade for craftsman, girl child under 10 for daughter, or annual income if relevant for BPL)
@@ -435,14 +436,19 @@ export function generateOfflineSampleReply(prompt, language = 'en', profile = nu
   }
 
   // Check if current prompt supplies citizen age
-  const extractedAge = extractAgeFromText(prompt);
+  const extractedAge = extractAgeFromText(prompt, language);
   let effectiveAge = profile?.age;
-  if (!effectiveAge && extractedAge.valid) {
-    effectiveAge = extractedAge.age;
-    if (profile && typeof profile === 'object') profile.age = effectiveAge;
+  let effectiveAgeGroup = profile?.ageGroup;
+  if ((!effectiveAge || !effectiveAgeGroup) && extractedAge.valid) {
+    if (!effectiveAge) effectiveAge = extractedAge.age;
+    if (!effectiveAgeGroup) effectiveAgeGroup = extractedAge.ageGroup;
+    if (profile && typeof profile === 'object') {
+      profile.age = effectiveAge;
+      profile.ageGroup = effectiveAgeGroup;
+    }
   }
 
-  if (!effectiveAge) {
+  if (!effectiveAge && !effectiveAgeGroup) {
     // If user attempted to enter an invalid age (e.g. 150, 0, or negative)
     const isNumberAttempt = /^\d+$/.test(q) || /(?:year|yr|साल|वर्ष|age|उम्र|आयु)/i.test(q);
     if (isNumberAttempt && !extractedAge.valid) {
@@ -451,9 +457,9 @@ export function generateOfflineSampleReply(prompt, language = 'en', profile = nu
           language === 'hi'
             ? 'कृपया 1 से 120 वर्ष के बीच एक मान्य उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।'
             : 'Please enter a valid age between 1 and 120 so I can find government schemes that are relevant to you.',
-        questionType: 'none',
-        fieldKey: 'age',
-        options: [],
+        questionType: 'single_choice',
+        fieldKey: 'ageGroup',
+        options: DEFAULT_OPTIONS_BY_FIELD.ageGroup[language] || DEFAULT_OPTIONS_BY_FIELD.ageGroup.en,
         allowSkip: false,
       });
     }
@@ -463,9 +469,9 @@ export function generateOfflineSampleReply(prompt, language = 'en', profile = nu
         language === 'hi'
           ? 'कृपया मुझे अपनी उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।'
           : 'Please tell me your age so I can find government schemes that are relevant to you.',
-      questionType: 'none',
-      fieldKey: 'age',
-      options: [],
+      questionType: 'single_choice',
+      fieldKey: 'ageGroup',
+      options: DEFAULT_OPTIONS_BY_FIELD.ageGroup[language] || DEFAULT_OPTIONS_BY_FIELD.ageGroup.en,
       allowSkip: false,
     });
   }
@@ -568,9 +574,10 @@ export async function processChatRequest({
   }
 
   // Check if current prompt supplies citizen age
-  const promptAge = extractAgeFromText(prompt);
-  if (sanitizedProfile && !sanitizedProfile.age && promptAge.valid) {
-    sanitizedProfile.age = promptAge.age;
+  const promptAge = extractAgeFromText(prompt, language);
+  if (sanitizedProfile && (!sanitizedProfile.age || !sanitizedProfile.ageGroup) && promptAge.valid) {
+    if (!sanitizedProfile.age) sanitizedProfile.age = promptAge.age;
+    if (!sanitizedProfile.ageGroup) sanitizedProfile.ageGroup = promptAge.ageGroup;
   }
 
   // Check if previous assistant message in history asked for age
@@ -599,9 +606,9 @@ export async function processChatRequest({
       status: 200,
       body: {
         reply: invalidReply,
-        questionType: 'none',
-        fieldKey: 'age',
-        options: [],
+        questionType: 'single_choice',
+        fieldKey: 'ageGroup',
+        options: DEFAULT_OPTIONS_BY_FIELD.ageGroup[language] || DEFAULT_OPTIONS_BY_FIELD.ageGroup.en,
         allowSkip: false,
         recommendedSchemes: [],
         isDemoMode: false,

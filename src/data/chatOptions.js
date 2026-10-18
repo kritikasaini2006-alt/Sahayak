@@ -3,6 +3,23 @@
  * Shared between client UI and backend handlers.
  */
 
+export const AGE_GROUP_OPTIONS = {
+  en: [
+    { label: 'Under 18 years', value: 'Under 18 years' },
+    { label: '18–25 years', value: '18–25 years' },
+    { label: '26–40 years', value: '26–40 years' },
+    { label: '41–60 years', value: '41–60 years' },
+    { label: 'Above 60 years', value: 'Above 60 years' },
+  ],
+  hi: [
+    { label: '18 वर्ष से कम', value: '18 वर्ष से कम' },
+    { label: '18–25 वर्ष', value: '18–25 वर्ष' },
+    { label: '26–40 वर्ष', value: '26–40 वर्ष' },
+    { label: '41–60 वर्ष', value: '41–60 वर्ष' },
+    { label: '60 वर्ष से अधिक', value: '60 वर्ष से अधिक' },
+  ],
+};
+
 export const DEFAULT_OPTIONS_BY_FIELD = {
   state: {
     en: [
@@ -25,22 +42,8 @@ export const DEFAULT_OPTIONS_BY_FIELD = {
       { label: 'अन्य राज्य / केंद्र शासित प्रदेश', value: 'Other' },
     ],
   },
-  ageGroup: {
-    en: [
-      { label: 'Under 18 years', value: 'under_18' },
-      { label: '18 - 35 years', value: '18_35' },
-      { label: '36 - 59 years', value: '36_59' },
-      { label: '60 - 69 years (Senior Citizen)', value: '60_69' },
-      { label: '70+ years (Universal Ayushman)', value: '70_plus' },
-    ],
-    hi: [
-      { label: '18 वर्ष से कम', value: 'under_18' },
-      { label: '18 से 35 वर्ष', value: '18_35' },
-      { label: '36 से 59 वर्ष', value: '36_59' },
-      { label: '60 से 69 वर्ष (वरिष्ठ नागरिक)', value: '60_69' },
-      { label: '70 वर्ष या अधिक (यूनिवर्सल आयुष्मान)', value: '70_plus' },
-    ],
-  },
+  ageGroup: AGE_GROUP_OPTIONS,
+  age: AGE_GROUP_OPTIONS,
   occupation: {
     en: [
       { label: 'Farmer / Cultivator', value: 'farmer' },

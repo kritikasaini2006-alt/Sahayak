@@ -233,16 +233,144 @@ export function stripFillerPhrases(text) {
 }
 
 /**
- * Safely extracts a citizen's age from natural language text in English or Hindi.
- * Supports Devanagari numerals, natural phrases ("I am 34 years old", "मेरी उम्र 34 साल है", "34"),
- * and validates that the age is plausible (between 1 and 120).
+ * Maps an exact age number to its canonical age group label in English or Hindi.
  *
- * @param {string} text - User input prompt
- * @returns {{ valid: boolean, age: number|null, reason?: string, rawNum?: number }}
+ * @param {number|string} age - Citizen's age (1-120)
+ * @param {string} language - Target language ('en' | 'hi')
+ * @returns {string|null}
  */
-export function extractAgeFromText(text) {
+export function determineAgeGroup(age, language = 'en') {
+  if (age === null || age === undefined || age === '') return null;
+  const num = typeof age === 'number' ? age : parseInt(age, 10);
+  if (isNaN(num)) return null;
+  if (num < 18) {
+    return language === 'hi' ? '18 वर्ष से कम' : 'Under 18 years';
+  }
+  if (num <= 25) {
+    return language === 'hi' ? '18–25 वर्ष' : '18–25 years';
+  }
+  if (num <= 40) {
+    return language === 'hi' ? '26–40 वर्ष' : '26–40 years';
+  }
+  if (num <= 60) {
+    return language === 'hi' ? '41–60 वर्ष' : '41–60 years';
+  }
+  return language === 'hi' ? '60 वर्ष से अधिक' : 'Above 60 years';
+}
+
+/**
+ * Parses age-group phrases (e.g. "Under 18 years", "18–25 years", "18 वर्ष से कम", etc.)
+ *
+ * @param {string} text - User input prompt or clicked button label/value
+ * @returns {{ key: string, minAge: number, maxAge: number, representativeAge: number, labelEn: string, labelHi: string } | null}
+ */
+export function parseAgeGroupFromText(text) {
+  if (!text || typeof text !== 'string') return null;
+  const t = text.trim().toLowerCase();
+
+  // 1. Under 18 years / 18 वर्ष से कम
+  if (
+    /under\s*18|below\s*18|< ?18|18\s*(?:and\s+)?under|18\s*से\s*कम|18\s*वर्ष\s*से\s*कम/i.test(t) ||
+    t === 'under 18 years' || t === '18 वर्ष से कम' || t === 'under_18'
+  ) {
+    return {
+      key: 'under_18',
+      minAge: 1,
+      maxAge: 17,
+      representativeAge: 16,
+      labelEn: 'Under 18 years',
+      labelHi: '18 वर्ष से कम',
+    };
+  }
+
+  // 2. 18–25 years / 18–25 वर्ष
+  if (
+    /\b18\s*[-–—to\s]+\s*25\b|18\s*से\s*25/i.test(t) ||
+    t === '18–25 years' || t === '18-25 years' || t === '18–25 वर्ष' || t === '18-25 वर्ष' || t === '18_25'
+  ) {
+    return {
+      key: '18_25',
+      minAge: 18,
+      maxAge: 25,
+      representativeAge: 21,
+      labelEn: '18–25 years',
+      labelHi: '18–25 वर्ष',
+    };
+  }
+
+  // 3. 26–40 years / 26–40 वर्ष
+  if (
+    /\b26\s*[-–—to\s]+\s*40\b|26\s*से\s*40/i.test(t) ||
+    t === '26–40 years' || t === '26-40 years' || t === '26–40 वर्ष' || t === '26-40 वर्ष' || t === '26_40'
+  ) {
+    return {
+      key: '26_40',
+      minAge: 26,
+      maxAge: 40,
+      representativeAge: 33,
+      labelEn: '26–40 years',
+      labelHi: '26–40 वर्ष',
+    };
+  }
+
+  // 4. 41–60 years / 41–60 वर्ष
+  if (
+    /\b41\s*[-–—to\s]+\s*60\b|41\s*से\s*60/i.test(t) ||
+    t === '41–60 years' || t === '41-60 years' || t === '41–60 वर्ष' || t === '41-60 वर्ष' || t === '41_60'
+  ) {
+    return {
+      key: '41_60',
+      minAge: 41,
+      maxAge: 60,
+      representativeAge: 50,
+      labelEn: '41–60 years',
+      labelHi: '41–60 वर्ष',
+    };
+  }
+
+  // 5. Above 60 years / 60 वर्ष से अधिक
+  if (
+    /above\s*60|60\s*(?:plus|\+)|> ?60|60\s*and\s*above|senior\s*citizen|60\s*वर्ष\s*से\s*अधिक|60\s*से\s*(?:ज्यादा|अधिक)/i.test(t) ||
+    t === 'above 60 years' || t === '60 वर्ष से अधिक' || t === 'above_60'
+  ) {
+    return {
+      key: 'above_60',
+      minAge: 61,
+      maxAge: 120,
+      representativeAge: 65,
+      labelEn: 'Above 60 years',
+      labelHi: '60 वर्ष से अधिक',
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Safely extracts a citizen's age from natural language text in English or Hindi.
+ * Supports explicit age-group selections ("Under 18 years", "18–25 years", "41–60 वर्ष"),
+ * exact numbers ("45", "34"), natural phrases ("I am 34 years old", "मेरी उम्र 34 साल है"),
+ * Devanagari numerals ("३४ वर्ष"), and validates that the age is plausible (between 1 and 120).
+ *
+ * @param {string} text - User input prompt or option value
+ * @param {string} language - Active language ('en' | 'hi')
+ * @returns {{ valid: boolean, age: number|null, ageGroup?: string, ageGroupKey?: string, isAgeGroup?: boolean, reason?: string, rawNum?: number }}
+ */
+export function extractAgeFromText(text, language = 'en') {
   if (!text || typeof text !== 'string') {
     return { valid: false, age: null, reason: 'empty' };
+  }
+
+  // 0. Check if an explicit age group was provided (button click or typed range)
+  const group = parseAgeGroupFromText(text);
+  if (group) {
+    return {
+      valid: true,
+      age: group.representativeAge,
+      ageGroup: language === 'hi' ? group.labelHi : group.labelEn,
+      ageGroupKey: group.key,
+      isAgeGroup: true,
+    };
   }
 
   // 1. Convert Devanagari numerals to standard digits (०-९ -> 0-9)
@@ -267,12 +395,17 @@ export function extractAgeFromText(text) {
     return { valid: false, age: null, reason: 'daughter_context' };
   }
 
-  // 2. Pure number (e.g. "34", "42")
+  // 2. Pure number (e.g. "34", "42", "45")
   const pureNumMatch = trimmed.match(/^(\d{1,3})$/);
   if (pureNumMatch) {
     const num = parseInt(pureNumMatch[1], 10);
     if (num >= 1 && num <= 120) {
-      return { valid: true, age: num };
+      return {
+        valid: true,
+        age: num,
+        ageGroup: determineAgeGroup(num, language),
+        isAgeGroup: false,
+      };
     }
     return { valid: false, age: null, reason: 'out_of_range', rawNum: num };
   }
@@ -293,7 +426,12 @@ export function extractAgeFromText(text) {
     if (match && match[1]) {
       const num = parseInt(match[1], 10);
       if (num >= 1 && num <= 120) {
-        return { valid: true, age: num };
+        return {
+          valid: true,
+          age: num,
+          ageGroup: determineAgeGroup(num, language),
+          isAgeGroup: false,
+        };
       }
       return { valid: false, age: null, reason: 'out_of_range', rawNum: num };
     }
@@ -305,7 +443,12 @@ export function extractAgeFromText(text) {
     if (looseMatch && looseMatch[1]) {
       const num = parseInt(looseMatch[1], 10);
       if (num >= 1 && num <= 120) {
-        return { valid: true, age: num };
+        return {
+          valid: true,
+          age: num,
+          ageGroup: determineAgeGroup(num, language),
+          isAgeGroup: false,
+        };
       }
       return { valid: false, age: null, reason: 'out_of_range', rawNum: num };
     }
@@ -350,8 +493,8 @@ export function normalizeAgeString(text, language = 'en') {
 }
 
 /**
- * Standardizes any age-related question object to eliminate non-existent options/buttons
- * and enforce the canonical friendly age question.
+ * Standardizes any age-related question object to attach the canonical 5 age-group options
+ * and enforce the canonical friendly age question in English and Hindi.
  */
 export function normalizeAgeQuestion(message, language = 'en') {
   if (!message || typeof message !== 'object') return message;
@@ -393,9 +536,9 @@ export function normalizeAgeQuestion(message, language = 'en') {
       if (message.content !== undefined) message.content = standardReply;
     }
 
-    message.questionType = 'none';
-    message.fieldKey = 'age';
-    message.options = [];
+    message.questionType = 'single_choice';
+    message.fieldKey = 'ageGroup';
+    message.options = DEFAULT_OPTIONS_BY_FIELD.ageGroup[language] || DEFAULT_OPTIONS_BY_FIELD.ageGroup.en;
     message.allowSkip = false;
   }
 
@@ -439,7 +582,7 @@ export function parseStructuredResponse(rawInput, language = 'en') {
         const nestedSchemes = sanitizeSchemes(nested.recommendedSchemes);
         const nestedType = VALID_QUESTION_TYPES.includes(nested.questionType) ? nested.questionType : 'none';
 
-        return {
+        return normalizeAgeQuestion({
           reply: cleanReply,
           questionType: nestedType !== 'none' ? nestedType : (VALID_QUESTION_TYPES.includes(rawInput.questionType) ? rawInput.questionType : 'none'),
           fieldKey: nested.fieldKey || rawInput.fieldKey || null,
@@ -449,7 +592,7 @@ export function parseStructuredResponse(rawInput, language = 'en') {
           isDemoMode: !!rawInput.isDemoMode,
           sources: rawInput.sources || defaultResult.sources,
           modelUsed: rawInput.modelUsed,
-        };
+        }, language);
       }
     }
 
@@ -463,13 +606,10 @@ export function parseStructuredResponse(rawInput, language = 'en') {
     let sanitizedSchemes = sanitizeSchemes(rawInput.recommendedSchemes);
 
     // Inject default options if fieldKey is known and options were empty
-    // Inject default options if fieldKey is known and options were empty (never inject buttons for age)
     if (
       (sanitizedQuestionType === 'single_choice' || sanitizedQuestionType === 'multi_choice') &&
       sanitizedOptions.length === 0 &&
       sanitizedFieldKey &&
-      sanitizedFieldKey !== 'age' &&
-      sanitizedFieldKey !== 'ageGroup' &&
       DEFAULT_OPTIONS_BY_FIELD[sanitizedFieldKey]
     ) {
       sanitizedOptions = DEFAULT_OPTIONS_BY_FIELD[sanitizedFieldKey][language] || DEFAULT_OPTIONS_BY_FIELD[sanitizedFieldKey].en;

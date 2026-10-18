@@ -30,7 +30,7 @@ import { DEFAULT_OPTIONS_BY_FIELD } from '../data/chatOptions';
 import { SCHEME_TRANSLATIONS } from '../data/schemeTranslations';
 import { MOCK_SCHEMES } from '../data/mockSchemes';
 import { loadCitizenProfile, saveCitizenProfile } from '../utils/eligibilityEngine';
-import { parseStructuredResponse, extractAgeFromText } from '../utils/responseParser';
+import { parseStructuredResponse, extractAgeFromText, determineAgeGroup, parseAgeGroupFromText } from '../utils/responseParser';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
@@ -818,20 +818,21 @@ export default function AIAssistantPage() {
         updated.state = value;
       }
     } else if (fieldKey === 'age' || fieldKey === 'ageGroup') {
-      const num = Number(value);
-      if (!isNaN(num) && num >= 1 && num <= 120) {
-        updated.age = num;
+      const parsedGroup = parseAgeGroupFromText(String(value));
+      if (parsedGroup) {
+        updated.age = parsedGroup.representativeAge;
+        updated.ageGroup = parsedGroup.labelEn;
       } else {
-        const ageResult = extractAgeFromText(String(value));
-        if (ageResult.valid) {
-          updated.age = ageResult.age;
+        const num = Number(value);
+        if (!isNaN(num) && num >= 1 && num <= 120) {
+          updated.age = num;
+          updated.ageGroup = determineAgeGroup(num, 'en');
         } else {
-          const v = String(value).toLowerCase();
-          if (v.includes('18') && (v.includes('35') || v.includes('40'))) updated.age = 28;
-          else if (v.includes('36') || v.includes('41')) updated.age = 45;
-          else if (v.includes('60') && (v.includes('69') || v.includes('senior'))) updated.age = 65;
-          else if (v.includes('70') || v.includes('above_60')) updated.age = 72;
-          else if (v.includes('under') || v.includes('कम')) updated.age = 16;
+          const ageResult = extractAgeFromText(String(value), language);
+          if (ageResult.valid) {
+            updated.age = ageResult.age;
+            updated.ageGroup = ageResult.ageGroup || determineAgeGroup(ageResult.age, 'en');
+          }
         }
       }
     } else if (fieldKey === 'occupation') {
@@ -968,11 +969,21 @@ export default function AIAssistantPage() {
       );
 
       let activeProfile = profile ? { ...profile } : {};
-      const ageResult = extractAgeFromText(textToSend);
+      const ageResult = extractAgeFromText(textToSend, language);
 
       if (ageResult.valid && (isAgeQuestion || !activeProfile.age)) {
         activeProfile.age = ageResult.age;
-        updateProfileField('age', ageResult.age);
+        if (ageResult.ageGroup) {
+          activeProfile.ageGroup = ageResult.ageGroup;
+        }
+        updateProfileField('age', textToSend);
+        if (lastAssistantMsg && !selectedOptionsMap[lastAssistantMsg.id]) {
+          const updatedMap = { ...selectedOptionsMap, [lastAssistantMsg.id]: textToSend };
+          setSelectedOptionsMap(updatedMap);
+          if (activeConversationId) {
+            updateConversationSelectedOptions(activeConversationId, updatedMap, user?.id);
+          }
+        }
       }
 
       const res = await fetch('/api/chat', {
@@ -1547,64 +1558,75 @@ export default function AIAssistantPage() {
                 </div>
 
                 {/* Single-Choice Clickable Options */}
-                {msg.sender === 'assistant' && msg.questionType === 'single_choice' && msg.options && msg.options.length > 0 && (
-                  <div className="pt-2.5 mt-2 border-t border-slate-200/70 space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-                        <span>{t.selectOptionPrompt || 'Please choose an option:'}</span>
-                      </p>
-                      {selectedOptionsMap[msg.id] && (
-                        <button
-                          type="button"
-                          onClick={() => handleResetQuestionChoice(msg.id)}
-                          className="text-[11px] text-teal-700 hover:text-teal-900 font-semibold underline"
-                        >
-                          {t.changeAnswer || 'Change Answer'}
-                        </button>
+                {msg.sender === 'assistant' && msg.questionType === 'single_choice' && msg.options && msg.options.length > 0 && (() => {
+                  const isAgeField = msg.fieldKey === 'age' || msg.fieldKey === 'ageGroup';
+                  const isAlreadyAnswered = !!selectedOptionsMap[msg.id];
+                  const needsAge = !profile?.age && msg.id === latestAssistantMessageId;
+
+                  // Remove the options after the user selects one; display only when the conversation needs the user's age
+                  if (isAgeField && (isAlreadyAnswered || !needsAge)) {
+                    return null;
+                  }
+
+                  return (
+                    <div className="pt-2.5 mt-2 border-t border-slate-200/70 space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                          <Sparkles className="w-3.5 h-3.5 text-teal-600" />
+                          <span>{t.selectOptionPrompt || 'Please choose an option:'}</span>
+                        </p>
+                        {!isAgeField && selectedOptionsMap[msg.id] && (
+                          <button
+                            type="button"
+                            onClick={() => handleResetQuestionChoice(msg.id)}
+                            className="text-[11px] text-teal-700 hover:text-teal-900 font-semibold underline"
+                          >
+                            {t.changeAnswer || 'Change Answer'}
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {msg.options.map((opt, optIdx) => {
+                          const isSelected = selectedOptionsMap[msg.id] === opt.label || selectedOptionsMap[msg.id] === opt.value;
+                          const isDisabled = isTyping || !!selectedOptionsMap[msg.id];
+                          return (
+                            <button
+                              key={optIdx}
+                              type="button"
+                              disabled={isDisabled}
+                              onClick={() => handleSelectOption(msg, opt)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs flex items-center gap-1.5 ${
+                                isDisabled
+                                  ? 'disabled:opacity-60 disabled:cursor-not-allowed'
+                                  : 'cursor-pointer active:scale-[0.98]'
+                              } ${
+                                isSelected
+                                  ? 'bg-teal-700 text-white border-teal-700 ring-2 ring-teal-200 shadow-sm'
+                                  : 'bg-white text-navy-900 border-slate-300 hover:border-teal-500 hover:bg-teal-50/70'
+                              }`}
+                            >
+                              {isSelected && <Check className="w-3 h-3 text-white" />}
+                              <span>{opt.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {/* Skip Action */}
+                      {msg.allowSkip && (
+                        <div className="pt-1 flex justify-end">
+                          <button
+                            type="button"
+                            disabled={isTyping || !!selectedOptionsMap[msg.id]}
+                            onClick={() => handleSkipQuestion(msg)}
+                            className="text-xs text-slate-500 hover:text-slate-800 disabled:opacity-40 font-medium underline inline-flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
+                          >
+                            <span>{t.skipQuestion || 'Skip this question →'}</span>
+                          </button>
+                        </div>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {msg.options.map((opt, optIdx) => {
-                        const isSelected = selectedOptionsMap[msg.id] === opt.label || selectedOptionsMap[msg.id] === opt.value;
-                        const isDisabled = isTyping || !!selectedOptionsMap[msg.id];
-                        return (
-                          <button
-                            key={optIdx}
-                            type="button"
-                            disabled={isDisabled}
-                            onClick={() => handleSelectOption(msg, opt)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all border shadow-2xs flex items-center gap-1.5 ${
-                              isDisabled
-                                ? 'disabled:opacity-60 disabled:cursor-not-allowed'
-                                : 'cursor-pointer active:scale-[0.98]'
-                            } ${
-                              isSelected
-                                ? 'bg-teal-700 text-white border-teal-700 ring-2 ring-teal-200 shadow-sm'
-                                : 'bg-white text-navy-900 border-slate-300 hover:border-teal-500 hover:bg-teal-50/70'
-                            }`}
-                          >
-                            {isSelected && <Check className="w-3 h-3 text-white" />}
-                            <span>{opt.label}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    {/* Skip Action */}
-                    {msg.allowSkip && (
-                      <div className="pt-1 flex justify-end">
-                        <button
-                          type="button"
-                          disabled={isTyping || !!selectedOptionsMap[msg.id]}
-                          onClick={() => handleSkipQuestion(msg)}
-                          className="text-xs text-slate-500 hover:text-slate-800 disabled:opacity-40 font-medium underline inline-flex items-center gap-1 cursor-pointer disabled:cursor-not-allowed"
-                        >
-                          <span>{t.skipQuestion || 'Skip this question →'}</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* Multi-Choice Options with Checkboxes & Confirm */}
                 {msg.sender === 'assistant' && msg.questionType === 'multi_choice' && msg.options && msg.options.length > 0 && (

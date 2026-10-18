@@ -2,8 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { processChatRequest, generateSystemPrompt, generateOfflineSampleReply, checkRateLimit, cleanAiReply } from '../api/chat.js';
-import { stripFillerPhrases, extractAgeFromText, normalizeAgeString, normalizeAgeQuestion } from '../src/utils/responseParser.js';
+import { stripFillerPhrases, extractAgeFromText, normalizeAgeString, normalizeAgeQuestion, determineAgeGroup, parseAgeGroupFromText } from '../src/utils/responseParser.js';
 import { TRANSLATIONS } from '../src/data/translations.js';
+import { AGE_GROUP_OPTIONS } from '../src/data/chatOptions.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -370,20 +371,31 @@ async function runTests() {
     failures++;
   }
 
-  // Test 16: Zero buttons or dropdowns for age question
+  // Test 16: Clickable age-group options displayed beneath age question in English and Hindi
   try {
     const enOffline = generateOfflineSampleReply('Find schemes', 'en', { state: 'Maharashtra' });
-    const noButtons = enOffline.options.length === 0 && enOffline.questionType === 'none';
-    const noMentionOfOptions =
-      !enOffline.reply.toLowerCase().includes('option') &&
-      !enOffline.reply.toLowerCase().includes('select') &&
-      !enOffline.reply.toLowerCase().includes('dropdown') &&
-      !enOffline.reply.toLowerCase().includes('button');
+    const hiOffline = generateOfflineSampleReply('योजनाएं खोजें', 'hi', { state: 'Maharashtra' });
 
-    if (noButtons && noMentionOfOptions) {
-      console.log('✅ Test 16 Passed: Age question strictly has questionType: "none", options: [], and zero option mentions.');
+    const expectedEnLabels = ['Under 18 years', '18–25 years', '26–40 years', '41–60 years', 'Above 60 years'];
+    const expectedHiLabels = ['18 वर्ष से कम', '18–25 वर्ष', '26–40 वर्ष', '41–60 वर्ष', '60 वर्ष से अधिक'];
+
+    const actualEnLabels = Array.isArray(enOffline.options) ? enOffline.options.map((o) => o.label) : [];
+    const actualHiLabels = Array.isArray(hiOffline.options) ? hiOffline.options.map((o) => o.label) : [];
+
+    const enLabelsMatch = expectedEnLabels.every((lbl) => actualEnLabels.includes(lbl));
+    const hiLabelsMatch = expectedHiLabels.every((lbl) => actualHiLabels.includes(lbl));
+
+    const isSingleChoice = enOffline.questionType === 'single_choice' && hiOffline.questionType === 'single_choice';
+
+    if (isSingleChoice && actualEnLabels.length === 5 && actualHiLabels.length === 5 && enLabelsMatch && hiLabelsMatch) {
+      console.log('✅ Test 16 Passed: Age question displays 5 clickable age-group options in English and Hindi.');
     } else {
-      console.error('❌ Test 16 Failed: Age question still references options or includes buttons:', enOffline);
+      console.error('❌ Test 16 Failed: Age question does not display expected 5 options:', {
+        actualEnLabels,
+        actualHiLabels,
+        enType: enOffline.questionType,
+        hiType: hiOffline.questionType,
+      });
       failures++;
     }
   } catch (err) {
@@ -504,11 +516,11 @@ async function runTests() {
       normalized1 === expectedEn &&
       normalized2 === expectedEn &&
       normalizedHi === expectedHi &&
-      cleanedMsg.questionType === 'none' &&
-      cleanedMsg.options.length === 0 &&
+      cleanedMsg.questionType === 'single_choice' &&
+      cleanedMsg.options.length === 5 &&
       cleanedMsg.content === expectedEn
     ) {
-      console.log('✅ Test 19 Passed: Legacy age-group phrases and options safely replaced with user-friendly age prompt.');
+      console.log('✅ Test 19 Passed: Legacy age-group phrases safely replaced and standardized with 5 clickable buttons.');
     } else {
       console.error('❌ Test 19 Failed: Normalization did not replace legacy phrases properly:', {
         normalized1,
@@ -523,8 +535,121 @@ async function runTests() {
     failures++;
   }
 
+  // Test 20: Every clickable age-group button recognized and correctly sets representative age (EN & HI)
+  try {
+    const ageOptionsEn = AGE_GROUP_OPTIONS.en;
+    const ageOptionsHi = AGE_GROUP_OPTIONS.hi;
+
+    let allOptionsPassed = true;
+    for (const opt of ageOptionsEn) {
+      const parsed = extractAgeFromText(opt.label, 'en');
+      if (!parsed.valid || !parsed.age || !parsed.ageGroup) {
+        console.error(`❌ Test 20 Failed for EN option "${opt.label}":`, parsed);
+        allOptionsPassed = false;
+        failures++;
+        break;
+      }
+    }
+
+    for (const opt of ageOptionsHi) {
+      const parsed = extractAgeFromText(opt.label, 'hi');
+      if (!parsed.valid || !parsed.age || !parsed.ageGroup) {
+        console.error(`❌ Test 20 Failed for HI option "${opt.label}":`, parsed);
+        allOptionsPassed = false;
+        failures++;
+        break;
+      }
+    }
+
+    if (allOptionsPassed) {
+      console.log('✅ Test 20 Passed: Every age-group button in English and Hindi recognized with valid representative age and group.');
+    }
+  } catch (err) {
+    console.error('❌ Test 20 Exception:', err);
+    failures++;
+  }
+
+  // Test 21: Typed exact ages correctly mapped to appropriate age group via determineAgeGroup
+  try {
+    const exactAgeTests = [
+      { age: 14, expectedEn: 'Under 18 years', expectedHi: '18 वर्ष से कम' },
+      { age: 21, expectedEn: '18–25 years', expectedHi: '18–25 वर्ष' },
+      { age: 34, expectedEn: '26–40 years', expectedHi: '26–40 वर्ष' },
+      { age: 45, expectedEn: '41–60 years', expectedHi: '41–60 वर्ष' },
+      { age: 68, expectedEn: 'Above 60 years', expectedHi: '60 वर्ष से अधिक' },
+    ];
+
+    let allGroupingsMatch = true;
+    for (const item of exactAgeTests) {
+      const enGroup = determineAgeGroup(item.age, 'en');
+      const hiGroup = determineAgeGroup(item.age, 'hi');
+      const parsedEn = extractAgeFromText(String(item.age), 'en');
+      const parsedHi = extractAgeFromText(String(item.age), 'hi');
+
+      if (
+        enGroup !== item.expectedEn ||
+        hiGroup !== item.expectedHi ||
+        parsedEn.ageGroup !== item.expectedEn ||
+        parsedHi.ageGroup !== item.expectedHi
+      ) {
+        console.error(`❌ Test 21 Failed for age ${item.age}:`, {
+          enGroup,
+          expectedEn: item.expectedEn,
+          hiGroup,
+          expectedHi: item.expectedHi,
+          parsedEn,
+          parsedHi,
+        });
+        allGroupingsMatch = false;
+        failures++;
+        break;
+      }
+    }
+
+    if (allGroupingsMatch) {
+      console.log('✅ Test 21 Passed: Typed exact ages (14, 21, 34, 45, 68) accurately mapped to appropriate age groups in EN and HI.');
+    }
+  } catch (err) {
+    console.error('❌ Test 21 Exception:', err);
+    failures++;
+  }
+
+  // Test 22: AI Assistant eligibility flow proceeds directly to Step 3 (Occupation) after selecting age group or typing age
+  try {
+    const profileWithState = { state: 'Karnataka' };
+
+    // Case A: User clicks "41–60 years" option
+    const resOptionClick = generateOfflineSampleReply('41–60 years', 'en', profileWithState);
+    // Case B: User clicks Hindi "18–25 वर्ष" option
+    const resOptionClickHi = generateOfflineSampleReply('18–25 वर्ष', 'hi', profileWithState);
+    // Case C: User types exact age "45"
+    const resTypedAge = generateOfflineSampleReply('45', 'en', profileWithState);
+    // Case D: User types natural phrase "I am 34 years old"
+    const resNaturalPhrase = generateOfflineSampleReply('I am 34 years old', 'en', profileWithState);
+
+    const caseAOk = resOptionClick.fieldKey === 'occupation' && resOptionClick.questionType === 'single_choice';
+    const caseBOk = resOptionClickHi.fieldKey === 'occupation' && resOptionClickHi.questionType === 'single_choice';
+    const caseCOk = resTypedAge.fieldKey === 'occupation' && resTypedAge.questionType === 'single_choice';
+    const caseDOk = resNaturalPhrase.fieldKey === 'occupation' && resNaturalPhrase.questionType === 'single_choice';
+
+    if (caseAOk && caseBOk && caseCOk && caseDOk) {
+      console.log('✅ Test 22 Passed: AI Assistant eligibility flow proceeds directly to Occupation without asking for age again across all input modes.');
+    } else {
+      console.error('❌ Test 22 Failed: One or more cases did not proceed to occupation:', {
+        caseA: resOptionClick.fieldKey,
+        caseB: resOptionClickHi.fieldKey,
+        caseC: resTypedAge.fieldKey,
+        caseD: resNaturalPhrase.fieldKey,
+      });
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 22 Exception:', err);
+    failures++;
+  }
+
   if (failures === 0) {
-    console.log('\n🎉 ALL 19 CHATBOT TESTS PASSED SUCCESSFULLY!');
+    console.log('\n🎉 ALL 22 CHATBOT TESTS PASSED SUCCESSFULLY!');
   } else {
     console.error(`\n🚨 ${failures} TESTS FAILED.`);
     process.exit(1);

@@ -75,32 +75,48 @@ async function runGuidedAssistantTests() {
     failures++;
   }
 
-  // Test 3: One Question at a Time & Profile Skipping (State known -> asks Age without buttons)
+  // Test 3: One Question at a Time & Profile Skipping (State known -> asks Age with clickable buttons)
   try {
     const profileWithState = { state: 'Uttar Pradesh' };
     const reply = generateOfflineSampleReply('Guide me to schemes', 'en', profileWithState);
+    const expectedLabels = ['Under 18 years', '18–25 years', '26–40 years', '41–60 years', 'Above 60 years'];
+    const actualLabels = Array.isArray(reply.options) ? reply.options.map((o) => o.label) : [];
+    const hasAllLabels = expectedLabels.every((lbl) => actualLabels.includes(lbl));
+
     if (
-      reply.questionType === 'none' &&
-      reply.fieldKey === 'age' &&
+      reply.questionType === 'single_choice' &&
+      (reply.fieldKey === 'age' || reply.fieldKey === 'ageGroup') &&
       reply.reply === 'Please tell me your age so I can find government schemes that are relevant to you.' &&
-      Array.isArray(reply.options) &&
-      reply.options.length === 0
+      actualLabels.length === 5 &&
+      hasAllLabels
     ) {
-      console.log('✅ Test 3 Passed: State known -> proceeded to natural Age question without age-group buttons.');
+      console.log('✅ Test 3 Passed: State known -> proceeded to Age question with 5 clickable age-group buttons.');
     } else {
-      console.error('❌ Test 3 Failed: Expected natural age prompt without buttons, got:', reply);
+      console.error('❌ Test 3 Failed: Expected age prompt with 5 buttons, got:', reply);
       failures++;
     }
 
-    // Also verify natural language age entry progresses directly to occupation
-    const replyWithAge = generateOfflineSampleReply('I am 34 years old', 'en', profileWithState);
+    // Verify selecting an age-group option progresses directly to occupation
+    const replyWithAgeGroup = generateOfflineSampleReply('18–25 years', 'en', profileWithState);
     if (
-      replyWithAge.fieldKey === 'occupation' &&
-      replyWithAge.questionType === 'single_choice'
+      replyWithAgeGroup.fieldKey === 'occupation' &&
+      replyWithAgeGroup.questionType === 'single_choice'
     ) {
-      console.log('✅ Test 3b Passed: Natural age entry ("I am 34 years old") progressed conversation directly to Occupation.');
+      console.log('✅ Test 3b Passed: Age group selection ("18–25 years") progressed conversation directly to Occupation.');
     } else {
-      console.error('❌ Test 3b Failed: Natural age entry did not advance to occupation:', replyWithAge);
+      console.error('❌ Test 3b Failed: Age group selection did not advance to occupation:', replyWithAgeGroup);
+      failures++;
+    }
+
+    // Verify typed exact age progresses directly to occupation
+    const replyWithTypedAge = generateOfflineSampleReply('45', 'en', profileWithState);
+    if (
+      replyWithTypedAge.fieldKey === 'occupation' &&
+      replyWithTypedAge.questionType === 'single_choice'
+    ) {
+      console.log('✅ Test 3c Passed: Typed exact age ("45") progressed conversation directly to Occupation.');
+    } else {
+      console.error('❌ Test 3c Failed: Typed age did not advance to occupation:', replyWithTypedAge);
       failures++;
     }
   } catch (err) {
