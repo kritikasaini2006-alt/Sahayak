@@ -88,6 +88,8 @@ export const TRANSLATIONS = {
       'What benefits and toolkits are offered under PM Vishwakarma?',
     ],
     welcomeMessage: 'Hello! 👋 What do you need help with today?',
+    agePrompt: 'Please tell me your age so I can find government schemes that are relevant to you.',
+    agePromptInvalid: 'Please enter a valid age between 1 and 120 so I can find government schemes that are relevant to you.',
   },
   hi: {
     title: 'सहायक नागरिक AI सहायक',
@@ -168,6 +170,8 @@ export const TRANSLATIONS = {
       'पीएम विश्वकर्मा योजना में ₹15,000 टूलकिट और अनुदान कैसे प्राप्त करें?',
     ],
     welcomeMessage: 'नमस्ते! 👋 आज आपको किस बारे में मदद चाहिए?',
+    agePrompt: 'कृपया मुझे अपनी उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।',
+    agePromptInvalid: 'कृपया 1 से 120 वर्ष के बीच एक मान्य उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।',
   },
 };
 

@@ -75,19 +75,32 @@ async function runGuidedAssistantTests() {
     failures++;
   }
 
-  // Test 3: One Question at a Time & Profile Skipping (State known -> asks Age)
+  // Test 3: One Question at a Time & Profile Skipping (State known -> asks Age without buttons)
   try {
     const profileWithState = { state: 'Uttar Pradesh' };
     const reply = generateOfflineSampleReply('Guide me to schemes', 'en', profileWithState);
     if (
-      reply.questionType === 'single_choice' &&
-      reply.fieldKey === 'ageGroup' &&
+      reply.questionType === 'none' &&
+      reply.fieldKey === 'age' &&
+      reply.reply === 'Please tell me your age so I can find government schemes that are relevant to you.' &&
       Array.isArray(reply.options) &&
-      reply.options.some((o) => o.value.includes('18_35'))
+      reply.options.length === 0
     ) {
-      console.log('✅ Test 3 Passed: Automatically skipped State and proceeded to Age group when State is known.');
+      console.log('✅ Test 3 Passed: State known -> proceeded to natural Age question without age-group buttons.');
     } else {
-      console.error('❌ Test 3 Failed: Expected ageGroup question when state is known, got:', reply);
+      console.error('❌ Test 3 Failed: Expected natural age prompt without buttons, got:', reply);
+      failures++;
+    }
+
+    // Also verify natural language age entry progresses directly to occupation
+    const replyWithAge = generateOfflineSampleReply('I am 34 years old', 'en', profileWithState);
+    if (
+      replyWithAge.fieldKey === 'occupation' &&
+      replyWithAge.questionType === 'single_choice'
+    ) {
+      console.log('✅ Test 3b Passed: Natural age entry ("I am 34 years old") progressed conversation directly to Occupation.');
+    } else {
+      console.error('❌ Test 3b Failed: Natural age entry did not advance to occupation:', replyWithAge);
       failures++;
     }
   } catch (err) {

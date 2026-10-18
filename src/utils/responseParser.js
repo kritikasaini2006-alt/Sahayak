@@ -233,6 +233,176 @@ export function stripFillerPhrases(text) {
 }
 
 /**
+ * Safely extracts a citizen's age from natural language text in English or Hindi.
+ * Supports Devanagari numerals, natural phrases ("I am 34 years old", "मेरी उम्र 34 साल है", "34"),
+ * and validates that the age is plausible (between 1 and 120).
+ *
+ * @param {string} text - User input prompt
+ * @returns {{ valid: boolean, age: number|null, reason?: string, rawNum?: number }}
+ */
+export function extractAgeFromText(text) {
+  if (!text || typeof text !== 'string') {
+    return { valid: false, age: null, reason: 'empty' };
+  }
+
+  // 1. Convert Devanagari numerals to standard digits (०-९ -> 0-9)
+  const devanagariDigits = ['०', '१', '२', '३', '४', '५', '६', '७', '८', '९'];
+  let normalized = text;
+  devanagariDigits.forEach((d, idx) => {
+    normalized = normalized.replaceAll(d, String(idx));
+  });
+
+  const trimmed = normalized.trim().toLowerCase();
+
+  // Guard: Negative numbers (e.g. "-5", "- 10", "minus 5")
+  if (/(?:^|\s)-+\s*\d+|\bminus\b|\bnegative\b/i.test(trimmed)) {
+    return { valid: false, age: null, reason: 'negative_number' };
+  }
+
+  // Guard: If the text is specifically asking about third-party scheme criteria (e.g. girl child under 10 in Sukanya),
+  // do not treat as citizen's own age unless explicitly prefixed with "I am" or "my age"
+  const isDaughterQuery = /(?:girl\s*child|daughter|child|sukanya|लड़की|बेटी|बच्ची)/i.test(trimmed);
+  const isSelfExplicit = /(?:i(?:\s*a?m|'m)\s+|my\s+age|मेरी\s*(?:उम्र|आयु)|मैं\s*\d+\s*(?:साल|वर्ष))/i.test(trimmed);
+  if (isDaughterQuery && !isSelfExplicit) {
+    return { valid: false, age: null, reason: 'daughter_context' };
+  }
+
+  // 2. Pure number (e.g. "34", "42")
+  const pureNumMatch = trimmed.match(/^(\d{1,3})$/);
+  if (pureNumMatch) {
+    const num = parseInt(pureNumMatch[1], 10);
+    if (num >= 1 && num <= 120) {
+      return { valid: true, age: num };
+    }
+    return { valid: false, age: null, reason: 'out_of_range', rawNum: num };
+  }
+
+  // 3. Explicit age phrase patterns in English and Hindi
+  // English: "I am 34 years old", "my age is 34", "age 34", "34 yrs", "34 years", "34 yo", "around 34"
+  // Hindi: "मेरी उम्र 34 साल है", "34 वर्ष", "34 साल", "उम्र 34", "मैं 34 साल का हूँ"
+  const explicitPatterns = [
+    /(?:i(?:\s*a?m|'m)\s+(?:around\s+|about\s+)?|my\s+age\s+(?:is\s+)?|age\s*(?:is|:)?\s*)(\d{1,3})\s*(?:years?\s*(?:old)?|yrs?|yo)?/i,
+    /(?:मेरी\s*(?:उम्र|आयु)\s*(?:है|:)?\s*|उम्र\s*(?:है|:)?\s*|आयु\s*(?:है|:)?\s*)(\d{1,3})\s*(?:साल|वर्ष)?/u,
+    /मैं\s+(\d{1,3})\s*(?:साल|वर्ष)\s*क[ाी]\s*हूँ/u,
+    /(?:around|about|लगभग)\s*(\d{1,3})\s*(?:years?|yrs?|साल|वर्ष)/i,
+    /\b(\d{1,3})\s*(?:years?\s*(?:old)?|yrs?|yo|साल|वर्ष)\b/i,
+  ];
+
+  for (const regex of explicitPatterns) {
+    const match = trimmed.match(regex);
+    if (match && match[1]) {
+      const num = parseInt(match[1], 10);
+      if (num >= 1 && num <= 120) {
+        return { valid: true, age: num };
+      }
+      return { valid: false, age: null, reason: 'out_of_range', rawNum: num };
+    }
+  }
+
+  // 4. Standalone 1-3 digit number if text is brief (< 30 chars) and not currency/portal/phone
+  if (trimmed.length <= 30 && !trimmed.includes('₹') && !trimmed.includes('rs') && !trimmed.includes('rupee')) {
+    const looseMatch = trimmed.match(/\b(\d{1,3})\b/);
+    if (looseMatch && looseMatch[1]) {
+      const num = parseInt(looseMatch[1], 10);
+      if (num >= 1 && num <= 120) {
+        return { valid: true, age: num };
+      }
+      return { valid: false, age: null, reason: 'out_of_range', rawNum: num };
+    }
+  }
+
+  // Check if an out-of-range number was provided
+  const anyNumMatch = trimmed.match(/\b(\d+)\b/);
+  if (anyNumMatch) {
+    const num = parseInt(anyNumMatch[1], 10);
+    if (num > 120 || num < 1) {
+      return { valid: false, age: null, reason: 'out_of_range', rawNum: num };
+    }
+  }
+
+  return { valid: false, age: null, reason: 'not_found' };
+}
+
+/**
+ * Normalizes any legacy age-group prompt strings into the user's simple, friendly prompt:
+ * "Please tell me your age so I can find government schemes that are relevant to you."
+ */
+export function normalizeAgeString(text, language = 'en') {
+  if (!text || typeof text !== 'string') return text;
+
+  const isAgeGroupQuery =
+    /next,?\s*please\s+let\s+me\s+know\s+your\s+age\s+group/i.test(text) ||
+    /could\s+you\s+please\s+select\s+your\s+(?:correct\s+)?age\s+group/i.test(text) ||
+    /select\s+your\s+(?:correct\s+)?age\s+group\s+from\s+the\s+options/i.test(text) ||
+    /please\s+select\s+your\s+\*?\*?age\s+group\*?\*?/i.test(text) ||
+    /(?:options\s+below.*(?:find\s+(?:the\s+best\s+)?schemes|age)|match\s+your\s+life\s+stage)/i.test(text) ||
+    /कृपया\s+अपना\s+\*?\*?आयु\s*वर्ग\*?\*?\s*चुनें/u.test(text) ||
+    /नीचे\s+दिए\s+गए\s+विकल्पों\s+में\s+से.*आयु/u.test(text) ||
+    /आयु\s*वर्ग\s*चुनें/u.test(text);
+
+  if (isAgeGroupQuery) {
+    return language === 'hi'
+      ? 'कृपया मुझे अपनी उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।'
+      : 'Please tell me your age so I can find government schemes that are relevant to you.';
+  }
+
+  return text;
+}
+
+/**
+ * Standardizes any age-related question object to eliminate non-existent options/buttons
+ * and enforce the canonical friendly age question.
+ */
+export function normalizeAgeQuestion(message, language = 'en') {
+  if (!message || typeof message !== 'object') return message;
+
+  const rawText = String(message.reply || message.content || message.text || '');
+  const isAgeField = message.fieldKey === 'age' || message.fieldKey === 'ageGroup';
+  const hasAgeKeywords =
+    /tell\s+me\s+your\s+age/i.test(rawText) ||
+    /अपनी\s*उम्र\s*बताएं/u.test(rawText) ||
+    /next,?\s*please\s+let\s+me\s+know\s+your\s+age\s+group/i.test(rawText) ||
+    /could\s+you\s+please\s+select\s+your\s+(?:correct\s+)?age\s+group/i.test(rawText) ||
+    /select\s+your\s+(?:correct\s+)?age\s+group\s+from\s+the\s+options/i.test(rawText) ||
+    /please\s+select\s+your\s+\*?\*?age\s+group\*?\*?/i.test(rawText) ||
+    /match\s+your\s+life\s+stage/i.test(rawText) ||
+    /कृपया\s+अपना\s+\*?\*?आयु\s*वर्ग\*?\*?\s*चुनें/u.test(rawText) ||
+    /नीचे\s+दिए\s+गए\s+विकल्पों\s+में\s+से.*आयु/u.test(rawText) ||
+    /आयु\s*वर्ग\s*चुनें/u.test(rawText);
+
+  const isSchemeRecommendation = Array.isArray(message.recommendedSchemes) && message.recommendedSchemes.length > 0;
+
+  if ((isAgeField || hasAgeKeywords) && !isSchemeRecommendation) {
+    const isInvalidRetry = /\b(?:valid\s+age|between\s+1\s+and\s+120|मान्य\s+उम्र|1\s*से\s*120)\b/i.test(rawText);
+
+    if (isInvalidRetry) {
+      const invalidReply =
+        language === 'hi'
+          ? 'कृपया 1 से 120 वर्ष के बीच एक मान्य उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।'
+          : 'Please enter a valid age between 1 and 120 so I can find government schemes that are relevant to you.';
+      if (message.reply !== undefined) message.reply = invalidReply;
+      if (message.text !== undefined) message.text = invalidReply;
+      if (message.content !== undefined) message.content = invalidReply;
+    } else {
+      const standardReply =
+        language === 'hi'
+          ? 'कृपया मुझे अपनी उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।'
+          : 'Please tell me your age so I can find government schemes that are relevant to you.';
+      if (message.reply !== undefined) message.reply = standardReply;
+      if (message.text !== undefined) message.text = standardReply;
+      if (message.content !== undefined) message.content = standardReply;
+    }
+
+    message.questionType = 'none';
+    message.fieldKey = 'age';
+    message.options = [];
+    message.allowSkip = false;
+  }
+
+  return message;
+}
+
+/**
  * Universal Parser: converts any raw Gemini / server output into a standardized message object.
  *
  * @param {string|object} rawInput - Server response or text string.
@@ -293,16 +463,19 @@ export function parseStructuredResponse(rawInput, language = 'en') {
     let sanitizedSchemes = sanitizeSchemes(rawInput.recommendedSchemes);
 
     // Inject default options if fieldKey is known and options were empty
+    // Inject default options if fieldKey is known and options were empty (never inject buttons for age)
     if (
       (sanitizedQuestionType === 'single_choice' || sanitizedQuestionType === 'multi_choice') &&
       sanitizedOptions.length === 0 &&
       sanitizedFieldKey &&
+      sanitizedFieldKey !== 'age' &&
+      sanitizedFieldKey !== 'ageGroup' &&
       DEFAULT_OPTIONS_BY_FIELD[sanitizedFieldKey]
     ) {
       sanitizedOptions = DEFAULT_OPTIONS_BY_FIELD[sanitizedFieldKey][language] || DEFAULT_OPTIONS_BY_FIELD[sanitizedFieldKey].en;
     }
 
-    return {
+    return normalizeAgeQuestion({
       reply: cleanReply,
       questionType: sanitizedQuestionType,
       fieldKey: sanitizedFieldKey,
@@ -313,7 +486,7 @@ export function parseStructuredResponse(rawInput, language = 'en') {
       demoReason: rawInput.demoReason,
       sources: rawInput.sources || defaultResult.sources,
       modelUsed: rawInput.modelUsed,
-    };
+    }, language);
   }
 
   // 2. If rawInput is a string
@@ -337,7 +510,7 @@ export function parseStructuredResponse(rawInput, language = 'en') {
   }
 
   // 3. Fallback: Pure plain text response (never wrap in JSON keys)
-  return {
+  return normalizeAgeQuestion({
     reply: strInput,
     questionType: 'none',
     fieldKey: null,
@@ -346,7 +519,7 @@ export function parseStructuredResponse(rawInput, language = 'en') {
     recommendedSchemes: [],
     isDemoMode: false,
     sources: defaultResult.sources,
-  };
+  }, language);
 }
 
 /**
@@ -356,12 +529,14 @@ export function parseStructuredResponse(rawInput, language = 'en') {
 export function normalizeMessage(msg, language = 'en') {
   if (!msg || typeof msg !== 'object') return msg;
 
+  let resultMsg = msg;
+
   if (msg.sender === 'assistant' && typeof msg.text === 'string') {
     const trimmed = msg.text.trim();
     if (trimmed.startsWith('{') || trimmed.startsWith('```') || trimmed.includes('"reply"')) {
       const parsed = parseStructuredResponse(trimmed, language);
       if (parsed.reply && parsed.reply !== trimmed) {
-        return {
+        resultMsg = {
           ...msg,
           text: parsed.reply,
           originalText: parsed.reply,
@@ -375,5 +550,5 @@ export function normalizeMessage(msg, language = 'en') {
     }
   }
 
-  return msg;
+  return normalizeAgeQuestion(resultMsg, language);
 }

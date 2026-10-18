@@ -80,8 +80,8 @@ export class OfflineReply {
 }
 
 import { DEFAULT_OPTIONS_BY_FIELD } from '../src/data/chatOptions.js';
-import { parseStructuredResponse } from '../src/utils/responseParser.js';
-export { DEFAULT_OPTIONS_BY_FIELD, parseStructuredResponse };
+import { parseStructuredResponse, extractAgeFromText, normalizeAgeString, normalizeAgeQuestion } from '../src/utils/responseParser.js';
+export { DEFAULT_OPTIONS_BY_FIELD, parseStructuredResponse, extractAgeFromText, normalizeAgeString, normalizeAgeQuestion };
 
 /**
  * Generates the structured system instruction for the AI assistant.
@@ -127,7 +127,7 @@ You MUST ALWAYS respond with a strictly valid JSON object matching this schema:
 {
   "reply": "(string) Courteous, accessible message in the primary language. Markdown formatting (bold, bullet points, links) is supported.",
   "questionType": "'none' | 'single_choice' | 'multi_choice' | 'recommendations'",
-  "fieldKey": "'state' | 'ageGroup' | 'occupation' | 'incomeRange' | 'farmerLandholding' | 'artisanTrade' | 'hasGirlChildUnder10' | 'hasDisability' | 'rationCard' | 'none'",
+  "fieldKey": "'state' | 'age' | 'ageGroup' | 'occupation' | 'incomeRange' | 'farmerLandholding' | 'artisanTrade' | 'hasGirlChildUnder10' | 'hasDisability' | 'rationCard' | 'none'",
   "options": [
     { "label": "(string) Display text for the button/chip in the primary language", "value": "(string) internal value code" }
   ],
@@ -182,7 +182,16 @@ OPERATIONAL PRINCIPLES:
    - Do NOT ask questions that are already answered in the Citizen Profile above or earlier conversation turns! Skip them automatically.
    - Guided Flow Progression:
      * Step 1: State or Union Territory (fieldKey='state', questionType='single_choice')
-     * Step 2: Age group (fieldKey='ageGroup', questionType='single_choice')
+     * Step 2: Citizen Age (fieldKey='age', questionType='none', options=[])
+       - When asking for the citizen's age:
+         * In English, use this simple, user-friendly message:
+           "Please tell me your age so I can find government schemes that are relevant to you."
+         * In Hindi, use this simple, user-friendly message:
+           "कृपया मुझे अपनी उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।"
+         * Do NOT say "select your age group" and do NOT refer to options, buttons, or dropdowns. Set questionType='none', fieldKey='age', options=[]. Do NOT add age buttons or chips unless explicitly requested.
+         * Allow citizens to enter their age naturally (e.g. "34", "I am 34 years old", "मेरी उम्र 34 साल है", "34 वर्ष").
+         * Validate the age reasonably (between 1 and 120 years). If valid, continue immediately to the next question (occupation) without repeatedly asking for age.
+         * If the user enters an unclear or invalid age (e.g. "abc", "150", "-5"), politely ask them to enter their age again (e.g. "Please enter a valid age between 1 and 120 so I can find government schemes that are relevant to you." / Hindi: "कृपया 1 से 120 वर्ष के बीच एक मान्य उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।").
      * Step 3: Primary occupation or livelihood (fieldKey='occupation', questionType='single_choice')
      * Step 4: Scheme-specific criterion (e.g. landholding for farmer, artisan trade for craftsman, girl child under 10 for daughter, or annual income if relevant for BPL)
      * Step 5: Final Scheme Recommendations (questionType='recommendations') with tailored schemes populated in 'recommendedSchemes'.
@@ -204,10 +213,13 @@ OPERATIONAL PRINCIPLES:
  * Strips robotic filler phrases and redundant greetings from AI replies so the response
  * answers the user's question directly, clearly, and immediately.
  */
-export function cleanAiReply(reply, { isFollowUp = false, isGreetingPrompt = false } = {}) {
+export function cleanAiReply(reply, { isFollowUp = false, isGreetingPrompt = false, language = 'en' } = {}) {
   if (!reply || typeof reply !== 'string') return reply;
 
   let cleaned = reply.trim();
+
+  // Normalize legacy age-group prompt phrases to standard friendly question
+  cleaned = normalizeAgeString(cleaned, language);
 
   // 1. Remove filler opening phrases (English & Hindi)
   const fillerPatterns = [
@@ -422,15 +434,38 @@ export function generateOfflineSampleReply(prompt, language = 'en', profile = nu
     });
   }
 
-  if (!profile?.age) {
+  // Check if current prompt supplies citizen age
+  const extractedAge = extractAgeFromText(prompt);
+  let effectiveAge = profile?.age;
+  if (!effectiveAge && extractedAge.valid) {
+    effectiveAge = extractedAge.age;
+    if (profile && typeof profile === 'object') profile.age = effectiveAge;
+  }
+
+  if (!effectiveAge) {
+    // If user attempted to enter an invalid age (e.g. 150, 0, or negative)
+    const isNumberAttempt = /^\d+$/.test(q) || /(?:year|yr|साल|वर्ष|age|उम्र|आयु)/i.test(q);
+    if (isNumberAttempt && !extractedAge.valid) {
+      return new OfflineReply({
+        reply:
+          language === 'hi'
+            ? 'कृपया 1 से 120 वर्ष के बीच एक मान्य उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।'
+            : 'Please enter a valid age between 1 and 120 so I can find government schemes that are relevant to you.',
+        questionType: 'none',
+        fieldKey: 'age',
+        options: [],
+        allowSkip: false,
+      });
+    }
+
     return new OfflineReply({
       reply:
         language === 'hi'
-          ? 'कृपया अपना **आयु वर्ग** चुनें ताकि हम उम्र के आधार पर लागू योजनाओं (जैसे युवा, वयस्क या वरिष्ठ नागरिक पेंशन) की जांच कर सकें:'
-          : 'Please select your **Age Group** so we can verify schemes targeted to youth, adults, or senior citizens:',
-      questionType: 'single_choice',
-      fieldKey: 'ageGroup',
-      options: DEFAULT_OPTIONS_BY_FIELD.ageGroup[language] || DEFAULT_OPTIONS_BY_FIELD.ageGroup.en,
+          ? 'कृपया मुझे अपनी उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।'
+          : 'Please tell me your age so I can find government schemes that are relevant to you.',
+      questionType: 'none',
+      fieldKey: 'age',
+      options: [],
       allowSkip: false,
     });
   }
@@ -467,10 +502,18 @@ export function generateOfflineSampleReply(prompt, language = 'en', profile = nu
 export async function processChatRequest({
   prompt,
   history = [],
+  conversationHistory = [],
   language = 'en',
   profile = null,
   clientIp = null,
 }) {
+  const activeHistory =
+    Array.isArray(history) && history.length > 0
+      ? history
+      : Array.isArray(conversationHistory)
+      ? conversationHistory
+      : [];
+
   // 1. Rate limiting check
   if (clientIp) {
     const rateCheck = checkRateLimit(clientIp);
@@ -524,6 +567,49 @@ export async function processChatRequest({
     };
   }
 
+  // Check if current prompt supplies citizen age
+  const promptAge = extractAgeFromText(prompt);
+  if (sanitizedProfile && !sanitizedProfile.age && promptAge.valid) {
+    sanitizedProfile.age = promptAge.age;
+  }
+
+  // Check if previous assistant message in history asked for age
+  const lastAssistantMsgInHistory = activeHistory.length > 0
+    ? [...activeHistory].reverse().find((m) => m && (m.role === 'model' || m.role === 'assistant' || m.sender === 'assistant'))
+    : null;
+  const lastAssistantText =
+    lastAssistantMsgInHistory?.content ||
+    lastAssistantMsgInHistory?.reply ||
+    lastAssistantMsgInHistory?.text ||
+    lastAssistantMsgInHistory?.parts?.[0]?.text ||
+    '';
+  const wasAskingAge =
+    lastAssistantMsgInHistory?.fieldKey === 'age' ||
+    lastAssistantMsgInHistory?.fieldKey === 'ageGroup' ||
+    /tell me your age|अपनी उम्र बताएं|age group|आयु वर्ग/i.test(lastAssistantText);
+
+  // If previous turn asked for age, but user entered invalid age or unclear number
+  if (wasAskingAge && (!sanitizedProfile || !sanitizedProfile.age) && !promptAge.valid) {
+    const invalidReply =
+      language === 'hi'
+        ? 'कृपया 1 से 120 वर्ष के बीच एक मान्य उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।'
+        : 'Please enter a valid age between 1 and 120 so I can find government schemes that are relevant to you.';
+
+    return {
+      status: 200,
+      body: {
+        reply: invalidReply,
+        questionType: 'none',
+        fieldKey: 'age',
+        options: [],
+        allowSkip: false,
+        recommendedSchemes: [],
+        isDemoMode: false,
+        sources: ['National Portal of India', 'myscheme.gov.in'],
+      },
+    };
+  }
+
   const apiKey = process.env.GEMINI_API_KEY ? process.env.GEMINI_API_KEY.trim() : '';
 
   // If no Gemini API key is configured on the server, return clear configuration error
@@ -548,12 +634,13 @@ export async function processChatRequest({
   const contents = [];
 
   // Add conversation history (up to last 6 turns, each message text capped at 1,000 chars)
-  if (Array.isArray(history) && history.length > 0) {
-    history.slice(-6).forEach((msg) => {
-      if (msg && typeof msg.text === 'string' && msg.text.trim()) {
+  if (Array.isArray(activeHistory) && activeHistory.length > 0) {
+    activeHistory.slice(-6).forEach((msg) => {
+      const msgText = msg.content || msg.text || '';
+      if (typeof msgText === 'string' && msgText.trim()) {
         contents.push({
-          role: msg.sender === 'user' ? 'user' : 'model',
-          parts: [{ text: msg.text.slice(0, 1000).trim() }],
+          role: msg.sender === 'user' || msg.role === 'user' ? 'user' : 'model',
+          parts: [{ text: msgText.slice(0, 1000).trim() }],
         });
       }
     });
@@ -655,17 +742,22 @@ export async function processChatRequest({
 
       const isFollowUp = Array.isArray(history) && history.length > 0;
       const isGreetingPrompt = /^(?:hello|hi|hey|namaste|नमस्ते|नमस्कार|प्रणाम)\b/i.test(prompt.trim());
-      const cleanedReply = cleanAiReply(structured.reply, { isFollowUp, isGreetingPrompt });
+      const cleanedReply = cleanAiReply(structured.reply, { isFollowUp, isGreetingPrompt, language });
+
+      const finalStructured = normalizeAgeQuestion({
+        ...structured,
+        reply: cleanedReply,
+      }, language);
 
       return {
         status: 200,
         body: {
-          reply: cleanedReply,
-          questionType: structured.questionType,
-          fieldKey: structured.fieldKey,
-          options: structured.options,
-          allowSkip: structured.allowSkip,
-          recommendedSchemes: structured.recommendedSchemes,
+          reply: finalStructured.reply,
+          questionType: finalStructured.questionType,
+          fieldKey: finalStructured.fieldKey,
+          options: finalStructured.options,
+          allowSkip: finalStructured.allowSkip,
+          recommendedSchemes: finalStructured.recommendedSchemes,
           isDemoMode: false,
           modelUsed: currentModel,
           sources: ['Official Gazette Rules', 'National Portal of India', 'myscheme.gov.in'],

@@ -30,7 +30,7 @@ import { DEFAULT_OPTIONS_BY_FIELD } from '../data/chatOptions';
 import { SCHEME_TRANSLATIONS } from '../data/schemeTranslations';
 import { MOCK_SCHEMES } from '../data/mockSchemes';
 import { loadCitizenProfile, saveCitizenProfile } from '../utils/eligibilityEngine';
-import { parseStructuredResponse } from '../utils/responseParser';
+import { parseStructuredResponse, extractAgeFromText } from '../utils/responseParser';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from '../context/LanguageContext';
@@ -817,13 +817,23 @@ export default function AIAssistantPage() {
       if (!isOther) {
         updated.state = value;
       }
-    } else if (fieldKey === 'ageGroup') {
-      const v = String(value).toLowerCase();
-      if (v.includes('18') && (v.includes('35') || v.includes('40'))) updated.age = 28;
-      else if (v.includes('36') || v.includes('41')) updated.age = 45;
-      else if (v.includes('60') && (v.includes('69') || v.includes('senior'))) updated.age = 65;
-      else if (v.includes('70') || v.includes('above_60')) updated.age = 72;
-      else if (v.includes('under') || v.includes('कम')) updated.age = 16;
+    } else if (fieldKey === 'age' || fieldKey === 'ageGroup') {
+      const num = Number(value);
+      if (!isNaN(num) && num >= 1 && num <= 120) {
+        updated.age = num;
+      } else {
+        const ageResult = extractAgeFromText(String(value));
+        if (ageResult.valid) {
+          updated.age = ageResult.age;
+        } else {
+          const v = String(value).toLowerCase();
+          if (v.includes('18') && (v.includes('35') || v.includes('40'))) updated.age = 28;
+          else if (v.includes('36') || v.includes('41')) updated.age = 45;
+          else if (v.includes('60') && (v.includes('69') || v.includes('senior'))) updated.age = 65;
+          else if (v.includes('70') || v.includes('above_60')) updated.age = 72;
+          else if (v.includes('under') || v.includes('कम')) updated.age = 16;
+        }
+      }
     } else if (fieldKey === 'occupation') {
       updated.occupation = value;
     } else if (fieldKey === 'farmerLandholding') {
@@ -949,6 +959,22 @@ export default function AIAssistantPage() {
         text: m.text,
       }));
 
+      // Check if user is answering an age question or providing age
+      const lastAssistantMsg = [...messages].reverse().find((m) => m.sender === 'assistant');
+      const isAgeQuestion = lastAssistantMsg && (
+        lastAssistantMsg.fieldKey === 'age' ||
+        lastAssistantMsg.fieldKey === 'ageGroup' ||
+        /tell me your age|अपनी उम्र बताएं|age group|आयु वर्ग/i.test(lastAssistantMsg.text || '')
+      );
+
+      let activeProfile = profile ? { ...profile } : {};
+      const ageResult = extractAgeFromText(textToSend);
+
+      if (ageResult.valid && (isAgeQuestion || !activeProfile.age)) {
+        activeProfile.age = ageResult.age;
+        updateProfileField('age', ageResult.age);
+      }
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -959,7 +985,7 @@ export default function AIAssistantPage() {
           prompt: textToSend,
           history: historyPayload,
           language,
-          profile,
+          profile: activeProfile,
         }),
       });
 

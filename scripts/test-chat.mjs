@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { processChatRequest, generateSystemPrompt, generateOfflineSampleReply, checkRateLimit, cleanAiReply } from '../api/chat.js';
-import { stripFillerPhrases } from '../src/utils/responseParser.js';
+import { stripFillerPhrases, extractAgeFromText, normalizeAgeString, normalizeAgeQuestion } from '../src/utils/responseParser.js';
 import { TRANSLATIONS } from '../src/data/translations.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -343,8 +343,188 @@ async function runTests() {
     failures++;
   }
 
+  // Test 15: Exact friendly age prompt in English and Hindi
+  try {
+    const enOffline = generateOfflineSampleReply('Tell me schemes for Uttar Pradesh', 'en', { state: 'Uttar Pradesh' });
+    const hiOffline = generateOfflineSampleReply('उत्तर प्रदेश के लिए योजनाएं बताएं', 'hi', { state: 'Uttar Pradesh' });
+
+    const expectedEn = 'Please tell me your age so I can find government schemes that are relevant to you.';
+    const expectedHi = 'कृपया मुझे अपनी उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।';
+
+    const promptEnOk = enOffline.reply.includes(expectedEn) && TRANSLATIONS.en.agePrompt === expectedEn;
+    const promptHiOk = hiOffline.reply.includes(expectedHi) && TRANSLATIONS.hi.agePrompt === expectedHi;
+
+    if (promptEnOk && promptHiOk) {
+      console.log('✅ Test 15 Passed: Exact user-friendly age prompt delivered in both English and Hindi.');
+    } else {
+      console.error('❌ Test 15 Failed: Age prompt does not match exact required text:', {
+        enOfflineReply: enOffline.reply,
+        hiOfflineReply: hiOffline.reply,
+        transEn: TRANSLATIONS.en.agePrompt,
+        transHi: TRANSLATIONS.hi.agePrompt,
+      });
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 15 Exception:', err);
+    failures++;
+  }
+
+  // Test 16: Zero buttons or dropdowns for age question
+  try {
+    const enOffline = generateOfflineSampleReply('Find schemes', 'en', { state: 'Maharashtra' });
+    const noButtons = enOffline.options.length === 0 && enOffline.questionType === 'none';
+    const noMentionOfOptions =
+      !enOffline.reply.toLowerCase().includes('option') &&
+      !enOffline.reply.toLowerCase().includes('select') &&
+      !enOffline.reply.toLowerCase().includes('dropdown') &&
+      !enOffline.reply.toLowerCase().includes('button');
+
+    if (noButtons && noMentionOfOptions) {
+      console.log('✅ Test 16 Passed: Age question strictly has questionType: "none", options: [], and zero option mentions.');
+    } else {
+      console.error('❌ Test 16 Failed: Age question still references options or includes buttons:', enOffline);
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 16 Exception:', err);
+    failures++;
+  }
+
+  // Test 17: Natural age input parsing (English & Hindi)
+  try {
+    const cases = [
+      { text: '34', expected: 34 },
+      { text: 'I am 34 years old', expected: 34 },
+      { text: 'Age: 45', expected: 45 },
+      { text: 'i am around 28', expected: 28 },
+      { text: 'मेरी उम्र 34 साल है', expected: 34 },
+      { text: '३४ वर्ष', expected: 34 },
+      { text: 'मेरी आयु 50 वर्ष है', expected: 50 },
+      { text: 'sukanya samriddhi yojana for 8 year old daughter', expected: null }, // guards third-party child scheme references
+    ];
+
+    let allParsed = true;
+    for (const c of cases) {
+      const extracted = extractAgeFromText(c.text);
+      const actualAge = extracted.valid ? extracted.age : null;
+      if (actualAge !== c.expected) {
+        console.error(`❌ Test 17 Failed for input "${c.text}": expected ${c.expected}, got ${actualAge}`);
+        allParsed = false;
+        failures++;
+        break;
+      }
+    }
+
+    if (allParsed) {
+      console.log('✅ Test 17 Passed: Natural age entry accurately parsed across English, Hindi, and Devanagari numerals.');
+    }
+  } catch (err) {
+    console.error('❌ Test 17 Exception:', err);
+    failures++;
+  }
+
+  // Test 18: Unclear / invalid age handling with polite retry prompt
+  try {
+    const invalidInputs = ['150', '-5', 'abc', 'invalid age input'];
+    let handlesInvalids = true;
+
+    for (const inp of invalidInputs) {
+      const parsed = extractAgeFromText(inp);
+      if (parsed.valid) {
+        handlesInvalids = false;
+        console.error(`❌ Test 18 Failed: "${inp}" should be rejected as invalid, but got parsed age:`, parsed);
+        failures++;
+        break;
+      }
+    }
+
+    // Test processChatRequest retry prompt when previous assistant message asked for age
+    const prevAgeMsg = {
+      role: 'assistant',
+      content: 'Please tell me your age so I can find government schemes that are relevant to you.',
+      fieldKey: 'age',
+    };
+
+    const retryResEn = await processChatRequest({
+      prompt: 'my age is 250',
+      conversationHistory: [prevAgeMsg],
+      language: 'en',
+    });
+
+    const retryResHi = await processChatRequest({
+      prompt: 'मेरी उम्र 200 साल है',
+      conversationHistory: [{ ...prevAgeMsg, content: 'कृपया मुझे अपनी उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।' }],
+      language: 'hi',
+    });
+
+    const retryEnOk = retryResEn.body.reply.includes('between 1 and 120');
+    const retryHiOk = retryResHi.body.reply.includes('1 से 120');
+
+    if (handlesInvalids && retryEnOk && retryHiOk) {
+      console.log('✅ Test 18 Passed: Out-of-bounds/unclear age politely asks for valid age (1-120) in EN & HI.');
+    } else {
+      console.error('❌ Test 18 Failed: Retry responses incorrect:', {
+        en: retryResEn.body.reply,
+        hi: retryResHi.body.reply,
+      });
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 18 Exception:', err);
+    failures++;
+  }
+
+  // Test 19: Replacement of legacy confusing age-group phrases via normalization
+  try {
+    const legacy1 = 'Next, please let me know your age group so I can find schemes that match your life stage.';
+    const legacy2 = 'Could you please select your correct age group from the options below so I can find the best schemes for you?';
+    const legacyHi = 'कृपया नीचे दिए गए विकल्पों में से अपना सही आयु वर्ग चुनें।';
+
+    const normalized1 = normalizeAgeString(legacy1, 'en');
+    const normalized2 = normalizeAgeString(legacy2, 'en');
+    const normalizedHi = normalizeAgeString(legacyHi, 'hi');
+
+    const expectedEn = 'Please tell me your age so I can find government schemes that are relevant to you.';
+    const expectedHi = 'कृपया मुझे अपनी उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।';
+
+    const structuredLegacyMsg = {
+      role: 'assistant',
+      content: legacy1,
+      questionType: 'single-choice',
+      fieldKey: 'ageGroup',
+      options: [
+        { label: '18-35 years', value: '18-35' },
+        { label: '36-60 years', value: '36-60' },
+      ],
+    };
+    const cleanedMsg = normalizeAgeQuestion(structuredLegacyMsg, 'en');
+
+    if (
+      normalized1 === expectedEn &&
+      normalized2 === expectedEn &&
+      normalizedHi === expectedHi &&
+      cleanedMsg.questionType === 'none' &&
+      cleanedMsg.options.length === 0 &&
+      cleanedMsg.content === expectedEn
+    ) {
+      console.log('✅ Test 19 Passed: Legacy age-group phrases and options safely replaced with user-friendly age prompt.');
+    } else {
+      console.error('❌ Test 19 Failed: Normalization did not replace legacy phrases properly:', {
+        normalized1,
+        normalized2,
+        normalizedHi,
+        cleanedMsg,
+      });
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 19 Exception:', err);
+    failures++;
+  }
+
   if (failures === 0) {
-    console.log('\n🎉 ALL 14 CHATBOT TESTS PASSED SUCCESSFULLY!');
+    console.log('\n🎉 ALL 19 CHATBOT TESTS PASSED SUCCESSFULLY!');
   } else {
     console.error(`\n🚨 ${failures} TESTS FAILED.`);
     process.exit(1);

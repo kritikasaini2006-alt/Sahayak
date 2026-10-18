@@ -95,6 +95,14 @@ const KNOWN_OFFLINE_TEMPLATES = [
     hi: 'नमस्ते! आपके लिए उपयुक्त कल्याणकारी योजनाएं खोजने हेतु, कृपया अपना **राज्य या केंद्र शासित प्रदेश** चुनें:',
   },
   {
+    en: 'Please tell me your age so I can find government schemes that are relevant to you.',
+    hi: 'कृपया मुझे अपनी उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।',
+  },
+  {
+    en: 'Please enter a valid age between 1 and 120 so I can find government schemes that are relevant to you.',
+    hi: 'कृपया 1 से 120 वर्ष के बीच एक मान्य उम्र बताएं ताकि मैं आपके लिए उपयुक्त सरकारी योजनाएं खोज सकूँ।',
+  },
+  {
     en: 'Please select your **Age Group** so we can verify schemes targeted to youth, adults, or senior citizens:',
     hi: 'कृपया अपना **आयु वर्ग** चुनें ताकि हम उम्र के आधार पर लागू योजनाओं (जैसे युवा, वयस्क या वरिष्ठ नागरिक पेंशन) की जांच कर सकें:',
   },
