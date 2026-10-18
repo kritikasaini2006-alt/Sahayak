@@ -15,6 +15,7 @@ const testSuites = [
   { name: 'Persistent Chat History & New Chat', path: 'scripts/test-persistent-chat.mjs' },
   { name: 'AI Response Rendering & Universal Parser', path: 'scripts/test-response-rendering.mjs' },
   { name: 'Natural Text-To-Speech (TTS) Engine', path: 'scripts/test-tts.mjs' },
+  { name: 'Text Selection & Copy Visibility Styling', path: 'scripts/test-selection-styling.mjs' },
 ];
 
 console.log('====================================================');

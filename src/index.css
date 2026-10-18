@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global Text Selection & Copy Styling */
+::selection {
+  background-color: #0D9488;
+  color: #FFFFFF;
+}
+
+::-moz-selection {
+  background-color: #0D9488;
+  color: #FFFFFF;
+}
+
 @layer base {
   body {
     @apply bg-[#FDFBF7] text-slate-800 font-sans antialiased;

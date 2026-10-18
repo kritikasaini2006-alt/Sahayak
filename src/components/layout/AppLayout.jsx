@@ -7,7 +7,7 @@ import PageLoader from '../common/PageLoader';
 
 export default function AppLayout() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#FDFBF7] text-slate-800 antialiased selection:bg-amber-100 selection:text-amber-900">
+    <div className="min-h-screen flex flex-col bg-[#FDFBF7] text-slate-800 antialiased selection:bg-[#0D9488] selection:text-white">
       {/* Top Civic Disclaimer Banner */}
       <DisclaimerBanner />
 
