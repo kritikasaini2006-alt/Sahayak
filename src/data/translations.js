@@ -87,11 +87,7 @@ export const TRANSLATIONS = {
       'Can I get collateral-free business credit under PM MUDRA or SVANidhi?',
       'What benefits and toolkits are offered under PM Vishwakarma?',
     ],
-    welcomeMessage: `Namaste! I am your Sahayak AI Civic Assistant.
-
-I can help you understand Indian Central and State government welfare schemes, check eligibility criteria, identify necessary documents, and guide you to official application portals.
-
-You can ask me questions in English or हिन्दी (Hindi). How can I assist you or your family today?`,
+    welcomeMessage: 'Hello! 👋 What do you need help with today?',
   },
   hi: {
     title: 'सहायक नागरिक AI सहायक',
@@ -171,11 +167,7 @@ You can ask me questions in English or हिन्दी (Hindi). How can I ass
       'पीएम मुद्रा या स्वनिधि योजना में बिना गारंटी ऋण कैसे मिलता है?',
       'पीएम विश्वकर्मा योजना में ₹15,000 टूलकिट और अनुदान कैसे प्राप्त करें?',
     ],
-    welcomeMessage: `नमस्ते! मैं आपका सहायक नागरिक AI (Sahayak AI) सलाहकार हूँ।
-
-मैं आपको भारत सरकार और राज्य सरकारों की कल्याणकारी योजनाओं, पात्रता शर्तों, आवश्यक दस्तावेजों को समझने और आधिकारिक आवेदन पोर्टलों तक पहुँचने में मदद कर सकता हूँ।
-
-आप मुझसे हिन्दी या English में सवाल पूछ सकते हैं। आज मैं आपकी या आपके परिवार की क्या सहायता कर सकता हूँ?`,
+    welcomeMessage: 'नमस्ते! 👋 आज आपको किस बारे में मदद चाहिए?',
   },
 };
 

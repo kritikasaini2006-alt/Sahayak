@@ -1,7 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { processChatRequest, generateSystemPrompt, generateOfflineSampleReply, checkRateLimit } from '../api/chat.js';
+import { processChatRequest, generateSystemPrompt, generateOfflineSampleReply, checkRateLimit, cleanAiReply } from '../api/chat.js';
+import { stripFillerPhrases } from '../src/utils/responseParser.js';
+import { TRANSLATIONS } from '../src/data/translations.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -227,8 +229,122 @@ async function runTests() {
     failures++;
   }
 
+  // Test 10: Warm welcoming initial greeting (EN and HI)
+  try {
+    const enWelcome = TRANSLATIONS.en?.welcomeMessage;
+    const hiWelcome = TRANSLATIONS.hi?.welcomeMessage;
+
+    if (
+      enWelcome === 'Hello! 👋 What do you need help with today?' &&
+      hiWelcome === 'नमस्ते! 👋 आज आपको किस बारे में मदद चाहिए?'
+    ) {
+      console.log('✅ Test 10 Passed: Initial conversation starts with warm, concise greeting in EN and HI.');
+    } else {
+      console.error('❌ Test 10 Failed: Unexpected welcome messages:', { enWelcome, hiWelcome });
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 10 Exception:', err);
+    failures++;
+  }
+
+  // Test 11: Removal of filler phrases in English and Hindi
+  try {
+    const sampleWithFiller1 = "I'd be happy to assist you with finding schemes. You can apply for PM-KISAN.";
+    const cleaned1 = stripFillerPhrases(sampleWithFiller1);
+    const sampleWithFiller2 = "Certainly! I would be delighted to help you. You are eligible for Ayushman Bharat.";
+    const cleaned2 = cleanAiReply(sampleWithFiller2);
+    const sampleWithFiller3 = "मुझे आपकी मदद करने में खुशी होगी। आप पीएम विश्वकर्मा योजना के लिए आवेदन कर सकते हैं।";
+    const cleaned3 = cleanAiReply(sampleWithFiller3);
+
+    if (
+      !cleaned1.toLowerCase().includes('happy to assist') &&
+      cleaned1.startsWith('You can apply') &&
+      !cleaned2.toLowerCase().includes('delighted') &&
+      cleaned2.startsWith('You are eligible') &&
+      !cleaned3.includes('खुशी होगी') &&
+      cleaned3.startsWith('आप पीएम विश्वकर्मा')
+    ) {
+      console.log('✅ Test 11 Passed: Robotic filler phrases removed cleanly in English and Hindi.');
+    } else {
+      console.error('❌ Test 11 Failed: Filler phrases not completely stripped:', { cleaned1, cleaned2, cleaned3 });
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 11 Exception:', err);
+    failures++;
+  }
+
+  // Test 12: No repetitive greeting on follow-up conversation turns
+  try {
+    const followUpReply = "Hello! Namaste! You can submit your application at your nearest CSC centre.";
+    const cleanedFollowUp = cleanAiReply(followUpReply, { isFollowUp: true, isGreetingPrompt: false });
+
+    if (
+      !cleanedFollowUp.startsWith('Hello') &&
+      !cleanedFollowUp.startsWith('Namaste') &&
+      cleanedFollowUp.startsWith('You can submit')
+    ) {
+      console.log('✅ Test 12 Passed: Follow-up turns do not repeat greetings and get straight to the point.');
+    } else {
+      console.error('❌ Test 12 Failed: Repetitive greeting remained on follow-up turn:', cleanedFollowUp);
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 12 Exception:', err);
+    failures++;
+  }
+
+  // Test 13: Everyday technology questions with numbered steps (Aadhaar & DigiLocker)
+  try {
+    const aadhaarEn = generateOfflineSampleReply('How do I download my Aadhaar on mobile?', 'en');
+    const aadhaarHi = generateOfflineSampleReply('मोबाइल पर आधार डाउनलोड कैसे करें?', 'hi');
+    const digilockerEn = generateOfflineSampleReply('How do I use DigiLocker?', 'en');
+
+    const hasNumberedSteps = (txt) => txt.includes('1.') && txt.includes('2.') && txt.includes('3.');
+
+    if (
+      hasNumberedSteps(aadhaarEn.reply) &&
+      aadhaarEn.reply.includes('myaadhaar.uidai.gov.in') &&
+      hasNumberedSteps(aadhaarHi.reply) &&
+      aadhaarHi.reply.includes('myaadhaar.uidai.gov.in') &&
+      hasNumberedSteps(digilockerEn.reply) &&
+      digilockerEn.reply.includes('digilocker.gov.in')
+    ) {
+      console.log('✅ Test 13 Passed: Everyday tech questions answered with clear, practical numbered steps.');
+    } else {
+      console.error('❌ Test 13 Failed: Tech questions missing numbered steps or official portals:', {
+        aadhaarEn: aadhaarEn.reply,
+        aadhaarHi: aadhaarHi.reply,
+      });
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 13 Exception:', err);
+    failures++;
+  }
+
+  // Test 14: System prompt tone instructions
+  try {
+    const sysPrompt = generateSystemPrompt('en', null);
+    const hasConversationalTone =
+      sysPrompt.includes('STRICTLY AVOID robotic filler phrases') &&
+      sysPrompt.includes('ALWAYS use clear, numbered steps (1., 2., 3.)') &&
+      sysPrompt.includes('Do NOT repeatedly greet the user');
+
+    if (hasConversationalTone) {
+      console.log('✅ Test 14 Passed: System prompt enforces conversational tone, zero fillers, and numbered steps.');
+    } else {
+      console.error('❌ Test 14 Failed: System prompt missing conversational rules.');
+      failures++;
+    }
+  } catch (err) {
+    console.error('❌ Test 14 Exception:', err);
+    failures++;
+  }
+
   if (failures === 0) {
-    console.log('\n🎉 ALL 9 CHATBOT TESTS PASSED SUCCESSFULLY!');
+    console.log('\n🎉 ALL 14 CHATBOT TESTS PASSED SUCCESSFULLY!');
   } else {
     console.error(`\n🚨 ${failures} TESTS FAILED.`);
     process.exit(1);

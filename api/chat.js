@@ -106,10 +106,15 @@ ${profile.artisanTrade ? `- Traditional Trade: ${profile.artisanTrade}` : ''}
 
   const langInstruction =
     language === 'hi'
-      ? 'PRIMARY LANGUAGE: Respond in fluent, polite, accessible Hindi (हिन्दी). All explanations, questions, and option labels MUST be in natural Devanagari Hindi. Use easy-to-understand Hindi without overly complex bureaucratic terms.'
-      : 'PRIMARY LANGUAGE: Respond in clear, accessible Indian English. Avoid bureaucratic legalese.';
+      ? `PRIMARY LANGUAGE: Respond in fluent, polite, accessible Hindi (हिन्दी) in Devanagari script.
+- Use simple, everyday Hindi that people who are not comfortable with technology can easily understand.
+- Avoid difficult bureaucratic jargon, Sanskritized legalese, or robotic formal phrasing.
+- All explanations, questions, and option labels MUST be in natural Devanagari Hindi.`
+      : `PRIMARY LANGUAGE: Respond in clear, accessible, everyday Indian English.
+- Use simple, everyday words that people who are not comfortable with technology can easily understand.
+- Avoid bureaucratic legalese, overly academic phrasing, or stiff formality.`;
 
-  return `You are Sahayak AI (सहायक AI), an interactive civic-tech assistant helping Indian citizens understand government welfare schemes, criteria, and documentation.
+  return `You are Sahayak AI (सहायक AI), a friendly, helpful, and respectful assistant helping Indian citizens understand government schemes, digital civic services, and application procedures.
 
 ${langInstruction}
 
@@ -139,14 +144,40 @@ You MUST ALWAYS respond with a strictly valid JSON object matching this schema:
   ]
 }
 
+CONVERSATIONAL TONE & HUMAN-FRIENDLY RULES:
+1. GET STRAIGHT TO THE POINT:
+   - Answer the user's actual question immediately at the very beginning of 'reply'.
+   - NEVER repeat or paraphrase the user's question back to them.
+   - Do NOT repeatedly greet the user (e.g. do not say "Hello", "Hi", "Namaste", "Greetings") on follow-up turns. Greet only if the user's input is solely a greeting like "hello" or "hi".
+   - STRICTLY AVOID robotic filler phrases such as:
+     * "I would be glad to help you find..."
+     * "I'd be happy to assist you..."
+     * "Certainly! I would be delighted to..."
+     * "Of course, I can help you with that..."
+     * "Sure, here is what you need to know..."
+     * In Hindi: "मुझे आपकी सहायता करने में खुशी होगी...", "निश्चित रूप से, मैं आपकी मदद करूँगा...", "बिल्कुल, मैं आपको बताना चाहूँगा..."
+2. SIMPLE, EVERYDAY LANGUAGE FOR COMMON CITIZENS:
+   - Explain things clearly using everyday language so citizens who are not comfortable with technology can easily understand.
+   - Keep answers concise, clear, and practical without overwhelming walls of text.
+   - When explaining how to apply, how to use a digital portal, or how to do something, ALWAYS use clear, numbered steps (1., 2., 3.).
+3. ASK FOLLOW-UPS ONLY WHEN ESSENTIAL:
+   - Ask a question ONLY when essential information is missing to provide an accurate answer or to continue scheme discovery.
+   - If the user's question can be answered factually right now, answer it completely and set questionType='none', options=[].
+4. WARM AND RESPECTFUL TONE:
+   - Maintain a friendly, supportive, and respectful tone without sounding robotic or overly formal.
+5. BASIC TECHNOLOGY & CIVIC GUIDANCE:
+   - When citizens ask basic technology or online service questions (e.g. how to download an Aadhaar card on their phone, how to use DigiLocker, how to check bank balance via phone or UPI, how to apply on a portal):
+     * Explain patiently in simple everyday words.
+     * Use numbered steps (1., 2., 3.) so each step is easy to follow.
+
 OPERATIONAL PRINCIPLES:
 1. DIRECT INQUIRIES vs. GUIDED FLOW:
-   - If the user asks a direct question about a specific scheme or rule (e.g. "What is PM-KISAN?", "Who is eligible for Ayushman Bharat?", "What documents are needed for SSY?"):
+   - If the user asks a direct question about a specific scheme, digital service, or rule (e.g. "What is PM-KISAN?", "Who is eligible for Ayushman Bharat?", "How do I download Aadhaar on my phone?"):
      Provide complete factual details, criteria, and official portals directly in 'reply'.
      Set questionType='none', fieldKey='none', options=[], allowSkip=false, recommendedSchemes=[].
    - If the user asks to find schemes, check eligibility, or gives an open-ended request (e.g. "Find schemes for me", "Which schemes can I get?", "Guide me"):
      Start or continue the step-by-step guided flow.
-2. ASK ONE QUESTION AT A TIME:
+2. ASK ONE QUESTION AT A TIME (DURING GUIDED FLOW):
    - Ask ONLY ONE question per turn. Never combine multiple questions.
    - Do NOT ask questions that are already answered in the Citizen Profile above or earlier conversation turns! Skip them automatically.
    - Guided Flow Progression:
@@ -170,12 +201,125 @@ OPERATIONAL PRINCIPLES:
 }
 
 /**
+ * Strips robotic filler phrases and redundant greetings from AI replies so the response
+ * answers the user's question directly, clearly, and immediately.
+ */
+export function cleanAiReply(reply, { isFollowUp = false, isGreetingPrompt = false } = {}) {
+  if (!reply || typeof reply !== 'string') return reply;
+
+  let cleaned = reply.trim();
+
+  // 1. Remove filler opening phrases (English & Hindi)
+  const fillerPatterns = [
+    /^(?:I\s+(?:would|will|am)\s+(?:be\s+)?(?:glad|happy|delighted)\s+to\s+(?:help|assist)\s+(?:you\s+)?(?:with|in|to\s+find)?|I'd\s+be\s+(?:glad|happy|delighted)\s+to\s+(?:help|assist)\s+(?:you\s+)?(?:with|in|to\s+find)?|Certainly!\s*(?:I\s+(?:would|will)\s+be\s+(?:glad|delighted|happy)\s+to\s+(?:help|assist))?|Of\s+course,?\s*I\s+can\s+help\s+(?:you\s+)?(?:with\s+that)?|Sure,?\s*I\s+can\s+help\s+(?:you\s+)?(?:with\s+that)?|Sure\s+thing!|Delighted\s+to\s+assist!)[^.\n]*[.:!]\s*/i,
+    /^(?:Certainly|Of\s+course)[,!.]\s*/i,
+    /^(?:मुझे\s+आपकी\s+(?:सहायता|मदद)\s+करने\s+में\s+खुशी\s+होगी|मैं\s+आपकी\s+(?:सहायता|मदद)\s+करने\s+(?:में\s+प्रसन्न|के\s+लिए\s+तैयार)\s+हूँ|निश्चित\s+रूप\s+से,?\s*(?:मैं\s+आपकी\s+(?:सहायता|मदद)\s+कर\s+सकता\s+हूँ)?|बिल्कुल,?\s*(?:मैं\s+आपकी\s+(?:सहायता|मदद)\s+कर\s+सकता\s+हूँ)?|ज़रूर,?\s*मैं\s+आपकी\s+(?:सहायता|मदद)\s+करूँगा)[^.\n!।]*[.:!।|]\s*/u,
+  ];
+
+  let prev;
+  do {
+    prev = cleaned;
+    for (const pattern of fillerPatterns) {
+      cleaned = cleaned.replace(pattern, '').trim();
+    }
+  } while (cleaned !== prev);
+
+  // 2. If this is a follow-up turn (conversation already ongoing) and the prompt was not just a greeting,
+  // remove repetitive greetings at the start of the message
+  if (isFollowUp && !isGreetingPrompt) {
+    const greetingFollowUpPatterns = [
+      /^(?:Hello|Hi|Hey|Namaste|Greetings)[!,\s]+(?:there,?\s*)?/i,
+      /^(?:नमस्ते|नमस्कार|प्रणाम)[!,\s।]+/u,
+    ];
+    do {
+      prev = cleaned;
+      for (const pattern of greetingFollowUpPatterns) {
+        cleaned = cleaned.replace(pattern, '').trim();
+      }
+      for (const pattern of fillerPatterns) {
+        cleaned = cleaned.replace(pattern, '').trim();
+      }
+    } while (cleaned !== prev);
+  }
+
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+
+  return cleaned;
+}
+
+/**
  * Generates an authentic offline sample response when GEMINI_API_KEY is not configured or unavailable.
  */
 export function generateOfflineSampleReply(prompt, language = 'en', profile = null) {
-  const q = String(prompt).toLowerCase();
+  const q = String(prompt).toLowerCase().trim();
 
-  // 1. Direct Scheme Inquiries
+  // 1. Standalone Greetings
+  if (/^(?:hello|hi|hey|namaste|नमस्ते|नमस्कार|प्रणाम)[!.\s]*$/i.test(q)) {
+    return new OfflineReply({
+      reply:
+        language === 'hi'
+          ? 'नमस्ते! 👋 आज आपको किस बारे में मदद चाहिए?'
+          : 'Hello! 👋 What do you need help with today?',
+      questionType: 'none',
+    });
+  }
+
+  // 2. Everyday Citizen Technology Assistance (Aadhaar, DigiLocker)
+  if ((q.includes('aadhaar') || q.includes('आधार')) && (q.includes('download') || q.includes('mobile') || q.includes('phone') || q.includes('डाउनलोड'))) {
+    const text =
+      language === 'hi'
+        ? `अपने मोबाइल पर आधार कार्ड डाउनलोड करने के आसान चरण:
+
+1. अपने मोबाइल ब्राउज़र में uidai की आधिकारिक वेबसाइट खोलें: **myaadhaar.uidai.gov.in**
+2. **Download Aadhaar** विकल्प पर क्लिक करें।
+3. अपना 12 अंकों का आधार नंबर और स्क्रीन पर दिया गया कैप्चा (Captcha) कोड दर्ज करें।
+4. **Send OTP** पर क्लिक करें। आपके आधार से जुड़े मोबाइल नंबर पर 6 अंकों का OTP आएगा।
+5. OTP दर्ज करके **Verify & Download** पर क्लिक करें।
+6. डाउनलोड की गई PDF फाइल खोलें। इसका पासवर्ड आपके नाम के पहले 4 अक्षर बड़े अक्षरों (CAPITAL) में और आपका जन्म वर्ष है (जैसे: यदि नाम RAMESH और जन्म वर्ष 1985 है, तो पासवर्ड RAME1985 होगा)।`
+        : `Here are the simple steps to download your Aadhaar on your mobile phone:
+
+1. Visit the official UIDAI portal: **myaadhaar.uidai.gov.in**
+2. Click on **Download Aadhaar**.
+3. Enter your 12-digit Aadhaar number and the Captcha code shown on screen.
+4. Click **Send OTP**. You will receive a 6-digit OTP on your Aadhaar-registered mobile number.
+5. Enter the OTP and click **Verify & Download**.
+6. Open the downloaded PDF file. The password is the first 4 letters of your name in CAPITAL letters followed by your 4-digit birth year (example: if your name is RAMESH and year is 1985, password is RAME1985).`;
+
+    return new OfflineReply({
+      reply: text,
+      questionType: 'none',
+      sources: ['UIDAI myaadhaar.uidai.gov.in'],
+    });
+  }
+
+  if (q.includes('digilocker') || q.includes('डिजिलॉकर')) {
+    const text =
+      language === 'hi'
+        ? `अपने फोन पर डिजिलॉकर (DigiLocker) उपयोग करने के आसान चरण:
+
+1. गूगल प्ले स्टोर या एप्पल ऐप स्टोर से **DigiLocker** ऐप डाउनलोड करें या **digilocker.gov.in** पर जाएं।
+2. **Sign Up** पर क्लिक करें और अपना मोबाइल नंबर व आधार नंबर दर्ज करें।
+3. मोबाइल पर आए OTP को दर्ज करें और अपना 6 अंकों का सुरक्षा पिन (PIN) सेट करें।
+4. **Search Documents** में जाकर अपना आवश्यक दस्तावेज (आधार कार्ड, पैन कार्ड, ड्राइविंग लाइसेंस, वाहन आरसी या मार्कशीट) चुनें।
+5. जरूरी नंबर दर्ज करके **Get Document** पर क्लिक करें। आपका सरकारी मान्यता प्राप्त डिजिटल दस्तावेज सुरक्षित सेव हो जाएगा।`
+        : `Here are the simple steps to use DigiLocker on your phone:
+
+1. Download the **DigiLocker** app from Google Play Store / Apple App Store, or visit **digilocker.gov.in**.
+2. Click **Sign Up** and enter your mobile number and Aadhaar number.
+3. Enter the OTP sent to your phone and set a 6-digit security PIN.
+4. Go to **Search Documents** to select what you need (Aadhaar Card, PAN Card, Driving License, RC, or Marksheets).
+5. Enter the required document number and click **Get Document**. Your official government-verified digital document will be saved in your DigiLocker.`;
+
+    return new OfflineReply({
+      reply: text,
+      questionType: 'none',
+      sources: ['National e-Governance Division (NeGD) - digilocker.gov.in'],
+    });
+  }
+
+  // 3. Direct Scheme Inquiries
   if (q.includes('farmer') || q.includes('kisan') || q.includes('किसान')) {
     const text =
       language === 'hi'
@@ -246,7 +390,7 @@ export function generateOfflineSampleReply(prompt, language = 'en', profile = nu
     const text =
       language === 'hi'
         ? `**पीएम विश्वकर्मा योजना:**\n\n• **लाभ:** ₹15,000 का आधुनिक टूलकिट प्रोत्साहन, ₹500/दिन वजीफे के साथ कौशल प्रशिक्षण, तथा 5% रियायती ब्याज पर ₹3,00,000 तक का संपार्श्विक-मुक्त उद्यम ऋण।\n• **पात्रता:** 18 निर्दिष्ट पारंपरिक शिल्पों में हाथों और औजारों से काम करने वाले कारीगर।\n• **आवेदन:** [pmvishwakarma.gov.in](https://pmvishwakarma.gov.in) पर नजदीकी जन सेवा केंद्र (CSC) के माध्यम से बायोमेट्रिक पंजीकरण।`
-        : `**PM Vishwakarma Scheme:**\n\n• **Benefit:** ₹15,00,0 modern toolkit incentive, skill training with ₹500/day stipend, and collateral-free enterprise credit up to ₹3,00,000 at subsidized 5% interest.\n• **Eligibility:** Traditional artisans working with hands and tools in one of 18 designated family trades (e.g. carpenter, blacksmith, tailor, potter, barber, mason).\n• **How to Apply:** Visit nearest Common Service Centre (CSC) for biometric registration on [pmvishwakarma.gov.in](https://pmvishwakarma.gov.in).`;
+        : `**PM Vishwakarma Scheme:**\n\n• **Benefit:** ₹15,000 modern toolkit incentive, skill training with ₹500/day stipend, and collateral-free enterprise credit up to ₹3,00,000 at subsidized 5% interest.\n• **Eligibility:** Traditional artisans working with hands and tools in one of 18 designated family trades (e.g. carpenter, blacksmith, tailor, potter, barber, mason).\n• **How to Apply:** Visit nearest Common Service Centre (CSC) for biometric registration on [pmvishwakarma.gov.in](https://pmvishwakarma.gov.in).`;
 
     return new OfflineReply({
       reply: text,
@@ -264,7 +408,7 @@ export function generateOfflineSampleReply(prompt, language = 'en', profile = nu
     });
   }
 
-  // 2. Guided Flow Progression in Offline Demo Mode
+  // 4. Guided Flow Progression in Offline Demo Mode
   if (!profile?.state) {
     return new OfflineReply({
       reply:
@@ -509,10 +653,14 @@ export async function processChatRequest({
       // Safe structured response parsing using universal response parser
       const structured = parseStructuredResponse(rawOutput, language);
 
+      const isFollowUp = Array.isArray(history) && history.length > 0;
+      const isGreetingPrompt = /^(?:hello|hi|hey|namaste|नमस्ते|नमस्कार|प्रणाम)\b/i.test(prompt.trim());
+      const cleanedReply = cleanAiReply(structured.reply, { isFollowUp, isGreetingPrompt });
+
       return {
         status: 200,
         body: {
-          reply: structured.reply,
+          reply: cleanedReply,
           questionType: structured.questionType,
           fieldKey: structured.fieldKey,
           options: structured.options,

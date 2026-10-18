@@ -203,6 +203,36 @@ function unwrapNestedReply(replyText) {
 }
 
 /**
+ * Strips robotic, unnecessary filler opening phrases from AI replies so the response
+ * answers the user's actual question immediately and directly.
+ */
+export function stripFillerPhrases(text) {
+  if (!text || typeof text !== 'string') return text;
+  let cleaned = text.trim();
+
+  // Common robotic filler openings in English and Hindi
+  const fillerPatterns = [
+    /^(?:I\s+(?:would|will|am)\s+(?:be\s+)?(?:glad|happy|delighted)\s+to\s+(?:help|assist)\s+(?:you\s+)?(?:with|in|to\s+find)?|I'd\s+be\s+(?:glad|happy|delighted)\s+to\s+(?:help|assist)\s+(?:you\s+)?(?:with|in|to\s+find)?|Certainly!\s*(?:I\s+(?:would|will)\s+be\s+(?:glad|delighted|happy)\s+to\s+(?:help|assist))?|Of\s+course,?\s*I\s+can\s+help\s+(?:you\s+)?(?:with\s+that)?|Sure,?\s*I\s+can\s+help\s+(?:you\s+)?(?:with\s+that)?|Sure\s+thing!|Delighted\s+to\s+assist!)[^.\n]*[.:!]\s*/i,
+    /^(?:Certainly|Of\s+course)[,!.]\s*/i,
+    /^(?:मुझे\s+आपकी\s+(?:सहायता|मदद)\s+करने\s+में\s+खुशी\s+होगी|मैं\s+आपकी\s+(?:सहायता|मदद)\s+करने\s+(?:में\s+प्रसन्न|के\s+लिए\s+तैयार)\s+हूँ|निश्चित\s+रूप\s+से,?\s*(?:मैं\s+आपकी\s+(?:सहायता|मदद)\s+कर\s+सकता\s+हूँ)?|बिल्कुल,?\s*(?:मैं\s+आपकी\s+(?:सहायता|मदद)\s+कर\s+सकता\s+हूँ)?|ज़रूर,?\s*मैं\s+आपकी\s+(?:सहायता|मदद)\s+करूँगा)[^.\n!।]*[.:!।|]\s*/u,
+  ];
+
+  let prev;
+  do {
+    prev = cleaned;
+    for (const pattern of fillerPatterns) {
+      cleaned = cleaned.replace(pattern, '').trim();
+    }
+  } while (cleaned !== prev);
+
+  if (cleaned.length > 0) {
+    cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+
+  return cleaned;
+}
+
+/**
  * Universal Parser: converts any raw Gemini / server output into a standardized message object.
  *
  * @param {string|object} rawInput - Server response or text string.
@@ -234,7 +264,7 @@ export function parseStructuredResponse(rawInput, language = 'en') {
     if (cleanReply.startsWith('{') || cleanReply.startsWith('```') || cleanReply.includes('"reply"')) {
       const nested = extractJsonFromText(cleanReply) || recoverMalformedJson(cleanReply);
       if (nested && typeof nested.reply === 'string') {
-        cleanReply = unwrapNestedReply(nested.reply);
+        cleanReply = stripFillerPhrases(unwrapNestedReply(nested.reply));
         const nestedOptions = sanitizeOptions(nested.options);
         const nestedSchemes = sanitizeSchemes(nested.recommendedSchemes);
         const nestedType = VALID_QUESTION_TYPES.includes(nested.questionType) ? nested.questionType : 'none';
@@ -253,7 +283,7 @@ export function parseStructuredResponse(rawInput, language = 'en') {
       }
     }
 
-    cleanReply = unwrapNestedReply(cleanReply);
+    cleanReply = stripFillerPhrases(unwrapNestedReply(cleanReply));
 
     let sanitizedQuestionType = VALID_QUESTION_TYPES.includes(rawInput.questionType)
       ? rawInput.questionType
