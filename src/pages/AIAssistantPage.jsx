@@ -13,7 +13,6 @@ import {
   Pause,
   Play,
   Square,
-  SlidersHorizontal,
   Copy,
   Check,
   RotateCcw,
@@ -31,12 +30,9 @@ import {
 } from 'lucide-react';
 import Badge from '../components/common/Badge';
 import MicrophonePermissionModal from '../components/common/MicrophonePermissionModal';
-import AudioSettingsModal from '../components/common/AudioSettingsModal';
 import {
   isSpeechSynthesisSupported,
-  loadTtsSettings,
-  saveTtsSettings,
-  SPEED_RATES,
+  DEFAULT_TTS_SETTINGS,
   selectBestVoice,
   prepareSpokenText,
   splitIntoSpokenChunks,
@@ -184,16 +180,12 @@ export default function AIAssistantPage() {
   const [copiedId, setCopiedId] = useState(null);
   const [speakingId, setSpeakingId] = useState(null);
   const [speechStatus, setSpeechStatus] = useState('idle'); // 'idle' | 'playing' | 'paused'
-  const [ttsSettings, setTtsSettings] = useState(() => loadTtsSettings());
   const [availableVoices, setAvailableVoices] = useState([]);
-  const [showAudioSettings, setShowAudioSettings] = useState(false);
-  const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
 
   const speechChunksRef = useRef([]);
   const currentChunkIndexRef = useRef(0);
   const speechUtteranceRef = useRef(null);
   const speechHeartbeatRef = useRef(null);
-  const isPreviewingRef = useRef(false);
   const activeAbortControllerRef = useRef(null);
 
   // Translation cache & active language trackers
@@ -861,8 +853,6 @@ export default function AIAssistantPage() {
     currentChunkIndexRef.current = 0;
     setSpeakingId(null);
     setSpeechStatus('idle');
-    setIsPreviewPlaying(false);
-    isPreviewingRef.current = false;
   };
 
   // Play next sentence/clause chunk in sequential queue
@@ -881,8 +871,7 @@ export default function AIAssistantPage() {
     speechUtteranceRef.current = utterance;
 
     const targetLang = chunk.lang === 'hi' ? 'hi' : 'en';
-    const preferredURI = targetLang === 'hi' ? ttsSettings.preferredVoiceHi : ttsSettings.preferredVoiceEn;
-    const chosenVoice = selectBestVoice(availableVoices, targetLang, preferredURI);
+    const chosenVoice = selectBestVoice(availableVoices, targetLang);
     if (chosenVoice) {
       utterance.voice = chosenVoice;
       utterance.lang = chosenVoice.lang || (targetLang === 'hi' ? 'hi-IN' : 'en-US');
@@ -890,12 +879,9 @@ export default function AIAssistantPage() {
       utterance.lang = targetLang === 'hi' ? 'hi-IN' : 'en-IN';
     }
 
-    const rate = typeof ttsSettings.rate === 'number'
-      ? ttsSettings.rate
-      : (SPEED_RATES[ttsSettings.speed] || 0.88);
-    utterance.rate = rate;
-    utterance.pitch = typeof ttsSettings.pitch === 'number' ? ttsSettings.pitch : 1.0;
-    utterance.volume = typeof ttsSettings.volume === 'number' ? ttsSettings.volume : 0.85;
+    utterance.rate = DEFAULT_TTS_SETTINGS.rate;
+    utterance.pitch = DEFAULT_TTS_SETTINGS.pitch;
+    utterance.volume = DEFAULT_TTS_SETTINGS.volume;
 
     utterance.onend = () => {
       currentChunkIndexRef.current = idx + 1;
@@ -992,71 +978,6 @@ export default function AIAssistantPage() {
   const handleToggleSpeak = (msgId, text) => {
     const msg = messages.find((m) => m.id === msgId) || { id: msgId, text };
     handleStartSpeech(msg);
-  };
-
-  const handlePreviewVoice = ({ speed, rate, volume, pitch, preferredVoiceHi, preferredVoiceEn, lang }) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
-      alert(t.ttsUnsupported || 'Text-to-speech audio is not supported in this browser.');
-      return;
-    }
-
-    stopAllSpeech();
-    setIsPreviewPlaying(true);
-    isPreviewingRef.current = true;
-
-    const isHi = lang === 'hi';
-    const sampleText = isHi
-      ? (t.testVoiceSampleHi || 'नमस्ते! सहायक AI में आपका स्वागत है। मैं सरकारी योजनाओं और सेवाओं को समझने में आपकी मदद के लिए यहाँ हूँ।')
-      : (t.testVoiceSampleEn || 'Hello! Welcome to Sahayak AI. I’m here to help you understand government schemes and services.');
-
-    const utterance = new SpeechSynthesisUtterance(sampleText);
-
-    const prefURI = isHi ? preferredVoiceHi : preferredVoiceEn;
-    const voice = selectBestVoice(availableVoices, isHi ? 'hi' : 'en', prefURI);
-    if (voice) {
-      utterance.voice = voice;
-      utterance.lang = voice.lang || (isHi ? 'hi-IN' : 'en-US');
-    } else {
-      utterance.lang = isHi ? 'hi-IN' : 'en-IN';
-    }
-
-    const effectiveRate = typeof rate === 'number'
-      ? rate
-      : (speed ? (SPEED_RATES[speed] || 0.88) : (ttsSettings.rate ?? 0.88));
-    utterance.rate = effectiveRate;
-    utterance.pitch = typeof pitch === 'number' ? pitch : (ttsSettings.pitch ?? 1.0);
-    utterance.volume = typeof volume === 'number' ? volume : (ttsSettings.volume ?? 0.85);
-
-    utterance.onend = () => {
-      setIsPreviewPlaying(false);
-      isPreviewingRef.current = false;
-    };
-    utterance.onerror = (e) => {
-      if (e.error !== 'canceled' && e.error !== 'interrupted') {
-        console.warn('Preview speech error:', e.error);
-      }
-      setIsPreviewPlaying(false);
-      isPreviewingRef.current = false;
-    };
-
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const handleStopPreview = () => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      try {
-        window.speechSynthesis.cancel();
-      } catch {}
-    }
-    setIsPreviewPlaying(false);
-    isPreviewingRef.current = false;
-  };
-
-  const handleSaveSettings = (newPartial) => {
-    const updated = saveTtsSettings(newPartial);
-    if (updated) {
-      setTtsSettings(updated);
-    }
   };
 
   // Copy Message to Clipboard
@@ -1657,18 +1578,6 @@ export default function AIAssistantPage() {
             <span>{t.newChat ? t.newChat.replace(/^\+\s*/, '') : 'New Chat'}</span>
           </button>
 
-          {/* Voice & Speed Settings Button */}
-          <button
-            type="button"
-            onClick={() => setShowAudioSettings(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 hover:text-teal-700 rounded-xl border border-slate-200 transition-colors shadow-2xs shrink-0 cursor-pointer"
-            title={t.audioSettings || 'Voice & Speed Settings'}
-            aria-label={t.audioSettings || 'Voice & Speed Settings'}
-          >
-            <SlidersHorizontal className="w-4 h-4 text-teal-700 shrink-0" />
-            <span className="hidden md:inline">{t.audioSettings || 'Voice Settings'}</span>
-          </button>
-
           {/* Clear Current Chat Button */}
           <button
             type="button"
@@ -2120,43 +2029,19 @@ export default function AIAssistantPage() {
                           <Square className="w-3 h-3 fill-current" />
                           <span>{t.stopSpeaking || 'Stop'}</span>
                         </button>
-
-                        {/* Settings Button */}
-                        <button
-                          type="button"
-                          onClick={() => setShowAudioSettings(true)}
-                          className="p-1 text-slate-400 hover:text-teal-700 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
-                          title={t.audioSettings || 'Voice & Speed Settings'}
-                          aria-label={t.audioSettings || 'Voice & Speed Settings'}
-                        >
-                          <SlidersHorizontal className="w-3.5 h-3.5" />
-                        </button>
                       </>
                     ) : (
-                      <>
-                        {/* Listen Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleStartSpeech(msg)}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-slate-600 hover:text-teal-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
-                          title={t.speak}
-                          aria-label={t.speak}
-                        >
-                          <Volume2 className="w-3.5 h-3.5" />
-                          <span>{t.speak}</span>
-                        </button>
-
-                        {/* Settings Button */}
-                        <button
-                          type="button"
-                          onClick={() => setShowAudioSettings(true)}
-                          className="p-1 text-slate-400 hover:text-teal-700 hover:bg-slate-200/60 rounded-lg transition-colors cursor-pointer"
-                          title={t.audioSettings || 'Voice & Speed Settings'}
-                          aria-label={t.audioSettings || 'Voice & Speed Settings'}
-                        >
-                          <SlidersHorizontal className="w-3.5 h-3.5" />
-                        </button>
-                      </>
+                      /* Listen Button */
+                      <button
+                        type="button"
+                        onClick={() => handleStartSpeech(msg)}
+                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-slate-600 hover:text-teal-700 hover:bg-slate-200/60 transition-colors cursor-pointer"
+                        title={t.speak}
+                        aria-label={t.speak}
+                      >
+                        <Volume2 className="w-3.5 h-3.5" />
+                        <span>{t.speak}</span>
+                      </button>
                     )}
 
                     {/* Copy Button */}
@@ -2367,19 +2252,6 @@ export default function AIAssistantPage() {
         errorMessage={micModalError}
         language={language}
         translations={t}
-      />
-
-      {/* Audio & Speech Synthesis Settings Modal */}
-      <AudioSettingsModal
-        isOpen={showAudioSettings}
-        onClose={() => setShowAudioSettings(false)}
-        language={language}
-        availableVoices={availableVoices}
-        settings={ttsSettings}
-        onSaveSettings={handleSaveSettings}
-        onPreviewVoice={handlePreviewVoice}
-        isPreviewPlaying={isPreviewPlaying}
-        onStopPreview={handleStopPreview}
       />
 
       {/* Slide-over Chat History Drawer */}
