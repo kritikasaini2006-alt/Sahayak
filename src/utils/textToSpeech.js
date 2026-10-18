@@ -1,40 +1,38 @@
 /**
  * Natural Bilingual Text-To-Speech (TTS) Engine for Sahayak AI Assistant.
  *
- * Key Capabilities:
- * 1. Apple Siri-Style & Natural Voice Prioritization:
- *    - Automatically detects Apple devices (macOS / iOS) and prioritizes genuine Siri voices
- *      (e.g., "Siri", "Siri Voice 1..4") and Apple Natural vocal models (e.g., "Samantha", "Ava", "Zoe", "Allison").
- *    - Prioritizes natural Indian English (e.g., Google English India, Apple Enhanced) when available;
- *      otherwise uses smooth, calm, conversational Apple natural voices (Samantha/Daniel/Siri).
- *    - Never hardcodes voices without dynamic existence validation.
- *    - Accurately labels voices without falsely claiming generic browser synthesizers are Siri.
- * 2. Tuned Acoustic Parameters for Warm, Natural Speech:
- *    - Default Speech Rate: 0.88 (smooth, conversational Siri-like pacing, avoiding rushed or robotic speech)
- *    - Default Pitch: 1.0 (natural pitch)
- *    - Default Volume: 0.85 (clear, warm, non-blaring loudness)
- * 3. Dynamic Voice-Matching Language Tag:
- *    - Dynamically pairs `utterance.lang` with `selectedVoice.lang` (e.g. `en-US` for Samantha, `en-GB` for Daniel,
- *      `en-IN` for Indian English, `hi-IN` for Hindi) to prevent cross-accent phonetic distortion.
+ * Designed for maximum clarity and comprehension for Indian citizens:
+ * 1. Authentic Indian Voice Prioritization:
+ *    - Strictly prioritizes authentic Indian English (en-IN) voices (e.g. Google English India,
+ *      Microsoft Neerja/Prabhat, Apple Aman, Rishi, Tara) for English speech.
+ *    - Strictly prioritizes native Hindi (hi-IN) voices (e.g. Google हिन्दी, Microsoft Swara,
+ *      Apple Lekha) for Devanagari Hindi speech.
+ *    - Never forces US/UK accents or Siri imitation on Indian citizens.
+ * 2. Tuned Acoustic Parameters for Clear Comprehension:
+ *    - Default Speech Rate: 0.88 (calm, steady, unhurried pacing for easy understanding)
+ *    - Default Pitch: 1.0 (natural vocal pitch)
+ *    - Default Volume: 0.90 (crisp, comfortable loudness)
+ * 3. Dynamic Script & Language Pairing:
+ *    - Sets utterance.lang to 'en-IN' for Indian English and 'hi-IN' for Hindi.
+ *    - In mixed responses, automatically routes Devanagari sentences to the native Hindi voice
+ *      and English terms/sentences to the Indian English voice.
  * 4. Comprehensive Pronunciation & Text Cleaning:
- *    - Strips markdown, emojis, HTML tags, bullet glyphs, code fences, and raw JSON.
- *    - Replaces currency symbols naturally (e.g. "₹6,000" -> "Rupees 6,000" in English, "6,000 रुपये" in Hindi).
- *    - Replaces URLs with friendly spoken phrase ("Official source link available").
- *    - Naturally summarizes structured scheme cards (Title, Benefit, Eligibility criteria).
- *    - Injects sensible sentence pauses around headings, numbered steps, and bullet points.
- * 5. Punctuation-Aware Sentence Chunking:
- *    - Circumvents the Chromium 15-second speech synthesis lockup bug.
- * 6. Session Persistence:
- *    - Persists chosen voice, rate, pitch, and volume in localStorage (`sahayak_tts_settings`).
+ *    - Cleans Markdown, emojis, HTML tags, code fences, and raw JSON wrappers.
+ *    - Normalizes Indian scheme names and acronyms (e.g. "PM-KISAN" -> "PM Kisan", "DBT" -> "D B T").
+ *    - Normalizes Indian currency & numbers (e.g. "₹1.20 lakh" -> "Rupees 1.20 Lakh", "₹6,000" -> "Rupees 6,000" / "6,000 रुपये").
+ *    - Replaces bare URLs with friendly spoken notices.
+ *    - Preserves headings and numbered steps with natural punctuation pauses.
+ * 5. Sentence Chunking:
+ *    - Circumvents browser speech synthesis lockup and prevents skipping or overlapping speech.
  */
 
 export const TTS_STORAGE_KEY = 'sahayak_tts_settings';
 
-// Speech rate presets: default is 0.88 for smooth Siri-style pacing
+// Speech rate presets: default is 0.88 for calm & natural comprehension
 export const SPEED_RATES = {
   slow: 0.85,
-  calm: 0.88,   // Siri-style calm & natural default
-  normal: 0.88, // Standard default
+  calm: 0.88,
+  normal: 0.88,
   standard: 1.0,
   fast: 1.15,
 };
@@ -42,8 +40,8 @@ export const SPEED_RATES = {
 export const DEFAULT_TTS_SETTINGS = {
   rate: 0.88,
   pitch: 1.0,
-  volume: 0.85,
-  speed: 'calm',
+  volume: 0.90,
+  speed: 'normal',
   preferredVoiceHi: null,
   preferredVoiceEn: null,
 };
@@ -77,7 +75,7 @@ export function loadTtsSettings() {
 
     const speed = ['slow', 'calm', 'normal', 'standard', 'fast'].includes(parsed.speed)
       ? parsed.speed
-      : 'calm';
+      : 'normal';
 
     const rate = typeof parsed.rate === 'number' && parsed.rate >= 0.5 && parsed.rate <= 1.5
       ? parsed.rate
@@ -85,7 +83,7 @@ export function loadTtsSettings() {
 
     const volume = typeof parsed.volume === 'number' && parsed.volume >= 0.1 && parsed.volume <= 1.0
       ? parsed.volume
-      : 0.85;
+      : 0.90;
 
     const pitch = typeof parsed.pitch === 'number' && parsed.pitch >= 0.5 && parsed.pitch <= 1.5
       ? parsed.pitch
@@ -120,73 +118,61 @@ export function saveTtsSettings(settings) {
 }
 
 /**
- * Accurately scores and categorizes an English voice based on quality,
- * genuine Siri availability, natural Apple models, and platform environment.
+ * Evaluates an English voice with strict priority for authentic Indian English (en-IN).
+ * Avoids Siri imitation or forcing US/UK accents so Indian citizens hear a natural,
+ * understandable voice tailored for Indian civic terminology.
  */
-export function evaluateEnglishVoice(voice, onApple = false) {
+export function evaluateEnglishVoice(voice) {
   const name = voice.name || '';
   const lang = (voice.lang || '').toLowerCase().replace(/_/g, '-');
   const isIndian = lang.includes('en-in') || /india|indian/i.test(name);
-
-  const hasSiri = /\bsiri\b/i.test(name);
-  const isEnhanced = /\b(enhanced|premium)\b/i.test(name);
-  const isAppleNaturalModel = /\b(samantha|ava|zoe|allison|serena|oliver|susan|kate|victoria)\b/i.test(name);
+  const isEnhanced = /\b(enhanced|premium|natural|neural|online)\b/i.test(name);
   const isGoogle = /google/i.test(name);
-  const isMicrosoftNatural = /microsoft.*(natural|online|neural|jenny|aria|guy|neerja|ravi)/i.test(name);
+  const isMicrosoft = /microsoft/i.test(name);
 
   let label = voice.name;
-  let score = 400;
-  let isSiri = false;
-  let isSiriStyle = false;
+  let score = 300;
+  let isIndianEnglish = false;
   let isNatural = false;
 
-  if (hasSiri) {
-    score = 1000;
-    label = `${voice.name} (Apple Siri)`;
-    isSiri = true;
-    isNatural = true;
-    isSiriStyle = true;
-  } else if (onApple && isIndian && isEnhanced) {
-    score = 960;
-    label = `${voice.name} (Apple Natural - Indian English)`;
-    isNatural = true;
-    isSiriStyle = true;
-  } else if (onApple && isEnhanced && isAppleNaturalModel) {
-    score = 950;
-    label = `${voice.name} (Apple Enhanced - Siri-style)`;
-    isNatural = true;
-    isSiriStyle = true;
-  } else if (onApple && isAppleNaturalModel) {
-    score = 930;
-    label = `${voice.name} (Apple Natural - Siri-style)`;
-    isNatural = true;
-    isSiriStyle = true;
-  } else if (isIndian && (isGoogle || isMicrosoftNatural)) {
-    score = 920;
-    label = `${voice.name} (Natural Indian English)`;
-    isNatural = true;
-  } else if (onApple && isEnhanced) {
-    score = 900;
-    label = `${voice.name} (Apple Enhanced)`;
-    isNatural = true;
-  } else if (isGoogle) {
-    score = 880;
-    label = `${voice.name} (Google Natural)`;
-    isNatural = true;
-  } else if (isMicrosoftNatural) {
-    score = 870;
-    label = `${voice.name} (Microsoft Natural)`;
-    isNatural = true;
-  } else if (/\b(daniel|karen|moira|tessa|flo|eddy|reed|shelley)\b/i.test(name)) {
-    score = 750;
-    label = `${voice.name} (Apple Voice)`;
-    isNatural = true;
-  } else if (isIndian) {
-    score = 600;
-    label = `${voice.name} (Indian English - Standard)`;
+  if (isIndian) {
+    isIndianEnglish = true;
+    if (isGoogle || (isMicrosoft && isEnhanced)) {
+      // Top neural Indian English: Google English India or Microsoft Neerja/Prabhat
+      score = 1000;
+      label = `${voice.name} (Indian English - Neural)`;
+      isNatural = true;
+    } else if (isEnhanced) {
+      // Enhanced Indian English models (e.g. Aman Enhanced, Rishi Enhanced)
+      score = 960;
+      label = `${voice.name} (Indian English - Enhanced)`;
+      isNatural = true;
+    } else if (/\b(aman)\b/i.test(name)) {
+      // Clear, calm, unhurried Apple Indian English voice
+      score = 950;
+      label = `${voice.name} (Indian English - Aman)`;
+      isNatural = true;
+    } else if (/\b(rishi|tara)\b/i.test(name)) {
+      // Standard Apple Indian English voices
+      score = 920;
+      label = `${voice.name} (Indian English)`;
+      isNatural = true;
+    } else {
+      // Any other Indian English voice
+      score = 900;
+      label = `${voice.name} (Indian English)`;
+    }
   } else {
-    score = 450;
-    label = `${voice.name} (Standard)`;
+    // Non-Indian voices are strictly fallback (score <= 500)
+    // Never force US/UK or Siri accents ahead of Indian English
+    if (isEnhanced || isGoogle || isMicrosoft) {
+      score = 500;
+      label = `${voice.name} (Natural English)`;
+      isNatural = true;
+    } else {
+      score = 400;
+      label = `${voice.name} (Standard English)`;
+    }
   }
 
   return {
@@ -195,8 +181,7 @@ export function evaluateEnglishVoice(voice, onApple = false) {
     displayLabel: label,
     lang: voice.lang,
     voiceURI: voice.voiceURI,
-    isSiri,
-    isSiriStyle,
+    isIndianEnglish,
     isNatural,
     isRecommended: score >= 900,
     score,
@@ -204,10 +189,9 @@ export function evaluateEnglishVoice(voice, onApple = false) {
 }
 
 /**
- * Categorizes and ranks voices for Hindi and English.
+ * Categorizes and ranks voices for Hindi (hi-IN) and English (en-IN).
  */
 export function getVoiceCategories(voices = []) {
-  const onApple = isAppleDevice();
   const hindi = [];
   const englishVoices = [];
   const indianEnglish = [];
@@ -217,9 +201,21 @@ export function getVoiceCategories(voices = []) {
     const lang = (voice.lang || '').toLowerCase().replace(/_/g, '-');
     const name = (voice.name || '').toLowerCase();
 
-    // Hindi Voices
+    // Hindi Voices (hi-IN)
     if (lang.startsWith('hi') || /hindi|हिन्दी|देवनागरी/.test(name)) {
-      const isNatural = /natural|neural|google|online|apple|siri|microsoft|lekha|swara|kalpana|neerja/i.test(voice.name);
+      const isGoogle = /google.*(हिन्दी|hindi)/i.test(name);
+      const isMicrosoft = /microsoft.*(swara|madhur|natural)/i.test(name);
+      const isEnhanced = /\b(enhanced|premium)\b/i.test(name);
+      const isLekha = /\blekha\b/i.test(name);
+      const isNatural = isGoogle || isMicrosoft || isEnhanced || /natural|neural|online/i.test(voice.name);
+
+      let score = 900;
+      if (isGoogle) score = 1000;
+      else if (isMicrosoft) score = 980;
+      else if (isLekha && isEnhanced) score = 960;
+      else if (isLekha) score = 940;
+      else if (isNatural) score = 920;
+
       hindi.push({
         voice,
         name: voice.name,
@@ -227,17 +223,17 @@ export function getVoiceCategories(voices = []) {
         lang: voice.lang,
         voiceURI: voice.voiceURI,
         isNatural,
-        isRecommended: /google.*(हिन्दी|hindi)|swara|lekha|kalpana|neerja|natural.*hindi/i.test(name),
-        score: isNatural ? 900 : 500,
+        isRecommended: true,
+        score,
       });
     }
 
-    // English Voices
+    // English Voices (prioritizing en-IN)
     if (lang.startsWith('en') || /english/.test(name)) {
-      const evalVoice = evaluateEnglishVoice(voice, onApple);
+      const evalVoice = evaluateEnglishVoice(voice);
       englishVoices.push(evalVoice);
 
-      if (lang.includes('en-in') || /india|indian/.test(name)) {
+      if (evalVoice.isIndianEnglish) {
         indianEnglish.push(evalVoice);
       } else {
         otherEnglish.push(evalVoice);
@@ -245,14 +241,13 @@ export function getVoiceCategories(voices = []) {
     }
   }
 
-  // Sort Hindi voices
+  // Sort Hindi voices strictly by authenticity and clarity score
   hindi.sort((a, b) => {
-    if (a.isRecommended && !b.isRecommended) return -1;
-    if (!a.isRecommended && b.isRecommended) return 1;
+    if (b.score !== a.score) return b.score - a.score;
     return a.name.localeCompare(b.name);
   });
 
-  // Sort English voices strictly by acoustic quality score
+  // Sort English voices strictly by Indian English priority score
   englishVoices.sort((a, b) => {
     if (b.score !== a.score) return b.score - a.score;
     return a.name.localeCompare(b.name);
@@ -266,12 +261,12 @@ export function getVoiceCategories(voices = []) {
 
 /**
  * Finds the best voice for a given target language ('hi' or 'en').
- * Strictly avoids harsh robotic voices by selecting verified natural/Siri-style voices first.
+ * Strictly prioritizes Indian English (en-IN) for English and native Hindi (hi-IN) for Hindi.
  */
 export function selectBestVoice(voices, targetLang, preferredVoiceURI = null) {
   if (!Array.isArray(voices) || voices.length === 0) return null;
 
-  // 1. Honor explicit user saved preference
+  // 1. Honor explicit user saved preference if present
   if (preferredVoiceURI) {
     const preferred = voices.find((v) => v.voiceURI === preferredVoiceURI);
     if (preferred) return preferred;
@@ -279,13 +274,15 @@ export function selectBestVoice(voices, targetLang, preferredVoiceURI = null) {
 
   const { hindi, englishVoices } = getVoiceCategories(voices);
 
-  // 2. Hindi selection
+  // 2. Hindi selection: native Hindi voice (Google हिन्दी, Microsoft Swara, Apple Lekha)
   if (targetLang === 'hi') {
     if (hindi.length > 0) return hindi[0].voice;
-    // Fallback if no Hindi voice: highest ranked natural voice
+    // Fallback if no native Hindi voice installed: Indian English voice with en-IN
+    const indianFallback = englishVoices.find((v) => v.isIndianEnglish);
+    if (indianFallback) return indianFallback.voice;
     if (englishVoices.length > 0) return englishVoices[0].voice;
   } else {
-    // 3. English selection: highest ranked natural / Siri-style voice
+    // 3. English selection: clear Indian English voice (Google English India, Aman, Neerja, Rishi)
     if (englishVoices.length > 0) return englishVoices[0].voice;
   }
 
@@ -304,7 +301,8 @@ export function detectScriptLanguage(text, defaultLang = 'en') {
 
 /**
  * Cleans assistant response text into natural, spoken speech.
- * Converts currency, URLs, markdown, HTML, and emojis into smooth phonetic equivalents.
+ * Strips Markdown/HTML/JSON, replaces URLs with spoken phrases, normalizes
+ * Indian scheme acronyms and currency/numbers for maximum clarity.
  */
 export function prepareSpokenText(message, language = 'en') {
   if (!message) return '';
@@ -372,31 +370,46 @@ export function prepareSpokenText(message, language = 'en') {
     clean = clean.trim() + ' ' + intro + schemeSummaries;
   }
 
-  // 8. Natural currency and unit pronunciation across entire text
+  // 8. Pronounce Indian government scheme acronyms cleanly without hyphen stutter
+  clean = clean
+    .replace(/\bPM-KISAN\b/gi, 'PM Kisan')
+    .replace(/\bPM-SYM\b/gi, 'PM Shram Yogi Maandhan')
+    .replace(/\bPM-JAY\b/gi, 'PM Jan Arogya Yojana')
+    .replace(/\bPMAY-G\b/gi, 'PMAY Gramin')
+    .replace(/\bPMAY-U\b/gi, 'PMAY Urban')
+    .replace(/\bDBT\b/g, 'D B T');
+
+  // 9. Natural Indian currency, lakh/crore, and unit pronunciation
   if (language === 'hi' || /[\u0900-\u097F]/.test(clean)) {
     clean = clean
+      .replace(/₹\s*([0-9,]+(?:\.[0-9]+)?)\s*lakh\b/gi, '$1 लाख रुपये ')
+      .replace(/₹\s*([0-9,]+(?:\.[0-9]+)?)\s*crore\b/gi, '$1 करोड़ रुपये ')
       .replace(/₹\s*([0-9,]+)/g, '$1 रुपये ')
       .replace(/%\s*/g, ' प्रतिशत ')
       .replace(/\/month\b/gi, ' प्रति माह ')
-      .replace(/\/year\b/gi, ' प्रति वर्ष ');
+      .replace(/\/year\b/gi, ' प्रति वर्ष ')
+      .replace(/\bp\.a\.\b/gi, ' प्रति वर्ष ');
   } else {
     clean = clean
+      .replace(/₹\s*([0-9,]+(?:\.[0-9]+)?)\s*lakh\b/gi, 'Rupees $1 Lakh ')
+      .replace(/₹\s*([0-9,]+(?:\.[0-9]+)?)\s*crore\b/gi, 'Rupees $1 Crore ')
       .replace(/₹\s*([0-9,]+)/g, 'Rupees $1 ')
       .replace(/%\s*/g, ' percent ')
       .replace(/\/month\b/gi, ' per month ')
-      .replace(/\/year\b/gi, ' per year ');
+      .replace(/\/year\b/gi, ' per year ')
+      .replace(/\bp\.a\.\b/gi, ' per year ');
   }
 
-  // 9. Headings: `# Title` or `## Title` -> `Title. `
+  // 10. Headings: `# Title` or `## Title` -> `Title. `
   clean = clean.replace(/^[ \t]*#+[ \t]+(.+)$/gm, '$1. ');
 
-  // 10. Numbered lists: `1. Item` -> `1. Item. `
+  // 11. Numbered lists: `1. Item` -> `1. Item. `
   clean = clean.replace(/^[ \t]*(\d+)[.)][ \t]+(.+)$/gm, '$1. $2. ');
 
-  // 11. Bullet points: `* Item` or `- Item` or `• Item` -> `Item. `
+  // 12. Bullet points: `* Item` or `- Item` or `• Item` -> `Item. `
   clean = clean.replace(/^[ \t]*[*\-•◆▶➤✓✔★][ \t]+(.+)$/gm, '$1. ');
 
-  // 12. Markdown formatting: bold, italic, strikethrough, inline code
+  // 13. Markdown formatting: bold, italic, strikethrough, inline code
   clean = clean
     .replace(/\*\*([^*]+)\*\*/g, '$1')
     .replace(/\*([^*]+)\*/g, '$1')
@@ -405,10 +418,13 @@ export function prepareSpokenText(message, language = 'en') {
     .replace(/~~([^~]+)~~/g, '$1')
     .replace(/`([^`]+)`/g, '$1');
 
-  // 13. Remove decorative symbols and table delimiters
+  // 14. Convert colons at the end of introductory phrases into periods for clean pauses
+  clean = clean.replace(/:\s*(\n|$)/g, '. $1');
+
+  // 15. Remove decorative symbols and table delimiters
   clean = clean.replace(/[•◆▶➤✓✔★|~—_]/g, ' ');
 
-  // 14. Normalize duplicate punctuation and whitespace
+  // 16. Normalize duplicate punctuation and whitespace
   clean = clean
     .replace(/([.!?।])\s*([.!?।])+/g, '$1')
     .replace(/\s+/g, ' ')
@@ -420,6 +436,8 @@ export function prepareSpokenText(message, language = 'en') {
 /**
  * Splits text into natural sentence / clause chunks to prevent
  * Chromium 15-second speech synthesis lockup and provide natural breathing pauses.
+ * Automatically identifies Devanagari Hindi vs English script on a per-chunk basis
+ * for flawless bilingual playback of mixed responses.
  */
 export function splitIntoSpokenChunks(cleanText, defaultLang = 'en') {
   if (!cleanText) return [];
@@ -433,7 +451,10 @@ export function splitIntoSpokenChunks(cleanText, defaultLang = 'en') {
   let currentChunk = '';
 
   for (const sentence of rawSentences) {
-    if (currentChunk && (currentChunk.length + sentence.length + 1 <= 160)) {
+    const isDevanagari = /[\u0900-\u097F]/.test(sentence);
+    const currentIsDevanagari = /[\u0900-\u097F]/.test(currentChunk);
+
+    if (currentChunk && (isDevanagari === currentIsDevanagari) && (currentChunk.length + sentence.length + 1 <= 160)) {
       currentChunk += ' ' + sentence;
     } else {
       if (currentChunk) {
@@ -463,10 +484,13 @@ export function splitIntoSpokenChunks(cleanText, defaultLang = 'en') {
   }
 
   return chunks.map((chunk) => {
-    const isDevanagari = /[\u0900-\u097F]/.test(chunk);
+    const devanagariCount = (chunk.match(/[\u0900-\u097F]/g) || []).length;
+    // If chunk contains Devanagari text, it must be spoken with Hindi voice (hi-IN)
+    // If chunk contains zero Devanagari text (pure Latin/English), speak with Indian English voice (en-IN)
+    const isHindi = devanagariCount > 0;
     return {
       text: chunk,
-      lang: isDevanagari ? 'hi' : defaultLang,
+      lang: isHindi ? 'hi' : 'en',
     };
   });
 }

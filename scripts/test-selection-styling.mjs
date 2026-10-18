@@ -61,3 +61,4 @@ checkDir(srcDir);
 console.log('✅ Test 4 Passed: Zero residual yellow/amber selection styles across all source files.');
 
 console.log('\n🎉 ALL 4 TEXT SELECTION STYLING TESTS PASSED WITH 100% SUCCESS!\n');
+

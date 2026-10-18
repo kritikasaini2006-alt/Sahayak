@@ -874,7 +874,7 @@ export default function AIAssistantPage() {
     const chosenVoice = selectBestVoice(availableVoices, targetLang);
     if (chosenVoice) {
       utterance.voice = chosenVoice;
-      utterance.lang = chosenVoice.lang || (targetLang === 'hi' ? 'hi-IN' : 'en-US');
+      utterance.lang = chosenVoice.lang || (targetLang === 'hi' ? 'hi-IN' : 'en-IN');
     } else {
       utterance.lang = targetLang === 'hi' ? 'hi-IN' : 'en-IN';
     }
@@ -894,6 +894,11 @@ export default function AIAssistantPage() {
       }
       console.warn('Speech playback notice/error:', e.error);
       stopAllSpeech();
+      setSpeechError(t.ttsError || 'Unable to play text-to-speech audio on this device.');
+      if (speechErrorTimeoutRef.current) clearTimeout(speechErrorTimeoutRef.current);
+      speechErrorTimeoutRef.current = setTimeout(() => {
+        setSpeechError(null);
+      }, 5000);
     };
 
     try {
@@ -901,6 +906,7 @@ export default function AIAssistantPage() {
     } catch (err) {
       console.error('Failed to invoke speechSynthesis.speak:', err);
       stopAllSpeech();
+      setSpeechError(t.ttsError || 'Unable to play text-to-speech audio on this device.');
     }
   };
 
@@ -909,6 +915,12 @@ export default function AIAssistantPage() {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
       alert(t.ttsUnsupported || 'Text-to-speech audio is not supported in this browser.');
       return;
+    }
+
+    // Refresh voices if not yet cached
+    if (availableVoices.length === 0 && 'speechSynthesis' in window) {
+      const v = window.speechSynthesis.getVoices() || [];
+      if (v.length > 0) setAvailableVoices(v);
     }
 
     if (speakingId === msg.id) {
